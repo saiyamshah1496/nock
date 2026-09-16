@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
 import https from "https";
+import http from "http";
 import { URL } from "url";
 
 async function run() {
@@ -41,14 +42,13 @@ async function run() {
         core.warning(`Failed to fetch stats from API: ${e?.message || String(e)}`);
       }
     }
-    if (!stats) {
-      stats = fs.existsSync(statsPath)
-        ? JSON.parse(fs.readFileSync(statsPath, "utf8"))
-        : ({ tables: [] } as any);
-    }
+    const fallback: StatsSnapshot = fs.existsSync(statsPath)
+      ? JSON.parse(fs.readFileSync(statsPath, "utf8"))
+      : ({ tables: [] } as any);
+    const statsResolved: StatsSnapshot = (stats as StatsSnapshot) || fallback;
     // Warn if stale >24h
-    if ((stats as any).captured_at) {
-      const cap = new Date(String((stats as any).captured_at)).getTime();
+    if ((statsResolved as any).captured_at) {
+      const cap = new Date(String((statsResolved as any).captured_at)).getTime();
       if (Number.isFinite(cap)) {
         const ageMs = Date.now() - cap;
         if (ageMs > 24 * 3600 * 1000) {
@@ -68,7 +68,7 @@ async function run() {
           }
         };
 
-    const verdict = check({ sql, stats, policy });
+    const verdict = check({ sql, stats: statsResolved, policy });
     core.setOutput("verdict", JSON.stringify(verdict));
 
     const octokit = github.getOctokit(token);
@@ -161,7 +161,8 @@ run();
 function getJson(urlStr: string, token?: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const u = new URL(urlStr);
-    const req = https.request(
+    const lib = u.protocol === "http:" ? http : https;
+    const req = lib.request(
       {
         protocol: u.protocol,
         hostname: u.hostname,

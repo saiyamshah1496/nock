@@ -6,6 +6,7 @@ import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
 import { runSyncStats } from "../syncStats";
 import { envelopeEncrypt } from "@nock/secure-stats";
 import https from "https";
+import http from "http";
 import { URL } from "url";
 
 const program = new Command();
@@ -123,7 +124,8 @@ function postJson(urlStr: string, obj: any, token?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const u = new URL(urlStr);
     const data = Buffer.from(JSON.stringify(obj), "utf8");
-    const req = https.request(
+    const lib = u.protocol === "http:" ? http : https;
+    const req = lib.request(
       {
         protocol: u.protocol,
         hostname: u.hostname,
