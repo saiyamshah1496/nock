@@ -1,5 +1,5 @@
 import { type StatsSnapshot } from "@nock/core";
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 export interface GcmBox {
   ct: string; // base64
