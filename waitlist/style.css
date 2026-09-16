@@ -7,10 +7,10 @@
   --muted: #9AA4B2;       /* secondary text */
   --border: #1F2937;      /* subtle card/border */
 
-  /* Accent: Supabase-like mint for Postgres category cue */
-  --brand: #34D399;       /* primary accent / CTA */
-  --brand-strong: #34D399;/* no gradient; keep equal for consistency */
-  --accent: #34D399;
+  /* Accent: cohesive teal for Postgres category cue */
+  --brand: #14B8A6;       /* primary accent / CTA */
+  --brand-strong: #14B8A6;/* no gradient; keep equal for consistency */
+  --accent: #14B8A6;
   --warning: #F59E0B;     /* optional warning/status */
 
   --danger: #e55353;
@@ -143,7 +143,7 @@ code {
   border-radius: 10px;
   cursor: pointer;
   transition: transform 0.04s ease;
-  box-shadow: 0 6px 16px rgba(52, 211, 153, 0.25);
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.25);
 }
 .waitlist-form button:hover {
   transform: translateY(-1px);
@@ -155,7 +155,7 @@ code {
 /* Focus states for accessibility */
 .waitlist-form input[type="email"]:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.18);
 }
 .waitlist-form button:focus-visible {
   outline: 2px solid var(--brand);
