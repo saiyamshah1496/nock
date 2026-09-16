@@ -154,6 +154,7 @@ export NOCK_STATS_KEK="$(openssl rand -base64 32)"
 export NOCK_STATS_API_TOKEN=dev
 # Dev plaintext mode (local only). Omit this to require encryption:
 export NOCK_DEV_PLAINTEXT_STATS=1
+export NOCK_AUDIT_RETENTION_DAYS=30
 
 pnpm -r build
 node packages/api/dist/server.js  # listens on :8787
@@ -162,6 +163,10 @@ node packages/api/dist/server.js  # listens on :8787
 Endpoints:
 - `POST /v1/stats/:repoId` (bearer required) — plaintext JSON in dev mode; encrypted envelope otherwise
 - `GET /v1/stats/:repoId` — returns last-good plaintext JSON
+- `GET /v1/policy/:repoId` — latest repo policy, else falls back to org default (owner part of `owner/repo`). Note: URL‑encode `owner/repo` as `owner%2Frepo`.
+- `PUT /v1/policy/:repoId` (bearer) — version bump; to write an org default policy, set header `x-nock-policy-scope: org` and `x-nock-org-id: <owner>`
+- `POST /v1/audit` (bearer) — append event `{ org_id, repo_id, sql_hash, verdict, rule_ids[], policy_version?, actor?, ci_run_id? }`
+- `GET /v1/audit/:repoId?limit=N` — recent events (default 50, max 200). Note: URL‑encode `owner/repo`.
 
 Store location default: `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
 
@@ -188,6 +193,25 @@ Tip: Use `wrangler.toml` committed at `packages/api/wrangler.toml` (has `main = 
 
 ```
 npx wrangler versions upload --config packages/api/wrangler.toml --name nock
+```
+
+### D1 binding (policy + audit)
+
+Add to your `packages/api/wrangler.toml`:
+
+```toml
+[[d1_databases]]
+binding = "NOCK_D1"
+database_name = "nock-team"
+database_id = "00000000-0000-0000-0000-000000000000" # replace
+migrations_dir = "d1/migrations"
+```
+
+Run:
+
+```bash
+cd packages/api
+npx wrangler d1 migrations apply NOCK_D1
 ```
 
 ## MCP one-liner (local)

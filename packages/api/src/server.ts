@@ -1,10 +1,18 @@
 import { serve } from "@hono/node-server";
-import { createApp as createAppWithStore } from "./app";
+import { createApp as createApiApp } from "./app";
 import { createStatsStoreFromEnv } from "./store.factory";
+import { InMemoryPolicyAuditStore, type PolicyAuditStoreFactory } from "./policy_audit_store";
 
 export function createApp() {
-  const store = createStatsStoreFromEnv();
-  return createAppWithStore(store);
+  const stats = createStatsStoreFromEnv();
+  // Singleton in-memory policy/audit store for local dev
+  const factory: PolicyAuditStoreFactory = () => {
+    if (!(globalThis as any).__nockInMemPolicyAudit) {
+      (globalThis as any).__nockInMemPolicyAudit = new InMemoryPolicyAuditStore();
+    }
+    return (globalThis as any).__nockInMemPolicyAudit as InMemoryPolicyAuditStore;
+  };
+  return createApiApp(stats, factory);
 }
 
 if (require.main === module) {

@@ -193,6 +193,31 @@ npx wrangler secret put R2_BUCKET
 npx wrangler deploy
 ```
 
+## D1 for org policy + audit (Team)
+
+Workers uses Cloudflare D1 to store versioned policies and append-only audit rows.
+
+- Create a D1 database in the Cloudflare dashboard (or via `wrangler d1 create`).
+- Bind it in `packages/api/wrangler.toml`:
+
+```toml
+[[d1_databases]]
+binding = "NOCK_D1"
+database_name = "nock-team"
+database_id = "00000000-0000-0000-0000-000000000000" # replace with real
+migrations_dir = "d1/migrations"
+```
+
+- Run migrations:
+```bash
+cd packages/api
+npx wrangler d1 migrations apply NOCK_D1
+```
+
+- Vars/secrets:
+  - Reuse `NOCK_STATS_API_TOKEN` bearer for policy/audit v1.
+  - Optional: `NOCK_AUDIT_RETENTION_DAYS` (default 30).
+
 ## CI
 
 PR CI runs on GitHub Actions with:

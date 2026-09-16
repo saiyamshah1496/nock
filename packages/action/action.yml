@@ -19,8 +19,11 @@ inputs:
   stats-api-token:
     description: "Optional: Bearer token for hosted stats API"
     required: false
+  api-base-url:
+    description: "Optional: Override API base (defaults to origin from stats-api-url)"
+    required: false
   policy-path:
-    description: "Path to policy.yml (JSON file for Phase 1)"
+    description: "Path to policy.yml (YAML or JSON)"
     required: false
     default: "policy.default.yml"
   fail-on:
