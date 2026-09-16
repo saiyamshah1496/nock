@@ -14,7 +14,8 @@
   "dependencies": {
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0",
-    "@nock/core": "workspace:*"
+    "@nock/core": "workspace:*",
+    "yaml": "^2.5.0"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

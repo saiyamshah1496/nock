@@ -9,6 +9,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 # NOCK_STATS_STORE = "r2" # or leave unset for file store in dev
 # NOCK_DEV_PLAINTEXT_STATS = "1"
+# NOCK_AUDIT_RETENTION_DAYS = "30"
 
 # Secrets: set via `wrangler secret put`
 # - NOCK_STATS_API_TOKEN
@@ -17,4 +18,14 @@ compatibility_flags = ["nodejs_compat"]
 # - R2_ACCESS_KEY_ID
 # - R2_SECRET_ACCESS_KEY
 # - R2_BUCKET
+
+## D1 binding for org policy + audit (Team)
+## Fill in `database_name` and `database_id` in your Cloudflare account.
+## Do NOT commit real IDs/tokens to the repo.
+[[d1_databases]]
+binding = "NOCK_D1"
+database_name = "nock-team"
+## Placeholder only — set your real database_id in wrangler.toml (deploy path)
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "d1/migrations"
 

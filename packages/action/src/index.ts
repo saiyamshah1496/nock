@@ -6,6 +6,8 @@ import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
 import https from "https";
 import http from "http";
 import { URL } from "url";
+import crypto from "crypto";
+import YAML from "yaml";
 
 async function run() {
   try {
@@ -13,6 +15,7 @@ async function run() {
     const statsPath = core.getInput("stats-path") || ".nock/stats.json";
     const statsApiUrl = core.getInput("stats-api-url") || "";
     const statsApiToken = core.getInput("stats-api-token") || "";
+    const apiBaseUrlInput = core.getInput("api-base-url") || ""; // optional explicit base
     const policyPath = core.getInput("policy-path") || "policy.default.yml";
     const failOn = (core.getInput("fail-on") || "red") as "red" | "yellow";
     const token = core.getInput("github-token");
@@ -56,20 +59,82 @@ async function run() {
         }
       }
     }
-    const policy: PolicyResolved = fs.existsSync(policyPath)
-      ? JSON.parse(fs.readFileSync(policyPath, "utf8"))
-      : {
-          id: "nock.postgres.ddl.default",
-          version: "1.0.0",
-          fail_on: failOn,
-          rules: {
-            R001: { red_rows: 10000 },
-            R010: { always_require_lock_timeout_above_rows: 1000000 }
+    // Derive API base from explicit input or statsApiUrl origin
+    const apiBase = apiBaseUrlInput
+      ? apiBaseUrlInput.replace(/\/+$/, "")
+      : statsApiUrl
+      ? new URL(statsApiUrl).origin
+      : "";
+    // Try hosted policy (if API base + token present), else load local file (YAML/JSON), else default
+    let hostedPolicy: PolicyResolved | null = null;
+    if (apiBase && statsApiToken) {
+      try {
+        const repoFull = github.context.repo.owner + "/" + github.context.repo.repo;
+        const url = `${apiBase}/v1/policy/${encodeURIComponent(repoFull)}`;
+        const hp = await getJson(url, statsApiToken);
+        hostedPolicy = hp as PolicyResolved;
+      } catch (e: any) {
+        core.info(`Hosted policy not available: ${e?.message || String(e)}`);
+      }
+    }
+    let filePolicy: PolicyResolved | null = null;
+    if (!hostedPolicy) {
+      if (fs.existsSync(policyPath)) {
+        const raw = fs.readFileSync(policyPath, "utf8");
+        try {
+          // Parse YAML or JSON
+          const parsed = YAML.parse(raw);
+          filePolicy = parsed as PolicyResolved;
+        } catch (_yerr) {
+          try {
+            filePolicy = JSON.parse(raw) as PolicyResolved;
+          } catch (jerr: any) {
+            core.warning(`Failed to parse policy file as YAML/JSON: ${jerr?.message || String(jerr)}`);
           }
-        };
+        }
+      }
+    }
+    const policy: PolicyResolved =
+      hostedPolicy ||
+      filePolicy || ({
+        id: "nock.postgres.ddl.default",
+        version: "1.0.0",
+        fail_on: failOn,
+        rules: {
+          R001: { red_rows: 10000 },
+          R010: { always_require_lock_timeout_above_rows: 1000000 }
+        }
+      } as any);
 
     const verdict = check({ sql, stats: statsResolved, policy });
     core.setOutput("verdict", JSON.stringify(verdict));
+
+    // Append audit to API when configured
+    if (apiBase && statsApiToken) {
+      try {
+        const repoFull = github.context.repo.owner + "/" + github.context.repo.repo;
+        const hasher = crypto.createHash("sha256");
+        hasher.update(sql);
+        const sqlHash = `sha256:${hasher.digest("hex")}`;
+        const ruleIds = Array.from(new Set(verdict.violations.map((v) => v.rule_id)));
+        await postJson(
+          `${apiBase}/v1/audit`,
+          {
+            org_id: github.context.repo.owner,
+            repo_id: repoFull,
+            sql_hash: sqlHash,
+            verdict: verdict.verdict,
+            rule_ids: ruleIds,
+            policy_version: (policy as any)?.version ? Number((policy as any).version) || undefined : undefined,
+            actor: github.context.actor,
+            ci_run_id: process.env.GITHUB_RUN_ID || "",
+          },
+          statsApiToken
+        );
+      } catch (e: any) {
+        core.warning(`Failed to POST audit: ${e?.message || String(e)}`);
+      }
+    }
 
     const octokit = github.getOctokit(token);
     const context = github.context;
@@ -192,6 +257,47 @@ function getJson(urlStr: string, token?: string): Promise<any> {
       }
     );
     req.on("error", reject);
+    req.end();
+  });
+}
+
+function postJson(urlStr: string, payload: any, token?: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlStr);
+    const lib = u.protocol === "http:" ? http : https;
+    const data = Buffer.from(JSON.stringify(payload), "utf8");
+    const req = lib.request(
+      {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        port: u.port || (u.protocol === "https:" ? 443 : 80),
+        path: u.pathname + (u.search || ""),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": String(data.length),
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(Buffer.from(c)));
+        res.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(body));
+            } catch {
+              resolve({});
+            }
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}: ${body}`));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(data);
     req.end();
   });
 }
