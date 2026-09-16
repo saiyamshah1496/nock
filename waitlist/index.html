@@ -25,8 +25,7 @@
         <div class="container">
           <h1 class="hero-title">Prevent risky Postgres DDL from shipping</h1>
           <p class="hero-subtitle">
-            Nock adds approve/block governance before schema changes land. v1 focuses on safe DDL discipline:
-            awareness of table/object sizes and firm <code>lock_timeout</code> hygiene.
+            Approve/block governance for schema changes — before locks and bad ALTERs hit production
           </p>
 
           <div class="waitlist-card">
@@ -57,19 +56,28 @@
       <section class="section">
         <div class="container two-col">
           <div>
-            <h3 class="section-title">The problem</h3>
+            <h3 class="section-title">Problem + AI context</h3>
             <p class="section-body">
-              Postgres DDL can take strong locks. On busy systems those locks cascade —
-              blocking queries, migrations, and sometimes entire services. It’s a pattern many teams
-              hit as data grows and release velocity increases.
+              Postgres DDL isn’t just a migration. A bad <code>ALTER</code> or index build can take
+              locks that queue behind live traffic, exhaust connection pools, and stall the control plane
+              while apps keep running. This pattern shows up in public postmortems (e.g., Railway‑style
+              incidents in Oct/Dec&nbsp;2025) — the specifics vary, but the locking story repeats.
+            </p>
+            <p class="section-body">
+              <strong>Why now / AI:</strong> coding agents and copilots generate migrations and schema diffs
+              faster than humans review them. Schema churn rises; shared intuition about hot tables, lock risk,
+              <code>lock_timeout</code>, and sizes does not. More DDL proposals from more people (and agents).
+            </p>
+            <p class="section-body">
+              <em>AI is accelerating schema change. Postgres still punishes a bad lock. Nock is approve/block
+              governance so risky DDL doesn’t ship unchecked.</em>
             </p>
           </div>
           <div>
             <h3 class="section-title">What Nock does</h3>
             <p class="section-body">
-              Nock puts governance in front of risky schema changes. It evaluates proposed DDL
-              and enforces an approve/block gate before it ships — helping your org build safe,
-              consistent habits around schema evolution.
+              Nock enforces an approve/block gate before risky schema changes ship. It evaluates proposed DDL
+              and requires explicit approval — helping teams build safe, consistent habits around schema evolution.
             </p>
           </div>
         </div>
