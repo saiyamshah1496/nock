@@ -34,14 +34,42 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  packages/api:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.12.2
+        version: 1.19.17(hono@4.13.8)
+      '@nock/core':
+        specifier: workspace:*
+        version: link:../core
+      '@nock/secure-stats':
+        specifier: workspace:*
+        version: link:../secure-stats
+      aws4fetch:
+        specifier: ^1.0.20
+        version: 1.0.20
+      hono:
+        specifier: ^4.5.10
+        version: 4.13.8
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/cli:
     dependencies:
       '@nock/core':
         specifier: workspace:*
         version: link:../core
+      '@nock/secure-stats':
+        specifier: workspace:*
+        version: link:../secure-stats
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      postgres:
+        specifier: ^3.4.4
+        version: 3.4.9
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -58,6 +86,16 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.6.0
         version: 1.30.0(zod@4.6.5)
+      '@nock/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/secure-stats:
+    dependencies:
       '@nock/core':
         specifier: workspace:*
         version: link:../core
@@ -225,9 +263,9 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@hono/node-server@2.1.1':
-    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
-    engines: {node: '>=20'}
+  '@hono/node-server@1.19.17':
+    resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
+    engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
 
@@ -476,6 +514,9 @@ packages:
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
+
+  aws4fetch@1.0.20:
+    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
   before-after-hook@2.2.3:
     resolution: {integrity: sha512-NzUnlZexiaH/46WDhANlyR2bXRopNg4F/zuSA3OpZnllCUgRaOF2znDioDWrmbNVsuZk6l9pMquQB38cfBZwkQ==}
@@ -788,6 +829,10 @@ packages:
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
+
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
+    engines: {node: '>=12'}
 
   proxy-addr@2.0.8:
     resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
@@ -1107,7 +1152,7 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@hono/node-server@2.1.1(hono@4.13.8)':
+  '@hono/node-server@1.19.17(hono@4.13.8)':
     dependencies:
       hono: 4.13.8
 
@@ -1115,7 +1160,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.30.0(zod@4.6.5)':
     dependencies:
-      '@hono/node-server': 2.1.1(hono@4.13.8)
+      '@hono/node-server': 1.19.17(hono@4.13.8)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -1334,6 +1379,8 @@ snapshots:
       require-from-string: 2.0.2
 
   assertion-error@2.0.1: {}
+
+  aws4fetch@1.0.20: {}
 
   before-after-hook@2.2.3: {}
 
@@ -1648,6 +1695,8 @@ snapshots:
       nanoid: 3.3.19
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  postgres@3.4.9: {}
 
   proxy-addr@2.0.8:
     dependencies:

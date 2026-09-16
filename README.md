@@ -46,7 +46,7 @@ Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
 - Path A — paste/file: commit or artifact `stats.json`; no DB required.
 - Path B — customer sync: run `nock sync-stats` on your own runner (prefer replica) to write `stats.json` locally; same schema as fixtures.
-- Path B+ — thin hosted stats: optionally push encrypted stats to a tiny API you run; the Action can fetch from it. Local-first; envelope encryption for production; plaintext dev mode for local only. See design `docs/design/009-hosted-stats-api.md`.
+- Path B+ — thin hosted stats: optionally push encrypted stats to a tiny API you run; the Action can fetch from it. Local-first; envelope encryption for production; plaintext dev mode for local only. See design `docs/design/009-hosted-stats-api.md` and `docs/design/010-workers-r2-hosting.md` (Cloudflare Workers + R2).
 - Path C — hosted pull: future opt‑in only (Team/Business); not built in this PR.
 
 ### `nock sync-stats`
@@ -150,6 +150,26 @@ Endpoints:
 - `GET /v1/stats/:repoId` — returns last-good plaintext JSON
 
 Store location default: `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
+
+## Deploying the thin API to Cloudflare Workers (primary)
+
+See `docs/design/010-workers-r2-hosting.md` and `packages/api/wrangler.toml.example`. High-level:
+
+```bash
+pnpm -r build
+cd packages/api
+# Set vars & secrets via wrangler
+npx wrangler secret put NOCK_STATS_API_TOKEN
+npx wrangler secret put NOCK_STATS_KEK
+npx wrangler secret put R2_ACCOUNT_ID
+npx wrangler secret put R2_ACCESS_KEY_ID
+npx wrangler secret put R2_SECRET_ACCESS_KEY
+npx wrangler secret put R2_BUCKET
+echo 'NOCK_STATS_STORE="r2"' >> wrangler.toml  # or set as a var
+npx wrangler deploy
+```
+
+Note: Fly is not required. Workers + R2 is the default hosting path.
 
 ## MCP one-liner (local)
 

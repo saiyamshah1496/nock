@@ -107,6 +107,7 @@ ORDER BY s.n_live_tup DESC NULLS LAST;
 ```
 
 This repo now includes Path B (sync) and Path B+ (hosted stats API). See `docs/design/008-sync-stats.md` (sync) and `docs/design/009-hosted-stats-api.md` (API), plus `docs/grants-stats-role.md`.
+Also see `docs/design/010-workers-r2-hosting.md` for the Workers + R2 deploy path.
 
 ### Running sync-stats locally
 
@@ -157,6 +158,30 @@ Tip: Unknown DDL must remain YELLOW (never silent green).
 
 - Never commit: `node_modules/`, `**/node_modules/`, `dist/`, `**/dist/`, `coverage/`, `.turbo/`, `*.tsbuildinfo`, `.DS_Store`
 - Keep: `pnpm-lock.yaml`
+
+## Store selection (local vs R2)
+
+- Default (tests/local): `NOCK_STATS_STORE=file` (or unset) → filesystem at `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
+- R2 (Cloudflare): set `NOCK_STATS_STORE=r2` and provide:
+  - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
+  - Works in both Node and Workers via S3‑compatible HTTPS + SigV4 (`aws4fetch`).
+
+## Workers deploy quickstart
+
+```bash
+pnpm -r build
+cd packages/api
+cp wrangler.toml.example wrangler.toml
+# Put secrets
+npx wrangler secret put NOCK_STATS_API_TOKEN
+npx wrangler secret put NOCK_STATS_KEK
+npx wrangler secret put R2_ACCOUNT_ID
+npx wrangler secret put R2_ACCESS_KEY_ID
+npx wrangler secret put R2_SECRET_ACCESS_KEY
+npx wrangler secret put R2_BUCKET
+# Optional: set vars in wrangler.toml [vars]
+npx wrangler deploy
+```
 
 ## Design notes
 
