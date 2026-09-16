@@ -9,18 +9,18 @@ inputs:
     description: "Path or glob for migration SQL files"
     required: false
     default: "migrations/"
-  stats-path:
-    description: "Path to stats.json (file mode)"
+  estate-path:
+    description: "Path to estate.json (file mode)"
     required: false
-    default: ".nock/stats.json"
-  stats-api-url:
-    description: "Optional: GET URL for hosted stats API (Path B+)"
+    default: ".nock/estate.json"
+  estate-api-url:
+    description: "Optional: GET URL for hosted estate API (Path B+)"
     required: false
-  stats-api-token:
-    description: "Optional: Bearer token for hosted stats API"
+  estate-api-token:
+    description: "Optional: Bearer token for hosted estate API"
     required: false
   api-base-url:
-    description: "Optional: Override API base (defaults to origin from stats-api-url)"
+    description: "Optional: Override API base (defaults to origin from estate-api-url)"
     required: false
   policy-path:
     description: "Path to policy.yml (YAML or JSON)"

@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as fs from "fs";
 import * as path from "path";
-import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
+import { check, type PolicyResolved, type EstateSnapshot } from "@nock/core";
 import https from "https";
 import http from "http";
 import { URL } from "url";
@@ -12,9 +12,9 @@ import YAML from "yaml";
 async function run() {
   try {
     const migrationPath = core.getInput("migration-path") || "migrations/";
-    const statsPath = core.getInput("stats-path") || ".nock/stats.json";
-    const statsApiUrl = core.getInput("stats-api-url") || "";
-    const statsApiToken = core.getInput("stats-api-token") || "";
+    const estatePath = core.getInput("estate-path") || ".nock/estate.json";
+    const estateApiUrl = core.getInput("estate-api-url") || "";
+    const estateApiToken = core.getInput("estate-api-token") || "";
     const apiBaseUrlInput = core.getInput("api-base-url") || ""; // optional explicit base
     const policyPath = core.getInput("policy-path") || "policy.default.yml";
     const failOn = (core.getInput("fail-on") || "red") as "red" | "yellow";
@@ -36,42 +36,42 @@ async function run() {
     }
     const sql = sqlFiles.map((p) => fs.readFileSync(p, "utf8")).join("\n;\n");
 
-    let stats: StatsSnapshot | null = null;
-    if (statsApiUrl) {
+    let estate: EstateSnapshot | null = null;
+    if (estateApiUrl) {
       try {
-        const res = await getJson(statsApiUrl, statsApiToken);
-        stats = res as StatsSnapshot;
+        const res = await getJson(estateApiUrl, estateApiToken);
+        estate = res as EstateSnapshot;
       } catch (e: any) {
-        core.warning(`Failed to fetch stats from API: ${e?.message || String(e)}`);
+        core.warning(`Failed to fetch estate from API: ${e?.message || String(e)}`);
       }
     }
-    const fallback: StatsSnapshot = fs.existsSync(statsPath)
-      ? JSON.parse(fs.readFileSync(statsPath, "utf8"))
+    const fallback: EstateSnapshot = fs.existsSync(estatePath)
+      ? JSON.parse(fs.readFileSync(estatePath, "utf8"))
       : ({ tables: [] } as any);
-    const statsResolved: StatsSnapshot = (stats as StatsSnapshot) || fallback;
+    const estateResolved: EstateSnapshot = (estate as EstateSnapshot) || fallback;
     // Warn if stale >24h
-    if ((statsResolved as any).captured_at) {
-      const cap = new Date(String((statsResolved as any).captured_at)).getTime();
+    if ((estateResolved as any).captured_at) {
+      const cap = new Date(String((estateResolved as any).captured_at)).getTime();
       if (Number.isFinite(cap)) {
         const ageMs = Date.now() - cap;
         if (ageMs > 24 * 3600 * 1000) {
-          core.warning("Stats appear older than 24h; results may be stale.");
+          core.warning("Estate snapshot appears older than 24h; results may be stale.");
         }
       }
     }
     // Derive API base from explicit input or statsApiUrl origin
     const apiBase = apiBaseUrlInput
       ? apiBaseUrlInput.replace(/\/+$/, "")
-      : statsApiUrl
-      ? new URL(statsApiUrl).origin
+      : estateApiUrl
+      ? new URL(estateApiUrl).origin
       : "";
     // Try hosted policy (if API base + token present), else load local file (YAML/JSON), else default
     let hostedPolicy: PolicyResolved | null = null;
-    if (apiBase && statsApiToken) {
+    if (apiBase && estateApiToken) {
       try {
         const repoFull = github.context.repo.owner + "/" + github.context.repo.repo;
         const url = `${apiBase}/v1/policy/${encodeURIComponent(repoFull)}`;
-        const hp = await getJson(url, statsApiToken);
+        const hp = await getJson(url, estateApiToken);
         hostedPolicy = hp as PolicyResolved;
       } catch (e: any) {
         core.info(`Hosted policy not available: ${e?.message || String(e)}`);
@@ -106,11 +106,11 @@ async function run() {
         }
       } as any);
 
-    const verdict = check({ sql, stats: statsResolved, policy });
+    const verdict = check({ sql, estate: estateResolved, policy });
     core.setOutput("verdict", JSON.stringify(verdict));
 
     // Append audit to API when configured
-    if (apiBase && statsApiToken) {
+    if (apiBase && estateApiToken) {
       try {
         const repoFull = github.context.repo.owner + "/" + github.context.repo.repo;
         const hasher = crypto.createHash("sha256");
@@ -129,7 +129,7 @@ async function run() {
             actor: github.context.actor,
             ci_run_id: process.env.GITHUB_RUN_ID || "",
           },
-          statsApiToken
+          estateApiToken
         );
       } catch (e: any) {
         core.warning(`Failed to POST audit: ${e?.message || String(e)}`);
