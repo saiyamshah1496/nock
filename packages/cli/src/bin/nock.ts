@@ -4,6 +4,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
 import { runSyncStats } from "../syncStats";
+import { envelopeEncrypt } from "@nock/secure-stats";
+import https from "https";
+import { URL } from "url";
 
 const program = new Command();
 program
@@ -76,6 +79,8 @@ program
     "--sql-file <path>",
     "Optional override: path to a .sql file to run instead of the default catalogue query"
   )
+  .option("--push-url <url>", "Optional: POST to hosted API after writing the file")
+  .option("--token <token>", "Optional: bearer token for hosted API")
   .action(async (opts) => {
     const databaseUrl = String(opts.databaseUrl);
     const outPath = path.resolve(String(opts.out));
@@ -85,6 +90,23 @@ program
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
       fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2) + "\n", "utf8");
       process.stdout.write(`Wrote stats to ${outPath}\n`);
+      if (opts.pushUrl) {
+        const pushUrl = String(opts.pushUrl);
+        const token = opts.token ? String(opts.token) : "";
+        const devPlain = process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
+        let body: any;
+        if (devPlain) {
+          body = snapshot;
+        } else {
+          const kek = process.env.NOCK_STATS_KEK;
+          if (!kek) {
+            throw new Error("When using --push-url, set NOCK_DEV_PLAINTEXT_STATS=1 (local only) or provide NOCK_STATS_KEK (base64 32 bytes) to encrypt.");
+          }
+          body = envelopeEncrypt(snapshot, kek);
+        }
+        await postJson(pushUrl, body, token);
+        process.stdout.write(`Pushed stats to ${pushUrl}\n`);
+      }
       process.exit(0);
     } catch (err: any) {
       console.error(err?.message || String(err));
@@ -96,4 +118,40 @@ program.parseAsync(process.argv).catch((err) => {
   console.error(err?.stack || String(err));
   process.exit(2);
 });
+
+function postJson(urlStr: string, obj: any, token?: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlStr);
+    const data = Buffer.from(JSON.stringify(obj), "utf8");
+    const req = https.request(
+      {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        port: u.port || (u.protocol === "https:" ? 443 : 80),
+        path: u.pathname + (u.search || ""),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": data.length,
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(Buffer.from(c)));
+        res.on("end", () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            resolve();
+          } else {
+            const msg = Buffer.concat(chunks).toString("utf8");
+            reject(new Error(`Push failed: ${res.statusCode} ${msg}`));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(data);
+    req.end();
+  });
+}
 

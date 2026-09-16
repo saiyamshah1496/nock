@@ -3,11 +3,15 @@ import * as github from "@actions/github";
 import * as fs from "fs";
 import * as path from "path";
 import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
+import https from "https";
+import { URL } from "url";
 
 async function run() {
   try {
     const migrationPath = core.getInput("migration-path") || "migrations/";
     const statsPath = core.getInput("stats-path") || ".nock/stats.json";
+    const statsApiUrl = core.getInput("stats-api-url") || "";
+    const statsApiToken = core.getInput("stats-api-token") || "";
     const policyPath = core.getInput("policy-path") || "policy.default.yml";
     const failOn = (core.getInput("fail-on") || "red") as "red" | "yellow";
     const token = core.getInput("github-token");
@@ -28,9 +32,30 @@ async function run() {
     }
     const sql = sqlFiles.map((p) => fs.readFileSync(p, "utf8")).join("\n;\n");
 
-    const stats: StatsSnapshot = fs.existsSync(statsPath)
-      ? JSON.parse(fs.readFileSync(statsPath, "utf8"))
-      : { tables: [] };
+    let stats: StatsSnapshot | null = null;
+    if (statsApiUrl) {
+      try {
+        const res = await getJson(statsApiUrl, statsApiToken);
+        stats = res as StatsSnapshot;
+      } catch (e: any) {
+        core.warning(`Failed to fetch stats from API: ${e?.message || String(e)}`);
+      }
+    }
+    if (!stats) {
+      stats = fs.existsSync(statsPath)
+        ? JSON.parse(fs.readFileSync(statsPath, "utf8"))
+        : ({ tables: [] } as any);
+    }
+    // Warn if stale >24h
+    if ((stats as any).captured_at) {
+      const cap = new Date(String((stats as any).captured_at)).getTime();
+      if (Number.isFinite(cap)) {
+        const ageMs = Date.now() - cap;
+        if (ageMs > 24 * 3600 * 1000) {
+          core.warning("Stats appear older than 24h; results may be stale.");
+        }
+      }
+    }
     const policy: PolicyResolved = fs.existsSync(policyPath)
       ? JSON.parse(fs.readFileSync(policyPath, "utf8"))
       : {
@@ -132,4 +157,41 @@ function renderComment(verdict: ReturnType<typeof check extends (a: any) => infe
 }
 
 run();
+
+function getJson(urlStr: string, token?: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlStr);
+    const req = https.request(
+      {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        port: u.port || (u.protocol === "https:" ? 443 : 80),
+        path: u.pathname + (u.search || ""),
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(Buffer.from(c)));
+        res.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(body));
+            } catch (e) {
+              reject(new Error("Invalid JSON from API"));
+            }
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}: ${body}`));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
 

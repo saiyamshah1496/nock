@@ -13,6 +13,12 @@ inputs:
     description: "Path to stats.json (file mode)"
     required: false
     default: ".nock/stats.json"
+  stats-api-url:
+    description: "Optional: GET URL for hosted stats API (Path B+)"
+    required: false
+  stats-api-token:
+    description: "Optional: Bearer token for hosted stats API"
+    required: false
   policy-path:
     description: "Path to policy.yml (JSON file for Phase 1)"
     required: false

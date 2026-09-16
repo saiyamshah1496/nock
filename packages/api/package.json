@@ -1,0 +1,23 @@
+{
+  "name": "@nock/api",
+  "version": "0.1.0",
+  "description": "Nock hosted stats API (Path B+)",
+  "license": "MIT",
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf dist || true",
+    "test": "vitest run",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@nock/core": "workspace:*",
+    "@nock/secure-stats": "workspace:*",
+    "hono": "^4.5.10"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
+
