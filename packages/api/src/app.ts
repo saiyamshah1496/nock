@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { StatsStore } from "./store";
+import type { StatsStore } from "./store.types";
 import type { StatsSnapshot } from "@nock/core";
 import { envelopeDecryptToSnapshot, type EnvelopeV1 } from "@nock/secure-stats";
 

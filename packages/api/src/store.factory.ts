@@ -1,4 +1,5 @@
-import { LocalFileStatsStore, type StatsStore } from "./store";
+import type { StatsStore } from "./store.types";
+import { LocalFileStatsStore } from "./store";
 
 export function createStatsStoreFromEnv(): StatsStore {
   const which = (process.env.NOCK_STATS_STORE || "file").toLowerCase();

@@ -1,15 +1,7 @@
+import type { StatsStore } from "./store.types";
 import { type StatsSnapshot } from "@nock/core";
 import { type EnvelopeV1 } from "@nock/secure-stats";
 import { AwsClient } from "aws4fetch";
-
-export interface StatsStore {
-  savePlaintext(repoId: string, snapshot: StatsSnapshot): Promise<void>;
-  saveEnvelope(repoId: string, envelope: EnvelopeV1): Promise<void>;
-  hasPlaintext(repoId: string): Promise<boolean> | boolean;
-  hasEnvelope(repoId: string): Promise<boolean> | boolean;
-  loadPlaintext(repoId: string): Promise<StatsSnapshot | null>;
-  loadEnvelope(repoId: string): Promise<EnvelopeV1 | null>;
-}
 
 export class R2StatsStore implements StatsStore {
   private aws: AwsClient;

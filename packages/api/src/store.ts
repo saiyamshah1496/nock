@@ -1,17 +1,9 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
+import type { StatsStore } from "./store.types";
 import { type StatsSnapshot } from "@nock/core";
 import { type EnvelopeV1 } from "@nock/secure-stats";
-
-export interface StatsStore {
-  savePlaintext(repoId: string, snapshot: StatsSnapshot): Promise<void>;
-  saveEnvelope(repoId: string, envelope: EnvelopeV1): Promise<void>;
-  hasPlaintext(repoId: string): Promise<boolean> | boolean;
-  hasEnvelope(repoId: string): Promise<boolean> | boolean;
-  loadPlaintext(repoId: string): Promise<StatsSnapshot | null>;
-  loadEnvelope(repoId: string): Promise<EnvelopeV1 | null>;
-}
 
 export class LocalFileStatsStore implements StatsStore {
   private rootDir: string;
