@@ -2,6 +2,11 @@
 
 Private beta / waitlist landing page for Nock. Static HTML/CSS/JS — no framework required.
 
+## Production configuration
+- This branch commits `waitlist/config.js` pointing to the production Formspree endpoint:  
+  `https://formspree.io/f/xyezgqoy`
+- You can override this for staging/local testing by editing `waitlist/config.js` or using the sample file below.
+
 ## What this is
 - Single-page landing focused on the problem, what Nock does, how it thinks, and a pricing teaser
 - Email capture that POSTs to a configurable endpoint (Formspree or your serverless webhook)
@@ -19,11 +24,15 @@ npx serve -l 8080 .
 Then open `http://localhost:8080/`.
 
 ## Configure the waitlist endpoint
-1) Copy the sample config and set your endpoint:
+Already configured for production:
+- `waitlist/config.js` is set to `https://formspree.io/f/xyezgqoy`
+
+To use a different sink, either edit `waitlist/config.js` directly, or copy the sample as a starting point:
 ```bash
 cd waitlist
 cp config.sample.js config.js
-# edit config.js and set window.WAITLIST_FORM_ENDPOINT
+# then edit config.js and set:
+# window.WAITLIST_FORM_ENDPOINT = 'https://formspree.io/f/<your-form-id>'
 ```
 
 2) Choose your sink:
@@ -46,5 +55,5 @@ The UI will show a success message on any 2xx response, or surface JSON `{ error
 ## Notes
 - This is framed as "Private beta · Waitlist" — not a public launch site
 - No invented outage figures; tone is sharp, technical, credible for platform/SRE leads
-- `waitlist/config.js` is ignored by git so you can set local/test endpoints safely
+- `waitlist/config.js` is committed with the production endpoint; override locally by editing it or using `config.sample.js`
 
