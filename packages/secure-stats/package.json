@@ -1,12 +1,8 @@
 {
-  "name": "@nock/cli",
+  "name": "@nock/secure-stats",
   "version": "0.1.0",
-  "description": "Nock CLI",
+  "description": "Nock secure stats envelope (AES-GCM) utils",
   "license": "MIT",
-  "bin": {
-    "nock": "dist/bin/nock.js"
-  },
-  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -15,10 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "commander": "^12.1.0",
-    "@nock/core": "workspace:*",
-    "postgres": "^3.4.4",
-    "@nock/secure-stats": "workspace:*"
+    "@nock/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

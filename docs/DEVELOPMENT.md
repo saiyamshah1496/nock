@@ -10,7 +10,9 @@ Senior-staff quickstart for contributing to Nock Phase 1.
 │  ├─ core/      # @nock/core — parse → classify → rules → VerdictV1 (matchers live here)
 │  ├─ cli/       # @nock/cli  — bin `nock` (commander)
 │  ├─ mcp/       # @nock/mcp  — local MCP server tools + parity tests
-│  └─ action/    # @nock/action — GitHub Action runner + comment renderer
+│  ├─ action/    # @nock/action — GitHub Action runner + comment renderer
+│  ├─ api/       # @nock/api — thin hosted stats API (Path B+)
+│  └─ secure-stats/ # @nock/secure-stats — AES-GCM envelope utils shared by CLI/API
 ├─ fixtures/     # Golden SQL + stats snapshots used by tests
 ├─ policy.default.yml  # Default policy pack (thresholds only, no marketplace)
 ├─ docs/design/  # 000–008 design notes
@@ -104,7 +106,7 @@ WHERE c.relkind IN ('r', 'p')
 ORDER BY s.n_live_tup DESC NULLS LAST;
 ```
 
-This PR implements Path B sync only (no hosted API). See `docs/design/008-sync-stats.md` and `docs/grants-stats-role.md`.
+This repo now includes Path B (sync) and Path B+ (hosted stats API). See `docs/design/008-sync-stats.md` (sync) and `docs/design/009-hosted-stats-api.md` (API), plus `docs/grants-stats-role.md`.
 
 ### Running sync-stats locally
 
