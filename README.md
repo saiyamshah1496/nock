@@ -174,6 +174,7 @@ npx wrangler deploy
 ```
 
 Note: Fly is not required. Workers + R2 is the default hosting path.
+Tip: Use `main = "src/worker.ts"` and set `compatibility_flags = ["nodejs_compat"]` in `wrangler.toml` (see example) so Wrangler compiles TS to Worker‑compatible ESM and provides `process.env` shims.
 
 ## MCP one-liner (local)
 
