@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mapRowsToStats, type SyncRow, runSyncStats } from "../src/syncStats";
 
 describe("mapRowsToStats", () => {
-  it("maps query rows into stats.json shape", () => {
+  it("maps query rows into estate.json shape", () => {
     const rows: SyncRow[] = [
       {
         pg_version: "16.4",
@@ -25,7 +25,7 @@ describe("mapRowsToStats", () => {
     const snap = mapRowsToStats(rows);
     expect(snap.schema_version).toBe("1");
     expect(snap.pg_version).toBe("16.4");
-    expect(snap.source).toBe("sync-stats");
+    expect(snap.source).toBe("sync-estate");
     expect(snap.captured_at).toBeTruthy();
     expect(snap.tables.length).toBe(1);
     expect(snap.tables[0]).toEqual(

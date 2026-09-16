@@ -1,4 +1,4 @@
-import { type StatsSnapshot, type StatsTable } from "@nock/core";
+import { type EstateSnapshot, type EstateTable } from "@nock/core";
 import fs from "fs";
 import path from "path";
 import postgres from "postgres";
@@ -21,10 +21,10 @@ export interface SyncRow {
   total_bytes: number | null;
 }
 
-export function mapRowsToStats(rows: SyncRow[]): StatsSnapshot {
+export function mapRowsToStats(rows: SyncRow[]): EstateSnapshot {
   const capturedAt = new Date().toISOString();
   const pgVersion = rows[0]?.pg_version;
-  const tables: StatsTable[] = rows.map((r) => ({
+  const tables: EstateTable[] = rows.map((r) => ({
     schema: r.schema,
     name: r.name,
     n_live_tup: Number(r.n_live_tup ?? 0),
@@ -38,7 +38,7 @@ export function mapRowsToStats(rows: SyncRow[]): StatsSnapshot {
     schema_version: "1",
     captured_at: capturedAt,
     pg_version: pgVersion,
-    source: "sync-stats",
+    source: "sync-estate",
     tables
   };
 }
@@ -68,7 +68,7 @@ WHERE c.relkind IN ('r', 'p')
 ORDER BY s.n_live_tup DESC NULLS LAST;
 `;
 
-export async function runSyncStats(args: { databaseUrl: string; sqlFilePath?: string }): Promise<StatsSnapshot> {
+export async function runSyncStats(args: { databaseUrl: string; sqlFilePath?: string }): Promise<EstateSnapshot> {
   const { databaseUrl, sqlFilePath } = args;
   const sqlText = sqlFilePath ? fs.readFileSync(path.resolve(sqlFilePath), "utf8") : DEFAULT_SQL;
   const sql = postgres(databaseUrl, {

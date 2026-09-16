@@ -2,9 +2,9 @@
 import { Command } from "commander";
 import * as fs from "fs";
 import * as path from "path";
-import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
+import { check, type PolicyResolved, type EstateSnapshot } from "@nock/core";
 import { runSyncStats } from "../syncStats";
-import { envelopeEncrypt } from "@nock/secure-stats";
+import { envelopeEncrypt } from "@nock/secure-estate";
 import https from "https";
 import http from "http";
 import { URL } from "url";
@@ -18,17 +18,17 @@ program
 program
   .command("check")
   .requiredOption("--sql <path>", "Path to a SQL file to check")
-  .requiredOption("--stats <path>", "Path to a stats.json file")
+  .requiredOption("--estate <path>", "Path to an estate.json file")
   .option("--policy <path>", "Path to a policy YAML or JSON (JSON in Phase 1)")
   .option("--pg-version <ver>", "Override Postgres version string")
   .option("--format <fmt>", "Output format: json|text", "json")
   .option("--fail-on <level>", "Fail on red|yellow", "red")
   .action((opts) => {
     const sqlPath = path.resolve(String(opts.sql));
-    const statsPath = path.resolve(String(opts.stats));
+    const estatePath = path.resolve(String(opts.estate));
     const policyPath = opts.policy ? path.resolve(String(opts.policy)) : null;
     const sql = fs.readFileSync(sqlPath, "utf8");
-    const stats: StatsSnapshot = JSON.parse(fs.readFileSync(statsPath, "utf8"));
+    const estate: EstateSnapshot = JSON.parse(fs.readFileSync(estatePath, "utf8"));
 
     // Minimal default policy if none provided
     let policy: PolicyResolved = policyPath
@@ -47,12 +47,7 @@ program
       policy = { ...policy, fail_on: String(opts.failOn) as any };
     }
 
-    const verdict = check({
-      sql,
-      stats,
-      policy,
-      pgVersion: opts.pgVersion ? String(opts.pgVersion) : undefined
-    });
+    const verdict = check({ sql, estate, policy, pgVersion: opts.pgVersion ? String(opts.pgVersion) : undefined });
 
     if (opts.format === "json") {
       process.stdout.write(JSON.stringify(verdict, null, 2) + "\n");
@@ -73,14 +68,14 @@ program
   });
 
 program
-  .command("sync-stats")
-  .requiredOption("--database-url <url>", "Postgres connection string (prefer replica; stats-only role)")
-  .requiredOption("--out <path>", "Path to write stats.json")
+  .command("sync-estate")
+  .requiredOption("--database-url <url>", "Postgres connection string (prefer replica; read-only)")
+  .requiredOption("--out <path>", "Path to write estate.json")
   .option(
     "--sql-file <path>",
     "Optional override: path to a .sql file to run instead of the default catalogue query"
   )
-  .option("--push-url <url>", "Optional: POST to hosted API after writing the file")
+  .option("--push-url <url>", "Optional: POST to hosted estate API after writing the file")
   .option("--token <token>", "Optional: bearer token for hosted API")
   .action(async (opts) => {
     const databaseUrl = String(opts.databaseUrl);
@@ -90,23 +85,25 @@ program
       const snapshot = await runSyncStats({ databaseUrl, sqlFilePath });
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
       fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2) + "\n", "utf8");
-      process.stdout.write(`Wrote stats to ${outPath}\n`);
+      process.stdout.write(`Wrote estate to ${outPath}\n`);
       if (opts.pushUrl) {
         const pushUrl = String(opts.pushUrl);
         const token = opts.token ? String(opts.token) : "";
-        const devPlain = process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
+        const devPlain = process.env.NOCK_DEV_PLAINTEXT_ESTATE === "1" || process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
         let body: any;
         if (devPlain) {
           body = snapshot;
         } else {
-          const kek = process.env.NOCK_STATS_KEK;
+          const kek = process.env.NOCK_ESTATE_KEK || process.env.NOCK_STATS_KEK;
           if (!kek) {
-            throw new Error("When using --push-url, set NOCK_DEV_PLAINTEXT_STATS=1 (local only) or provide NOCK_STATS_KEK (base64 32 bytes) to encrypt.");
+            throw new Error(
+              "When using --push-url, set NOCK_DEV_PLAINTEXT_ESTATE=1 (local only) or provide NOCK_ESTATE_KEK (base64 32 bytes) to encrypt."
+            );
           }
           body = envelopeEncrypt(snapshot, kek);
         }
         await postJson(pushUrl, body, token);
-        process.stdout.write(`Pushed stats to ${pushUrl}\n`);
+        process.stdout.write(`Pushed estate to ${pushUrl}\n`);
       }
       process.exit(0);
     } catch (err: any) {

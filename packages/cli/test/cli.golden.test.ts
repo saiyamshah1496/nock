@@ -13,11 +13,11 @@ function runCli(args: string[]) {
 describe("CLI JSON equals core.check JSON on same inputs", () => {
   it("Railway-shaped fixture", () => {
     const sql = join(__dirname, "../../../fixtures/railway_oct.sql");
-    const stats = join(__dirname, "../../../fixtures/stats_billion.json");
-    const res = runCli(["check", "--sql", sql, "--stats", stats, "--format", "json"]);
+    const estate = join(__dirname, "../../../fixtures/estate_billion.json");
+    const res = runCli(["check", "--sql", sql, "--estate", estate, "--format", "json"]);
     const cliJson = JSON.parse(res.stdout);
 
-    const statsJson = JSON.parse(readFileSync(stats, "utf8"));
+    const estateJson = JSON.parse(readFileSync(estate, "utf8"));
     const policy = {
       id: "nock.postgres.ddl.default",
       version: "1.0.0",
@@ -27,7 +27,7 @@ describe("CLI JSON equals core.check JSON on same inputs", () => {
         R010: { always_require_lock_timeout_above_rows: 1000000 }
       }
     };
-    const coreJson = check({ sql: readFileSync(sql, "utf8"), stats: statsJson, policy });
+    const coreJson = check({ sql: readFileSync(sql, "utf8"), estate: estateJson, policy });
 
     // Compare selective fields to avoid incidental differences
     expect(cliJson.verdict).toEqual(coreJson.verdict);

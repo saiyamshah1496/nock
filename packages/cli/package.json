@@ -18,7 +18,7 @@
     "commander": "^12.1.0",
     "@nock/core": "workspace:*",
     "postgres": "^3.4.4",
-    "@nock/secure-stats": "workspace:*"
+    "@nock/secure-estate": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"
