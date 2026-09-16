@@ -1,4 +1,4 @@
-import { type StatsSnapshot } from "@nock/core";
+import { type EstateSnapshot } from "@nock/core";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 export interface GcmBox {
@@ -46,9 +46,9 @@ function aesGcmDecrypt(box: GcmBox, key: Buffer, aad?: Buffer): Buffer {
   return pt;
 }
 
-export function envelopeEncrypt(snapshot: StatsSnapshot, kekB64: string): EnvelopeV1 {
+export function envelopeEncrypt(snapshot: EstateSnapshot, kekB64: string): EnvelopeV1 {
   const kek = fromB64(kekB64);
-  if (kek.length !== 32) throw new Error("NOCK_STATS_KEK must be base64 32 bytes");
+  if (kek.length !== 32) throw new Error("NOCK_ESTATE_KEK must be base64 32 bytes");
   const plaintext = Buffer.from(JSON.stringify(snapshot), "utf8");
   const dek = randomBytes(32);
   const payload = aesGcmEncrypt(plaintext, dek);
@@ -63,13 +63,13 @@ export function envelopeEncrypt(snapshot: StatsSnapshot, kekB64: string): Envelo
   };
 }
 
-export function envelopeDecryptToSnapshot(envelope: EnvelopeV1, kekB64: string): StatsSnapshot {
+export function envelopeDecryptToSnapshot(envelope: EnvelopeV1, kekB64: string): EstateSnapshot {
   if (envelope.version !== "v1") throw new Error("Unsupported envelope version");
   const kek = fromB64(kekB64);
-  if (kek.length !== 32) throw new Error("NOCK_STATS_KEK must be base64 32 bytes");
+  if (kek.length !== 32) throw new Error("NOCK_ESTATE_KEK must be base64 32 bytes");
   const dek = aesGcmDecrypt(envelope.dek, kek);
   const plaintext = aesGcmDecrypt(envelope.payload, dek);
   const json = JSON.parse(plaintext.toString("utf8"));
-  return json as StatsSnapshot;
+  return json as EstateSnapshot;
 }
 
