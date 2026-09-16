@@ -4,8 +4,9 @@
   --panel-alt: #0e1218;
   --text: #e7ebf3;
   --muted: #b7c0d1;
-  --brand: #7cc4ff;
-  --brand-strong: #3ea0ff;
+  /* Teal/cyan accent */
+  --brand: #2dd4bf;
+  --brand-strong: #14b8a6;
   --accent: #24a148;
   --danger: #e55353;
   --shadow: 0 8px 24px rgba(0,0,0,0.35);
@@ -18,8 +19,8 @@ body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   color: var(--text);
-  background: radial-gradient(1200px 800px at 70% -10%, #122035, transparent 60%),
-              radial-gradient(900px 600px at -10% -20%, #161a22, transparent 50%),
+  background: radial-gradient(1200px 800px at 70% -10%, #0e1b19, transparent 60%),
+              radial-gradient(900px 600px at -10% -20%, #131820, transparent 50%),
               var(--bg);
   line-height: 1.6;
 }
@@ -66,7 +67,7 @@ body {
   font-weight: 600;
   color: #08131f;
   background: linear-gradient(180deg, var(--brand), var(--brand-strong));
-  box-shadow: 0 4px 14px rgba(62,160,255,0.35);
+  box-shadow: 0 4px 14px rgba(45,212,191,0.3);
 }
 .hero-title {
   margin: 8px 0 12px;
@@ -80,16 +81,16 @@ body {
   font-size: clamp(15px, 2.2vw, 18px);
 }
 code {
-  background: rgba(124,196,255,0.12);
-  color: var(--brand);
+  background: rgba(45,212,191,0.12);
+  color: var(--brand-strong);
   padding: 1px 6px;
   border-radius: 6px;
 }
 
 .waitlist-card {
   margin-top: 28px;
-  background: linear-gradient(180deg, rgba(61, 148, 255, 0.14), rgba(255,255,255,0.02));
-  border: 1px solid rgba(124,196,255,0.25);
+  background: linear-gradient(180deg, rgba(45,212,191,0.14), rgba(255,255,255,0.02));
+  border: 1px solid rgba(45,212,191,0.25);
   border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow);
@@ -131,7 +132,7 @@ code {
   border-radius: 10px;
   cursor: pointer;
   transition: transform 0.04s ease;
-  box-shadow: 0 6px 16px rgba(62,160,255,0.35);
+  box-shadow: 0 6px 16px rgba(45,212,191,0.35);
 }
 .waitlist-form button:hover {
   transform: translateY(-1px);
@@ -139,6 +140,15 @@ code {
 .waitlist-form button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+/* Focus states for accessibility */
+.waitlist-form input[type="email"]:focus {
+  border-color: rgba(45,212,191,0.55);
+  box-shadow: 0 0 0 4px rgba(45,212,191,0.18);
+}
+.waitlist-form button:focus-visible {
+  outline: 2px solid var(--brand-strong);
+  outline-offset: 2px;
 }
 .form-hint {
   margin: 8px 2px 0;
@@ -196,6 +206,7 @@ code {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  height: 100%;
 }
 .card-heading {
   margin: 0;
@@ -205,6 +216,7 @@ code {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+  align-items: stretch;
 }
 .chips {
   list-style: none;
@@ -221,8 +233,8 @@ code {
   border-radius: 999px;
   font-size: 12px;
   color: var(--text);
-  background: rgba(124,196,255,0.14);
-  border: 1px solid rgba(124,196,255,0.24);
+  background: rgba(45,212,191,0.14);
+  border: 1px solid rgba(45,212,191,0.24);
 }
 .note {
   color: var(--muted);
@@ -232,7 +244,7 @@ code {
   margin-top: 18px;
   padding: 14px 16px;
   border-left: 3px solid var(--brand-strong);
-  background: linear-gradient(90deg, rgba(62,160,255,0.12), rgba(0,0,0,0));
+  background: linear-gradient(90deg, rgba(45,212,191,0.12), rgba(0,0,0,0));
   border-radius: 8px;
   color: var(--text);
 }
