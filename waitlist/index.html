@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nock — Governance for Postgres DDL</title>
+    <meta name="description" content="Nock adds approve/block governance before risky Postgres DDL ships. Private beta waitlist." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="brand">
+          <div class="logo">Nock</div>
+        </div>
+        <div class="beta-tag">Private beta · Waitlist</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container">
+          <h1 class="hero-title">Prevent risky Postgres DDL from shipping</h1>
+          <p class="hero-subtitle">
+            Nock adds approve/block governance before schema changes land. v1 focuses on safe DDL discipline:
+            awareness of table/object sizes and firm <code>lock_timeout</code> hygiene.
+          </p>
+
+          <div class="waitlist-card">
+            <h2 class="card-title">Join the waitlist</h2>
+            <p class="card-subtitle">Platform and SRE leaders — get early access updates.</p>
+
+            <form id="waitlist-form" class="waitlist-form" novalidate>
+              <div class="form-row">
+                <label class="visually-hidden" for="email">Work email</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  inputmode="email"
+                  autocomplete="email"
+                  placeholder="name@company.com"
+                  required
+                />
+                <button id="submit-btn" type="submit">Request invite</button>
+              </div>
+              <p class="form-hint">We’ll only use this to contact you about the private beta.</p>
+              <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container two-col">
+          <div>
+            <h3 class="section-title">The problem</h3>
+            <p class="section-body">
+              Postgres DDL can take strong locks. On busy systems those locks cascade —
+              blocking queries, migrations, and sometimes entire services. It’s a pattern many teams
+              hit as data grows and release velocity increases.
+            </p>
+          </div>
+          <div>
+            <h3 class="section-title">What Nock does</h3>
+            <p class="section-body">
+              Nock puts governance in front of risky schema changes. It evaluates proposed DDL
+              and enforces an approve/block gate before it ships — helping your org build safe,
+              consistent habits around schema evolution.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="container two-col">
+          <div>
+            <h3 class="section-title">How it thinks</h3>
+            <ul class="bullets">
+              <li><strong>Size-aware checks</strong> — considers table/object sizes when flagging risk.</li>
+              <li><strong><code>lock_timeout</code> discipline</strong> — prevents untamed locks from stalling production.</li>
+              <li><strong>Plain‑language guidance</strong> — pragmatic for platform/SRE leads, not theory.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="section-title">Team pricing</h3>
+            <p class="section-body">
+              Team plan <strong>~$79–99/mo</strong>. Final packaging and tiers to be announced for GA.
+            </p>
+            <p class="small-muted">Not a public launch. Private beta / waitlist only.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container foot">
+        <span class="foot-brand">Nock</span>
+        <span class="foot-note">Governance for Postgres DDL</span>
+      </div>
+    </footer>
+
+    <!-- Config: copy config.sample.js -> config.js and set WAITLIST_FORM_ENDPOINT -->
+    <script src="./config.js"></script>
+    <script src="./script.js"></script>
+  </body>
+  </html>
+
