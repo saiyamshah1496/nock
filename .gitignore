@@ -1,0 +1,10 @@
+# Nock monorepo ignores
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+coverage/
+.turbo/
+.DS_Store
+*.tsbuildinfo
+
