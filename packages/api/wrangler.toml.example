@@ -2,7 +2,7 @@ name = "nock-api"
 main = "dist/worker.js"
 compatibility_date = "2024-11-01"
 # latest
-compatibility_flags = []
+compatibility_flags = ["nodejs_compat"]
 
 # Add non-secret vars here if desired (see docs for guidance).
 [vars]
