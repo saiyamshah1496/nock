@@ -7,8 +7,8 @@ import { type EnvelopeV1 } from "@nock/secure-stats";
 export interface StatsStore {
   savePlaintext(repoId: string, snapshot: StatsSnapshot): Promise<void>;
   saveEnvelope(repoId: string, envelope: EnvelopeV1): Promise<void>;
-  hasPlaintext(repoId: string): boolean;
-  hasEnvelope(repoId: string): boolean;
+  hasPlaintext(repoId: string): Promise<boolean> | boolean;
+  hasEnvelope(repoId: string): Promise<boolean> | boolean;
   loadPlaintext(repoId: string): Promise<StatsSnapshot | null>;
   loadEnvelope(repoId: string): Promise<EnvelopeV1 | null>;
 }

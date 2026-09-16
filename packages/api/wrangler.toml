@@ -1,0 +1,10 @@
+name = "nock"
+main = "src/worker.ts"
+compatibility_date = "2026-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Add non-secret vars here if desired (secrets via `wrangler secret put`)
+[vars]
+# NOCK_STATS_STORE = "r2"
+# NOCK_DEV_PLAINTEXT_STATS = "1"
+

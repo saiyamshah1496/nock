@@ -72,6 +72,10 @@ Notes:
 See `packages/action/action.yml` and copy into `.github/workflows/nock.yml`:
 
 ```yaml
+## NOTE: Example workflow.
+## - The line `uses: ./.github/actions/nock` assumes you've copied the packaged action
+##   into your own repo at `.github/actions/nock`, or switched it to a published action.
+## - Alternatively, run the CLI directly: `npx -y @nock/cli check ...`
 name: Nock
 on:
   pull_request:
@@ -85,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Nock check
-        uses: ./.github/actions/nock  # or your published action
+        uses: ./.github/actions/nock  # example-only; replace with your published action or use CLI
         with:
           migration-path: migrations/
           stats-path: .nock/stats.json
@@ -153,7 +157,7 @@ Store location default: `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
 
 ## Deploying the thin API to Cloudflare Workers (primary)
 
-See `docs/design/010-workers-r2-hosting.md` and `packages/api/wrangler.toml.example`. High-level:
+See `docs/design/010-workers-r2-hosting.md` and `packages/api/wrangler.toml`. High-level:
 
 ```bash
 pnpm -r build
@@ -170,10 +174,25 @@ npx wrangler deploy
 ```
 
 Note: Fly is not required. Workers + R2 is the default hosting path.
+Tip: Use `wrangler.toml` committed at `packages/api/wrangler.toml` (has `main = "src/worker.ts"`, `compatibility_flags = ["nodejs_compat"]`, and a recent `compatibility_date`). For manual uploads in CI services, prefer:
+
+```
+npx wrangler versions upload --config packages/api/wrangler.toml --name nock
+```
 
 ## MCP one-liner (local)
 
 See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs.
+
+## CI
+
+Pull requests run a minimal GitHub Actions CI:
+- Node 20, `corepack` + `pnpm` with cache
+- `pnpm install --frozen-lockfile`
+- `pnpm -r build` (typecheck + build all packages)
+- `pnpm test` (vitest)
+
+No deploy runs in CI. Tests are green without any R2/Cloudflare/Workers secrets (file store defaults; online integrations skip when env is unset).
 
 ## Policy
 
