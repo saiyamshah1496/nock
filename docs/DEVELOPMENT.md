@@ -183,6 +183,16 @@ npx wrangler secret put R2_BUCKET
 npx wrangler deploy
 ```
 
+## CI
+
+PR CI runs on GitHub Actions with:
+- Node 20 via `actions/setup-node@v4` (pnpm cache enabled)
+- `pnpm install --frozen-lockfile`
+- `pnpm -r build` (workspace packages)
+- `pnpm test` (vitest)
+
+No deploy in CI. Tests pass without R2/Cloudflare secrets; any online integrations are skipped if env is unset.
+
 ## Design notes
 
 Read these before expanding scope:

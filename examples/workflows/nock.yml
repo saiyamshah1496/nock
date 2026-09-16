@@ -1,3 +1,12 @@
+## Example-only: Nock — Postgres migration safety
+## This example assumes you have copied the packaged action into your own repo at:
+##   .github/actions/nock
+## or you have replaced the `uses:` line with a published action reference.
+## Alternatively, you can run the CLI directly via:
+##   - uses: actions/setup-node@v4
+##     with: { node-version: 20 }
+##   - run: corepack enable && pnpm install && pnpm -r build
+##   - run: npx -y @nock/cli check --sql migrations/001.sql --stats .nock/stats.json
 name: Nock — Postgres migration safety
 on:
   pull_request:
