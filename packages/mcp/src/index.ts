@@ -107,3 +107,27 @@ if (process.argv[1] && process.argv[1].endsWith("index.js")) {
   });
 }
 
+export function checkBeforeApplyLocal(args: {
+  sql: string;
+  pgVersion?: string;
+  statsPath?: string;
+  policyPath?: string;
+}) {
+  const stats: StatsSnapshot = args.statsPath
+    ? JSON.parse(fs.readFileSync(String(args.statsPath), "utf8"))
+    : { tables: [] };
+  const policy: PolicyResolved = args.policyPath
+    ? JSON.parse(fs.readFileSync(String(args.policyPath), "utf8"))
+    : {
+        id: "nock.postgres.ddl.default",
+        version: "1.0.0",
+        fail_on: "red",
+        rules: {
+          R001: { red_rows: 10000 },
+          R010: { always_require_lock_timeout_above_rows: 1000000 }
+        }
+      };
+  return check({ sql: args.sql, stats, policy, pgVersion: args.pgVersion });
+}
+
+
