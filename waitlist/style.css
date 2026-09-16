@@ -1,23 +1,24 @@
 :root {
-  /* Foundations: GitHub/Linear-inspired near-black + zinc neutrals */
-  --bg: #0d1117;
-  --panel: #0f141a;
+  /* Foundations: GitHub/Linear dark with Vercel/Linear hierarchy */
+  --bg: #0B0F14;
+  --panel: #0f141a;       /* slightly lifted from bg */
   --panel-alt: #0b1117;
-  --text: #e6edf3;
-  --muted: #9aa4b2;
-  --border: #30363d;
+  --text: #F5F7FA;        /* primary text */
+  --muted: #9AA4B2;       /* secondary text */
+  --border: #1F2937;      /* subtle card/border */
 
-  /* Accent: Linear-style indigo */
-  --brand: #5E6AD2;
-  --brand-strong: #4F59C2;
-  --accent: #5E6AD2;
+  /* Accent: Supabase-like mint for Postgres category cue */
+  --brand: #34D399;       /* primary accent / CTA */
+  --brand-strong: #34D399;/* no gradient; keep equal for consistency */
+  --accent: #34D399;
+  --warning: #F59E0B;     /* optional warning/status */
 
   --danger: #e55353;
   --shadow: 0 8px 24px rgba(0,0,0,0.35);
   --radius: 12px;
 
   /* Surfaces for chips/code */
-  --chip-bg: #1a1f26;
+  --chip-bg: #121821;
 }
 
 * { box-sizing: border-box; }
@@ -90,7 +91,7 @@ body {
 }
 code {
   background: var(--chip-bg);
-  color: #c9d1d9;
+  color: #d4dbe3;
   padding: 1px 6px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -133,15 +134,16 @@ code {
   color: #94a3b8;
 }
 .waitlist-form button {
-  background: linear-gradient(180deg, var(--brand), var(--brand-strong));
-  color: #ffffff;
+  /* Vercel-like restraint: solid mint, no gradient */
+  background: var(--brand);
+  color: #0B0F14; /* dark text on mint */
   border: none;
   font-weight: 700;
   padding: 12px 14px;
   border-radius: 10px;
   cursor: pointer;
   transition: transform 0.04s ease;
-  box-shadow: 0 6px 16px rgba(94,106,210,0.25);
+  box-shadow: 0 6px 16px rgba(52, 211, 153, 0.25);
 }
 .waitlist-form button:hover {
   transform: translateY(-1px);
@@ -153,10 +155,10 @@ code {
 /* Focus states for accessibility */
 .waitlist-form input[type="email"]:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 4px rgba(94,106,210,0.18);
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
 }
 .waitlist-form button:focus-visible {
-  outline: 2px solid var(--brand-strong);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 .form-hint {
