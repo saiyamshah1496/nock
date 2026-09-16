@@ -236,6 +236,12 @@ Default policy lives at `policy.default.yml` — a single default pack with thre
 
 See `docs/DEVELOPMENT.md` for setup, repo map, running the CLI, adding rules/fixtures, parity expectations, and git hygiene.
 
+## Glossary: estate (naming)
+
+- Prefer “estate” / “estate snapshot” in product docs and UI copy. Existing wire names remain “stats” for now (file `stats.json`, command `nock sync-stats`, API `/v1/stats`).
+- One repo may target multiple databases. Snapshots are keyed by `org + repo + estate_id` (e.g., `prod-primary`). V1 runs one estate per check; two DBs ⇒ two syncs / two hosted blobs (no merging across DBs).
+- See design note `docs/design/016-estate-naming-and-multi-db.md`.
+
 ## Docs
 
 Design notes live under `docs/design/` (see `008-sync-stats.md`, `009-hosted-stats-api.md`). GRANTs guidance in `docs/grants-stats-role.md`. Teardown doc stub: `docs/teardown-railway-locks.md`.
