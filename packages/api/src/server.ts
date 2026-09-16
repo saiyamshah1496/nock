@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { LocalFileStatsStore } from "./store";
+import { createStatsStoreFromEnv } from "./store.factory";
 import type { StatsSnapshot } from "@nock/core";
 import { envelopeDecryptToSnapshot, type EnvelopeV1 } from "@nock/secure-stats";
 
@@ -20,7 +20,7 @@ function errJson(c: any, message: string, status = 400) {
 
 export function createApp() {
   const app = new Hono();
-  const store = new LocalFileStatsStore();
+  const store = createStatsStoreFromEnv();
   // Health
   app.get("/healthz", (c) => c.text("ok"));
   // POST /v1/stats/:repoId

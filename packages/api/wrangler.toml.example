@@ -1,0 +1,19 @@
+name = "nock-api"
+main = "dist/worker.js"
+compatibility_date = "2024-11-01"
+# latest
+compatibility_flags = []
+
+# Add non-secret vars here if desired (see docs for guidance).
+[vars]
+# NOCK_STATS_STORE = "r2" # or leave unset for file store in dev
+# NOCK_DEV_PLAINTEXT_STATS = "1"
+
+# Secrets: set via `wrangler secret put`
+# - NOCK_STATS_API_TOKEN
+# - NOCK_STATS_KEK
+# - R2_ACCOUNT_ID
+# - R2_ACCESS_KEY_ID
+# - R2_SECRET_ACCESS_KEY
+# - R2_BUCKET
+
