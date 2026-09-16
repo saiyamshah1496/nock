@@ -116,11 +116,12 @@ export interface PolicyPack {
 
 // Minimal shape matcher: CREATE INDEX (non-concurrent)
 function isCreateIndexNonConcurrent(sql: string): { table?: TableRef; indexName?: string } | null {
-  const norm = sql.trim().replace(/\s+/g, " ").toUpperCase();
+  const clean = stripSqlComments(sql);
+  const norm = clean.trim().replace(/\s+/g, " ").toUpperCase();
   if (!norm.startsWith("CREATE INDEX")) return null;
   if (norm.includes(" CONCURRENTLY ")) return null;
   // Try to extract table: CREATE INDEX <name> ON <schema?.>table (
-  const m = /CREATE INDEX\s+([A-Z0-9_"]+)\s+ON\s+([A-Z0-9_".]+)/i.exec(sql);
+  const m = /CREATE INDEX\s+([A-Z0-9_"]+)\s+ON\s+([A-Z0-9_".]+)/i.exec(clean);
   if (!m) return { table: undefined, indexName: undefined };
   const indexName = m[1];
   const fq = m[2].replace(/"/g, "");
@@ -132,20 +133,39 @@ function isCreateIndexNonConcurrent(sql: string): { table?: TableRef; indexName?
 
 // ALTER TABLE ... ADD COLUMN ...
 function isAlterTableAddColumn(sql: string): { table?: TableRef; column?: string; hasDefault: boolean } | null {
-  const m = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+ADD\s+COLUMN\s+([A-Za-z0-9_".]+)[\s\S]*?;?$/i.exec(sql.trim());
+  const clean = stripSqlComments(sql);
+  const m =
+    /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+ADD\s+COLUMN\s+([A-Za-z0-9_".]+)[\s\S]*?;?$/i.exec(clean.trim());
   if (!m) return null;
   const fq = m[1].replace(/"/g, "");
   const parts = fq.split(".");
   const table: TableRef =
     parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
-  const hasDefault = /\bDEFAULT\b/i.test(sql);
+  const hasDefault = /\bDEFAULT\b/i.test(clean);
   const column = m[2]?.replace(/"/g, "");
   return { table, column, hasDefault };
 }
 
+// ALTER TABLE ... ALTER COLUMN ... SET NOT NULL
+function isAlterTableSetNotNull(sql: string): { table?: TableRef; column?: string } | null {
+  const clean = stripSqlComments(sql);
+  const m =
+    /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+ALTER\s+COLUMN\s+([A-Za-z0-9_".]+)\s+SET\s+NOT\s+NULL/i.exec(
+      clean.trim()
+    );
+  if (!m) return null;
+  const fq = m[1].replace(/"/g, "");
+  const parts = fq.split(".");
+  const table: TableRef =
+    parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+  const column = m[2]?.replace(/\"/g, "");
+  return { table, column };
+}
+
 // ALTER TABLE ... ADD CONSTRAINT ... CHECK (...) [NOT VALID]
 function isAddCheckConstraintWithoutNotValid(sql: string): { table?: TableRef } | null {
-  const norm = sql.trim();
+  const clean = stripSqlComments(sql);
+  const norm = clean.trim();
   if (!/ALTER\s+TABLE\s+/i.test(norm) || !/\bADD\s+CONSTRAINT\b/i.test(norm) || !/\bCHECK\s*\(/i.test(norm))
     return null;
   if (/\bNOT\s+VALID\b/i.test(norm)) return null; // safe path
@@ -160,7 +180,7 @@ function isAddCheckConstraintWithoutNotValid(sql: string): { table?: TableRef } 
 }
 
 function isVacuumFullOrClusterOrNonConcurrentReindex(sql: string): { kind: "VACUUM FULL" | "CLUSTER" | "REINDEX" } | null {
-  const up = sql.trim().toUpperCase();
+  const up = stripSqlComments(sql).trim().toUpperCase();
   if (up.startsWith("VACUUM FULL")) return { kind: "VACUUM FULL" };
   if (up.startsWith("CLUSTER")) return { kind: "CLUSTER" };
   if (up.startsWith("REINDEX") && !up.includes(" CONCURRENTLY")) return { kind: "REINDEX" };
@@ -197,6 +217,10 @@ function splitSqlStatements(sql: string): string[] {
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   return parts;
+}
+
+function stripSqlComments(sql: string): string {
+  return sql.replace(/--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").trim();
 }
 
 export function check(input: CheckInput): VerdictV1 {
@@ -302,6 +326,18 @@ export function check(input: CheckInput): VerdictV1 {
           )} rows)`,
           remediation_sql: "SET lock_timeout = '3s';"
         });
+        // Also emit R010 if policy wants generic lock_timeout on hot tables
+        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? hotRows;
+        if (typeof nLive === "number" && nLive >= r010Rows) {
+          violations.push({
+            rule_id: "R010",
+            severity: "red",
+            message: `Missing lock_timeout for DDL on hot table ${addCol.table ? addCol.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql: "SET lock_timeout = '3s';"
+          });
+        }
       }
       statements.push({
         sql,
@@ -331,6 +367,18 @@ export function check(input: CheckInput): VerdictV1 {
           remediation_sql:
             "ALTER TABLE <table> ADD CONSTRAINT <name> CHECK (<expr>) NOT VALID; ALTER TABLE <table> VALIDATE CONSTRAINT <name>;"
         });
+        // Also R010 for hot tables without lock_timeout
+        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+          violations.push({
+            rule_id: "R010",
+            severity: "red",
+            message: `Missing lock_timeout for DDL on hot table ${addCheck.table ? addCheck.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql: "SET lock_timeout = '3s';"
+          });
+        }
       }
       statements.push({
         sql,
@@ -338,6 +386,35 @@ export function check(input: CheckInput): VerdictV1 {
         blocks_reads: true,
         blocks_writes: true,
         target: addCheck.table,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      continue;
+    }
+
+    // R005: SET NOT NULL without validated CHECK (simplified: treat as unsafe on large tables)
+    const setNotNull = isAlterTableSetNotNull(sql);
+    if (setNotNull) {
+      const tstats = findTableStats(input.stats, setNotNull.table);
+      const nLive = tstats?.n_live_tup;
+      const redRows = policy.rules?.R005?.red_rows ?? 100_000;
+      if (typeof nLive === "number" && nLive >= redRows) {
+        violations.push({
+          rule_id: "R005",
+          severity: "red",
+          message: `SET NOT NULL without validated CHECK on ${setNotNull.table ? setNotNull.table.name : "unknown"} (${formatRows(
+            nLive
+          )} rows)`,
+          remediation_sql:
+            "ALTER TABLE <table> ADD CONSTRAINT <col>_nn CHECK (<col> IS NOT NULL) NOT VALID; ALTER TABLE <table> VALIDATE CONSTRAINT <col>_nn; ALTER TABLE <table> ALTER COLUMN <col> SET NOT NULL;"
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: setNotNull.table,
         n_live_tup: nLive,
         rules_hit: []
       });

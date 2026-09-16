@@ -13,6 +13,23 @@ Pattern linters catch shapes. Nock stops merges when staging lies — using your
 
 Out of scope for Phase 1: hosted API, billing, dashboard, apply plane, MySQL, R011 live locks, libpg-query WASM.
 
+## Rule coverage (Phase 1 honesty)
+
+| Rule | Status | Notes |
+|------|--------|-------|
+| R001 — CREATE INDEX w/o CONCURRENTLY | Implemented | Lock mode SHARE; red ≥10k rows |
+| R002 — CIC inside transaction | Stub | Will add matcher |
+| R003 — ADD COLUMN … DEFAULT <volatile> (rewrite) | Stub | Will add matcher |
+| R004 — ADD COLUMN nullable/constant-default on hot table w/o lock_timeout | Implemented (partial) | Size-gated; requires `lock_timeout`; constant-default nuance later |
+| R005 — SET NOT NULL w/o validated CHECK | Implemented (partial) | Assumes unsafe on large tables (no catalog check yet) |
+| R006 — ADD CHECK w/o NOT VALID | Implemented | Red ≥50k rows |
+| R007 — ADD FK w/o NOT VALID | Stub | Will add matcher |
+| R008 — ALTER TYPE non-binary-coercible | Stub | Will add matcher |
+| R009 — DROP/RENAME | Stub | Will add matcher (yellow) |
+| R010 — DDL w/o lock_timeout on hot tables | Implemented (partial) | Applied to common DDL shapes |
+| R011 — Live locks advisory | Out of scope | Phase 3 |
+| R012 — VACUUM FULL / CLUSTER / non-concurrent REINDEX | Implemented | Always red in CI |
+
 ## Quick start
 
 ```bash
@@ -57,7 +74,7 @@ See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`.
 
 ## Policy
 
-Default policy lives at `policy.default.yml`. Unknown DDL is never silent green: it becomes YELLOW.
+Default policy lives at `policy.default.yml` — a single default pack with thresholds only (not a pack marketplace in Phase 1). Unknown DDL is never silent green: it becomes YELLOW.
 
 ## Docs
 
