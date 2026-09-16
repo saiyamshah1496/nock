@@ -47,10 +47,10 @@
       });
 
       if (res.ok) {
-        setStatus('Thanks — you’re on the list. We’ll be in touch soon.', 'success');
+        setStatus('Thanks - you’re on the list. We’ll be in touch soon.', 'success');
         form.reset();
       } else {
-        // Try to read error for Formspree‑style APIs
+        // Try to read error for Formspree-style APIs
         let message = 'Something went wrong. Please try again.';
         try {
           const data = await res.json();

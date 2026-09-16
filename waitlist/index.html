@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Nock — Governance for Postgres DDL</title>
+    <title>Nock - Governance for Postgres DDL</title>
     <meta name="description" content="Nock adds approve/block governance before risky Postgres DDL ships. Private beta waitlist." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,12 +26,12 @@
           <span class="badge">Private beta</span>
           <h1 class="hero-title">Prevent risky Postgres DDL from shipping</h1>
           <p class="hero-subtitle">
-            Approve/block governance for schema changes — before locks and bad ALTERs hit production
+            Approve/block governance for schema changes before locks or bad ALTERs hit production.
           </p>
 
           <div class="waitlist-card">
             <h2 class="card-title">Join the waitlist</h2>
-            <p class="card-subtitle">Platform and SRE leaders — get early access updates.</p>
+            <p class="card-subtitle">Platform and SRE leaders, get early access updates.</p>
 
             <form id="waitlist-form" class="waitlist-form" novalidate>
               <div class="form-row">
@@ -67,7 +67,7 @@
               <p class="section-body">
                 Postgres DDL isn’t just a migration. A bad <code>ALTER</code> or index build can take locks that
                 queue behind live traffic and stall control surfaces while apps keep running.
-                Seen in public postmortems (e.g., Railway‑style Oct/Dec&nbsp;2025) — details vary, the locking story repeats.
+                Seen in public postmortems (e.g., Railway-style Oct/Dec&nbsp;2025) - details vary, the locking story repeats.
               </p>
               <ul class="chips">
                 <li>Locks cascade on busy systems</li>
@@ -99,15 +99,15 @@
               <h3 class="section-title">What Nock does</h3>
               <p class="section-body">
                 Nock enforces an approve/block gate before risky schema changes ship. It evaluates proposed DDL
-                and requires explicit approval — helping teams build safe, consistent habits around schema evolution.
+                and requires explicit approval, helping teams build safe, consistent habits around schema evolution.
               </p>
             </div>
             <div class="card">
               <h3 class="section-title">How it thinks</h3>
               <ul class="bullets">
-                <li><strong>Size‑aware checks</strong> — considers table/object sizes when flagging risk.</li>
-                <li><strong><code>lock_timeout</code> discipline</strong> — prevents untamed locks from stalling production.</li>
-                <li><strong>Plain‑language guidance</strong> — pragmatic for platform/SRE leads.</li>
+                <li><strong>Size-aware checks</strong>: considers table/object sizes when flagging risk.</li>
+                <li><strong><code>lock_timeout</code> discipline</strong>: prevents untamed locks from stalling production.</li>
+                <li><strong>Plain-language guidance</strong>: pragmatic for platform/SRE leads.</li>
               </ul>
             </div>
           </div>
@@ -119,10 +119,11 @@
         <div class="container">
           <div class="pricing-card card">
             <div>
-              <h3 class="section-title">Team pricing</h3>
-              <p class="section-body">Team plan <strong>~$79–99/mo</strong>. Final packaging and tiers to be announced for GA.</p>
+              <h3 class="section-title">Free CLI + Team</h3>
+              <p class="section-body"><strong>Free</strong>: CLI (and GitHub Action/MCP) to check DDL locally or in CI.</p>
+              <p class="section-body"><strong>Team</strong>: hosted governance for orgs, <strong>~$79-99/mo</strong>. Packaging to be finalized.</p>
             </div>
-            <p class="small-muted">Private beta / waitlist only — not a public launch.</p>
+            <p class="small-muted">Private beta / waitlist only - not a public launch.</p>
           </div>
         </div>
       </section>
