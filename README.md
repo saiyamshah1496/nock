@@ -10,6 +10,7 @@ Pattern linters catch shapes. Nock stops merges when staging lies — using your
 - Fixtures: Railway-shaped SQL + stats with `sessions ≈ 1.04B`
 - GitHub Action (file stats path) + PR comment scaffold
 - MCP: `check_before_apply` (local stats/policy path)
+- Path B sync (Phase 2): `nock sync-stats --database-url $PG_URL --out .nock/stats.json` now available; see below.
 
 Out of scope for Phase 1: hosted API, billing, dashboard, apply plane, MySQL, R011 live locks, libpg-query WASM.
 
@@ -41,6 +42,23 @@ node packages/cli/dist/bin/nock.js check --sql fixtures/railway_oct.sql --stats 
 
 Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
+## Estate paths A / B / C
+
+- Path A — paste/file: commit or artifact `stats.json`; no DB required.
+- Path B — customer sync: run `nock sync-stats` on your own runner (prefer replica) to write `stats.json` locally; same schema as fixtures.
+- Path C — hosted pull: future opt‑in only (Team/Business); not built in this PR.
+
+### `nock sync-stats`
+
+```
+nock sync-stats --database-url "$PG_STATS_URL" --out .nock/stats.json
+```
+
+Notes:
+- Use a read‑only stats role; see `docs/grants-stats-role.md`.
+- Managed PG often needs `?sslmode=require` on the URL.
+- Optional `--sql-file` allows overriding the default catalogue query later.
+
 ## GitHub Action example
 
 See `packages/action/action.yml` and copy into `.github/workflows/nock.yml`:
@@ -68,6 +86,39 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+### Scheduled stats sync (artifact) — example
+
+This job runs every 6h to produce a fresh `stats.json` artifact without committing it. For demo, it uses a fake DSN variable; wire real secrets in your repo.
+
+```yaml
+name: Nock stats sync
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable && pnpm install && pnpm -r build
+      - name: Run sync-stats
+        env:
+          PG_STATS_URL: ${{ secrets.PG_STATS_URL }} # provide in repo secrets; use a read-only replica
+        run: |
+          node packages/cli/dist/bin/nock.js sync-stats \
+            --database-url "$PG_STATS_URL" \
+            --out .nock/stats.json
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nock-stats
+          path: .nock/stats.json
+          retention-days: 3
+```
+
 ## MCP one-liner (local)
 
 See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs.
@@ -82,7 +133,7 @@ See `docs/DEVELOPMENT.md` for setup, repo map, running the CLI, adding rules/fix
 
 ## Docs
 
-Design notes live under `docs/design/`. Teardown doc stub: `docs/teardown-railway-locks.md`.
+Design notes live under `docs/design/` (see `008-sync-stats.md`). GRANTs guidance in `docs/grants-stats-role.md`. Teardown doc stub: `docs/teardown-railway-locks.md`.
 
 ## License
 
