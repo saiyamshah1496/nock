@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import type { StatsStore } from "./store";
-import type { StatsSnapshot } from "@nock/core";
-import { envelopeDecryptToSnapshot, type EnvelopeV1 } from "@nock/secure-stats";
+import type { EstateStore } from "./store";
+import type { EstateSnapshot } from "@nock/core";
+import { envelopeDecryptToSnapshot, type EnvelopeV1 } from "@nock/secure-estate";
 import {
   InMemoryPolicyAuditStore,
   type PolicyAuditStore,
@@ -25,7 +25,7 @@ function errJson(c: any, message: string, status = 400) {
 
 function requireAuth(c: any): string | null {
   const token = requireToken(c);
-  const expected = process.env.NOCK_STATS_API_TOKEN || "";
+  const expected = process.env.NOCK_ESTATE_API_TOKEN || process.env.NOCK_STATS_API_TOKEN || "";
   if (!expected) return "__MISSING_CONFIG__";
   if (!token || token !== expected) return null;
   return token;
@@ -41,29 +41,29 @@ function parseOrgRepo(repoId: string, orgIdHeader?: string | null): { orgId?: st
 }
 
 export function createApp(
-  statsStore: StatsStore,
+  statsStore: EstateStore,
   policyAuditFactory?: PolicyAuditStoreFactory
 ) {
   const app = new Hono();
   // Health
   app.get("/healthz", (c) => c.text("ok"));
-  // POST /v1/stats/:repoId
-  app.post("/v1/stats/:repoId", async (c) => {
+  // POST /v1/estate/:repoId
+  app.post("/v1/estate/:repoId", async (c) => {
     const repoId = c.req.param("repoId");
     const auth = requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
-    const isDevPlain = process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
+    const isDevPlain = process.env.NOCK_DEV_PLAINTEXT_ESTATE === "1" || process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
     try {
       const body = await c.req.json();
       if (isDevPlain) {
-        const snapshot = body as StatsSnapshot;
+        const snapshot = body as EstateSnapshot;
         await statsStore.savePlaintext(repoId, snapshot);
         return okJson(c, { status: "ok", mode: "plaintext" }, 200);
       } else {
         const env = body as EnvelopeV1;
-        const kek = process.env.NOCK_STATS_KEK;
-        if (!kek) return errJson(c, "server missing NOCK_STATS_KEK", 500);
+        const kek = process.env.NOCK_ESTATE_KEK || process.env.NOCK_STATS_KEK;
+        if (!kek) return errJson(c, "server missing NOCK_ESTATE_KEK", 500);
         envelopeDecryptToSnapshot(env, kek);
         await statsStore.saveEnvelope(repoId, env);
         return okJson(c, { status: "ok", mode: "envelope" }, 200);
@@ -72,10 +72,10 @@ export function createApp(
       return errJson(c, e?.message || "invalid request", 400);
     }
   });
-  // GET /v1/stats/:repoId
-  app.get("/v1/stats/:repoId", async (c) => {
+  // GET /v1/estate/:repoId
+  app.get("/v1/estate/:repoId", async (c) => {
     const repoId = c.req.param("repoId");
-    const isDevPlain = process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
+    const isDevPlain = process.env.NOCK_DEV_PLAINTEXT_ESTATE === "1" || process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
     if (isDevPlain) {
       const pt = await statsStore.loadPlaintext(repoId);
       if (!pt) return errJson(c, "not found", 404);
@@ -83,8 +83,8 @@ export function createApp(
     } else {
       const env = await statsStore.loadEnvelope(repoId);
       if (!env) return errJson(c, "not found", 404);
-      const kek = process.env.NOCK_STATS_KEK;
-      if (!kek) return errJson(c, "server missing NOCK_STATS_KEK", 500);
+      const kek = process.env.NOCK_ESTATE_KEK || process.env.NOCK_STATS_KEK;
+      if (!kek) return errJson(c, "server missing NOCK_ESTATE_KEK", 500);
       try {
         const snap = envelopeDecryptToSnapshot(env, kek);
         return okJson(c, snap, 200);

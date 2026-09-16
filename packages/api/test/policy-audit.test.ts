@@ -3,7 +3,7 @@ import { createApp } from "../src/server";
 
 describe("Policy + Audit API (in-memory store, local server)", () => {
   beforeEach(() => {
-    process.env.NOCK_STATS_API_TOKEN = "t";
+    process.env.NOCK_ESTATE_API_TOKEN = "t";
     delete (globalThis as any).__nockInMemPolicyAudit;
   });
 

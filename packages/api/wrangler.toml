@@ -5,8 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 # Add non-secret vars here if desired (secrets via `wrangler secret put`)
 [vars]
-# NOCK_STATS_STORE = "r2"
-# NOCK_DEV_PLAINTEXT_STATS = "1"
+# NOCK_ESTATE_STORE = "r2"         # prefer; falls back to NOCK_STATS_STORE
+# NOCK_DEV_PLAINTEXT_ESTATE = "1"  # prefer; falls back to NOCK_DEV_PLAINTEXT_STATS
 # NOCK_AUDIT_RETENTION_DAYS = "30"
 
 [[d1_databases]]

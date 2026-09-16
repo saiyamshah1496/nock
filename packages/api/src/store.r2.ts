@@ -1,17 +1,17 @@
-import { type StatsSnapshot } from "@nock/core";
-import { type EnvelopeV1 } from "@nock/secure-stats";
+import { type EstateSnapshot } from "@nock/core";
+import { type EnvelopeV1 } from "@nock/secure-estate";
 import { AwsClient } from "aws4fetch";
 
-export interface StatsStore {
-  savePlaintext(repoId: string, snapshot: StatsSnapshot): Promise<void>;
+export interface EstateStore {
+  savePlaintext(repoId: string, snapshot: EstateSnapshot): Promise<void>;
   saveEnvelope(repoId: string, envelope: EnvelopeV1): Promise<void>;
   hasPlaintext(repoId: string): Promise<boolean> | boolean;
   hasEnvelope(repoId: string): Promise<boolean> | boolean;
-  loadPlaintext(repoId: string): Promise<StatsSnapshot | null>;
+  loadPlaintext(repoId: string): Promise<EstateSnapshot | null>;
   loadEnvelope(repoId: string): Promise<EnvelopeV1 | null>;
 }
 
-export class R2StatsStore implements StatsStore {
+export class R2EstateStore implements EstateStore {
   private aws: AwsClient;
   private baseUrl: string;
   private bucket: string;
@@ -37,7 +37,7 @@ export class R2StatsStore implements StatsStore {
   }
 
   private keyPrefix(repoId: string): string {
-    return `stats/${sanitize(repoId)}`;
+    return `estate/${sanitize(repoId)}`;
   }
   private plaintextKey(repoId: string): string {
     return `${this.keyPrefix(repoId)}/last.json`;
@@ -49,7 +49,7 @@ export class R2StatsStore implements StatsStore {
     return `${this.baseUrl}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
   }
 
-  async savePlaintext(repoId: string, snapshot: StatsSnapshot): Promise<void> {
+  async savePlaintext(repoId: string, snapshot: EstateSnapshot): Promise<void> {
     const body = JSON.stringify(snapshot, null, 2) + "\n";
     const url = this.urlFor(this.plaintextKey(repoId));
     const res = await this.aws.fetch(url, {
@@ -87,12 +87,12 @@ export class R2StatsStore implements StatsStore {
     return res.ok;
   }
 
-  async loadPlaintext(repoId: string): Promise<StatsSnapshot | null> {
+  async loadPlaintext(repoId: string): Promise<EstateSnapshot | null> {
     const url = this.urlFor(this.plaintextKey(repoId));
     const res = await this.aws.fetch(url, { method: "GET" });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`R2 GET failed (${res.status}) for ${url}`);
-    return (await res.json()) as StatsSnapshot;
+    return (await res.json()) as EstateSnapshot;
   }
 
   async loadEnvelope(repoId: string): Promise<EnvelopeV1 | null> {
@@ -106,7 +106,7 @@ export class R2StatsStore implements StatsStore {
 
 function requiredEnv(name: string): string {
   const v = (globalThis as any).process?.env?.[name];
-  if (!v) throw new Error(`Missing ${name} for R2StatsStore`);
+  if (!v) throw new Error(`Missing ${name} for R2EstateStore`);
   return v;
 }
 

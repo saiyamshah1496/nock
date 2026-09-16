@@ -1,22 +1,23 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { type StatsSnapshot } from "@nock/core";
-import { type EnvelopeV1 } from "@nock/secure-stats";
+import { type EstateSnapshot } from "@nock/core";
+import { type EnvelopeV1 } from "@nock/secure-estate";
 
-export interface StatsStore {
-  savePlaintext(repoId: string, snapshot: StatsSnapshot): Promise<void>;
+export interface EstateStore {
+  savePlaintext(repoId: string, snapshot: EstateSnapshot): Promise<void>;
   saveEnvelope(repoId: string, envelope: EnvelopeV1): Promise<void>;
   hasPlaintext(repoId: string): Promise<boolean> | boolean;
   hasEnvelope(repoId: string): Promise<boolean> | boolean;
-  loadPlaintext(repoId: string): Promise<StatsSnapshot | null>;
+  loadPlaintext(repoId: string): Promise<EstateSnapshot | null>;
   loadEnvelope(repoId: string): Promise<EnvelopeV1 | null>;
 }
 
-export class LocalFileStatsStore implements StatsStore {
+export class LocalFileStatsStore implements EstateStore {
   private rootDir: string;
   constructor(rootDir?: string) {
-    this.rootDir = rootDir || process.env.NOCK_STATS_STORE_DIR || path.resolve("data/stats");
+    this.rootDir =
+      rootDir || process.env.NOCK_ESTATE_STORE_DIR || process.env.NOCK_STATS_STORE_DIR || path.resolve("data/estate");
   }
   private dirFor(repoId: string): string {
     return path.join(this.rootDir, sanitize(repoId));
@@ -33,7 +34,7 @@ export class LocalFileStatsStore implements StatsStore {
     fs.writeFileSync(tmp, data, "utf8");
     fs.renameSync(tmp, filePath);
   }
-  async savePlaintext(repoId: string, snapshot: StatsSnapshot): Promise<void> {
+  async savePlaintext(repoId: string, snapshot: EstateSnapshot): Promise<void> {
     await this.atomicWrite(this.plaintextPath(repoId), JSON.stringify(snapshot, null, 2) + "\n");
   }
   async saveEnvelope(repoId: string, envelope: EnvelopeV1): Promise<void> {
@@ -45,7 +46,7 @@ export class LocalFileStatsStore implements StatsStore {
   hasEnvelope(repoId: string): boolean {
     return fs.existsSync(this.envelopePath(repoId));
   }
-  async loadPlaintext(repoId: string): Promise<StatsSnapshot | null> {
+  async loadPlaintext(repoId: string): Promise<EstateSnapshot | null> {
     const p = this.plaintextPath(repoId);
     if (!fs.existsSync(p)) return null;
     return JSON.parse(fs.readFileSync(p, "utf8"));

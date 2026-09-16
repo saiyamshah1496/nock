@@ -7,8 +7,8 @@ const haveCreds = required.every((k) => !!process.env[k]);
 describe("R2StatsStore (integration, optional)", () => {
   (haveCreds ? it : it.skip)("saves and reads envelope roundtrip", async () => {
     // Dynamic import to avoid bundling unless used
-    const { R2StatsStore } = await import("../src/store.r2");
-    const store = new R2StatsStore();
+    const { R2EstateStore } = await import("../src/store.r2");
+    const store = new R2EstateStore();
     const repoId = "it-r2-store-test";
     const env = {
       v: "1",
