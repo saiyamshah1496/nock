@@ -10,7 +10,7 @@ Pattern linters catch shapes. Nock stops merges when staging lies — using your
 - Fixtures: Railway-shaped SQL + stats with `sessions ≈ 1.04B`
 - GitHub Action (file stats path) + PR comment scaffold
 - MCP: `check_before_apply` (local stats/policy path)
-- Path B sync (Phase 2): `nock sync-stats --database-url $PG_URL --out .nock/stats.json` now available; see below.
+- Path B sync (Phase 2): `nock sync-stats --database-url $PG_URL --out .nock/stats.json` now available; optional `--push-url` to hosted API (see Path B+).
 
 Out of scope for Phase 1: hosted API, billing, dashboard, apply plane, MySQL, R011 live locks, libpg-query WASM.
 
@@ -42,22 +42,30 @@ node packages/cli/dist/bin/nock.js check --sql fixtures/railway_oct.sql --stats 
 
 Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
-## Estate paths A / B / C
+## Estate paths A / B / B+ / C
 
 - Path A — paste/file: commit or artifact `stats.json`; no DB required.
 - Path B — customer sync: run `nock sync-stats` on your own runner (prefer replica) to write `stats.json` locally; same schema as fixtures.
+- Path B+ — thin hosted stats: optionally push encrypted stats to a tiny API you run; the Action can fetch from it. Local-first; envelope encryption for production; plaintext dev mode for local only. See design `docs/design/009-hosted-stats-api.md`.
 - Path C — hosted pull: future opt‑in only (Team/Business); not built in this PR.
 
 ### `nock sync-stats`
 
 ```
 nock sync-stats --database-url "$PG_STATS_URL" --out .nock/stats.json
+# Optional Path B+ push after writing file:
+nock sync-stats --database-url "$PG_STATS_URL" --out .nock/stats.json \
+  --push-url "http://localhost:8787/v1/stats/my-repo" --token dev
 ```
 
 Notes:
 - Use a read‑only stats role; see `docs/grants-stats-role.md`.
 - Managed PG often needs `?sslmode=require` on the URL.
 - Optional `--sql-file` allows overriding the default catalogue query later.
+- For `--push-url`:
+  - In local plaintext dev mode set `NOCK_DEV_PLAINTEXT_STATS=1` (sends raw JSON).
+  - Otherwise set `NOCK_STATS_KEK` (base64 32 bytes) to encrypt with AES‑GCM envelope.
+  - The API requires `Authorization: Bearer <token>` (MVP).
 
 ## GitHub Action example
 
@@ -81,6 +89,9 @@ jobs:
         with:
           migration-path: migrations/
           stats-path: .nock/stats.json
+          # Optional Path B+ fetch:
+          # stats-api-url: https://api.example.com/v1/stats/my-repo
+          # stats-api-token: ${{ secrets.NOCK_STATS_API_TOKEN }}
           policy-path: policy.default.yml
           fail-on: red
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -119,6 +130,27 @@ jobs:
           retention-days: 3
 ```
 
+## Run the hosted API locally (Path B+)
+
+Minimal local server with file-backed store and bearer auth.
+
+```bash
+# One-time: key for envelope mode
+export NOCK_STATS_KEK="$(openssl rand -base64 32)"
+export NOCK_STATS_API_TOKEN=dev
+# Dev plaintext mode (local only). Omit this to require encryption:
+export NOCK_DEV_PLAINTEXT_STATS=1
+
+pnpm -r build
+node packages/api/dist/server.js  # listens on :8787
+```
+
+Endpoints:
+- `POST /v1/stats/:repoId` (bearer required) — plaintext JSON in dev mode; encrypted envelope otherwise
+- `GET /v1/stats/:repoId` — returns last-good plaintext JSON
+
+Store location default: `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
+
 ## MCP one-liner (local)
 
 See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs.
@@ -133,7 +165,7 @@ See `docs/DEVELOPMENT.md` for setup, repo map, running the CLI, adding rules/fix
 
 ## Docs
 
-Design notes live under `docs/design/` (see `008-sync-stats.md`). GRANTs guidance in `docs/grants-stats-role.md`. Teardown doc stub: `docs/teardown-railway-locks.md`.
+Design notes live under `docs/design/` (see `008-sync-stats.md`, `009-hosted-stats-api.md`). GRANTs guidance in `docs/grants-stats-role.md`. Teardown doc stub: `docs/teardown-railway-locks.md`.
 
 ## License
 
