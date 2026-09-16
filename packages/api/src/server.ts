@@ -1,6 +1,11 @@
 import { serve } from "@hono/node-server";
-export { createApp } from "./app";
-import { createApp } from "./app";
+import { createApp as createAppWithStore } from "./app";
+import { createStatsStoreFromEnv } from "./store.factory";
+
+export function createApp() {
+  const store = createStatsStoreFromEnv();
+  return createAppWithStore(store);
+}
 
 if (require.main === module) {
   const port = Number(process.env.PORT || 8787);
