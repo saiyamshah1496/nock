@@ -1,0 +1,2 @@
+VACUUM FULL sessions;
+

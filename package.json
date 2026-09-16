@@ -1,0 +1,24 @@
+{
+  "name": "nock-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Nock monorepo (core, cli, mcp, action)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "clean": "pnpm -r run clean || true",
+    "test": "vitest run",
+    "lint": "echo 'no lint configured yet'",
+    "prepare": "corepack enable || true"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "packageManager": "pnpm@9.12.2"
+}
+

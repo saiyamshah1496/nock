@@ -1,0 +1,21 @@
+{
+  "schema_version": "1",
+  "captured_at": "2026-09-16T05:00:00Z",
+  "pg_version": "16.4",
+  "source": "fixture",
+  "tables": [
+    {
+      "schema": "public",
+      "name": "sessions",
+      "n_live_tup": 1040000000,
+      "n_dead_tup": 1200000,
+      "relation_bytes": 890000000000,
+      "total_bytes": 1120000000000,
+      "seq_scan": 42,
+      "idx_scan": 990000,
+      "last_analyze": "2026-09-15T12:00:00Z",
+      "last_autoanalyze": null
+    }
+  ]
+}
+
