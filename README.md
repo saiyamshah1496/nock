@@ -76,6 +76,10 @@ See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`.
 
 Default policy lives at `policy.default.yml` — a single default pack with thresholds only (not a pack marketplace in Phase 1). Unknown DDL is never silent green: it becomes YELLOW.
 
+## For developers
+
+See `docs/DEVELOPMENT.md` for setup, repo map, running the CLI, adding rules/fixtures, parity expectations, and git hygiene.
+
 ## Docs
 
 Design notes live under `docs/design/`. Teardown doc stub: `docs/teardown-railway-locks.md`.
