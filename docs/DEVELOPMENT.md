@@ -13,7 +13,7 @@ Senior-staff quickstart for contributing to Nock Phase 1.
 │  └─ action/    # @nock/action — GitHub Action runner + comment renderer
 ├─ fixtures/     # Golden SQL + stats snapshots used by tests
 ├─ policy.default.yml  # Default policy pack (thresholds only, no marketplace)
-├─ docs/design/  # 000–007 design notes
+├─ docs/design/  # 000–008 design notes
 └─ README.md
 ```
 
@@ -73,8 +73,9 @@ Nock’s engine joins migration statements to an estate snapshot (`stats.json`) 
 }
 ```
 
-Phase 1 supports a paste/file path: point `--stats` to a local file (or our fixtures).
-Future `sync-stats` (Phase 2) will produce the same JSON by querying a read replica with a stats-only role.
+Path A supports a paste/file path: point `--stats` to a local file (or our fixtures).
+Path B is available: `nock sync-stats --database-url $PG_URL --out .nock/stats.json` queries a replica with a stats-only role and writes the same shape.
+Path C (hosted pull) is future opt‑in only.
 
 Illustrative SQL used by `sync-stats` (no table row data; only catalog/stats):
 
@@ -103,7 +104,17 @@ WHERE c.relkind IN ('r', 'p')
 ORDER BY s.n_live_tup DESC NULLS LAST;
 ```
 
-Phase 1 = fixtures only; hosted sync/API later.
+This PR implements Path B sync only (no hosted API). See `docs/design/008-sync-stats.md` and `docs/grants-stats-role.md`.
+
+### Running sync-stats locally
+
+```bash
+node packages/cli/dist/bin/nock.js sync-stats \
+  --database-url "$PG_STATS_URL" \
+  --out .nock/stats.json
+```
+
+Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip the live query.
 
 ## How to add a rule
 

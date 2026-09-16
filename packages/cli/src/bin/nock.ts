@@ -3,6 +3,7 @@ import { Command } from "commander";
 import * as fs from "fs";
 import * as path from "path";
 import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
+import { runSyncStats } from "../syncStats";
 
 const program = new Command();
 program
@@ -65,6 +66,30 @@ program
     if (failOn === "red") code = hasRed ? 2 : 0;
     else code = hasRed ? 2 : hasYellow ? 1 : 0;
     process.exit(code);
+  });
+
+program
+  .command("sync-stats")
+  .requiredOption("--database-url <url>", "Postgres connection string (prefer replica; stats-only role)")
+  .requiredOption("--out <path>", "Path to write stats.json")
+  .option(
+    "--sql-file <path>",
+    "Optional override: path to a .sql file to run instead of the default catalogue query"
+  )
+  .action(async (opts) => {
+    const databaseUrl = String(opts.databaseUrl);
+    const outPath = path.resolve(String(opts.out));
+    const sqlFilePath = opts.sqlFile ? path.resolve(String(opts.sqlFile)) : undefined;
+    try {
+      const snapshot = await runSyncStats({ databaseUrl, sqlFilePath });
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2) + "\n", "utf8");
+      process.stdout.write(`Wrote stats to ${outPath}\n`);
+      process.exit(0);
+    } catch (err: any) {
+      console.error(err?.message || String(err));
+      process.exit(2);
+    }
   });
 
 program.parseAsync(process.argv).catch((err) => {
