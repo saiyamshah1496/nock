@@ -1,0 +1,23 @@
+name: Nock — Postgres migration safety
+on:
+  pull_request:
+    paths:
+      - "migrations/**"
+      - ".nock/**"
+jobs:
+  nock:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Nock
+        uses: ./.github/actions/nock
+        with:
+          migration-path: migrations/
+          stats-path: .nock/stats.json
+          policy-path: policy.default.yml
+          fail-on: red
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+

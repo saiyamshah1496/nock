@@ -1,0 +1,27 @@
+name: "Nock — Postgres migration safety"
+description: "Fail PRs on unsafe Postgres DDL using your table sizes and policy"
+author: "Nock"
+runs:
+  using: "node20"
+  main: "dist/index.js"
+inputs:
+  migration-path:
+    description: "Path or glob for migration SQL files"
+    required: false
+    default: "migrations/"
+  stats-path:
+    description: "Path to stats.json (file mode)"
+    required: false
+    default: ".nock/stats.json"
+  policy-path:
+    description: "Path to policy.yml (JSON file for Phase 1)"
+    required: false
+    default: "policy.default.yml"
+  fail-on:
+    description: "Fail on red|yellow"
+    required: false
+    default: "red"
+  github-token:
+    description: "GitHub token for PR comments"
+    required: true
+

@@ -1,0 +1,18 @@
+id: nock.postgres.ddl.default
+version: "1.0.0"
+fail_on: red
+require_lock_timeout: size_gated
+rules:
+  R001: { red_rows: 10000 }
+  R002: { severity: red }
+  R003: { red_rows: 100000 }
+  R004: { hot_rows: 1000000, require_lock_timeout: true }
+  R005: { red_rows: 100000 }
+  R006: { red_rows: 50000 }
+  R007: { red_rows: 100000 }
+  R008: { red_rows: 10000 }
+  R009: { severity: yellow }
+  R010: { always_require_lock_timeout_above_rows: 1000000 }
+  R012: { severity: red }
+no_stats: warn
+
