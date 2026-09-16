@@ -1,13 +1,7 @@
-## Example-only: Nock — Postgres migration safety
-## This example assumes you have copied the packaged action into your own repo at:
-##   .github/actions/nock
-## or you have replaced the `uses:` line with a published action reference.
-## Alternatively, you can run the CLI directly via:
-##   - uses: actions/setup-node@v4
-##     with: { node-version: 20 }
-##   - run: corepack enable && pnpm install && pnpm -r build
-##   - run: npx -y @nock/cli check --sql migrations/001.sql --stats .nock/stats.json
-name: Nock — Postgres migration safety
+## Example: Nock — Postgres migration safety (CLI-based, runnable as-is)
+## This workflow uses the CLI directly so it works without a packaged Action.
+## To use the GitHub Action instead, see `examples/workflows/nock-action.yml`.
+name: Nock — Postgres migration safety (CLI)
 on:
   pull_request:
     paths:
@@ -21,12 +15,40 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - name: Run Nock
-        uses: ./.github/actions/nock
-        with:
-          migration-path: migrations/
-          stats-path: .nock/stats.json
-          policy-path: policy.default.yml
-          fail-on: red
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: 'pnpm' }
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+
+      # Optional: fetch hosted stats (Path B+) into file fallback before running CLI
+      # Provide NOCK_STATS_API_TOKEN in repo secrets if you enable this step.
+      - name: (Optional) Download hosted stats to .nock/stats.json
+        if: ${{ vars.NOCK_USE_HOSTED_STATS == '1' }}
+        env:
+          NOCK_STATS_API_TOKEN: ${{ secrets.NOCK_STATS_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p .nock
+          curl -fsSL -H "Authorization: Bearer ${NOCK_STATS_API_TOKEN}" \
+            "https://nock.saiyamshah1496.workers.dev/v1/stats/my-repo" \
+            > .nock/stats.json
+
+      - name: Run Nock check (CLI)
+        run: |
+          node packages/cli/dist/bin/nock.js check \
+            --sql "migrations/001.sql" \
+            --stats ".nock/stats.json" \
+            --policy "policy.default.yml" \
+            --fail-on "red" \
+            --format "json" | tee nock-verdict.json
+
+      # Minimal PR comment example from CLI output (optional)
+      - name: (Optional) Comment verdict
+        if: ${{ always() && github.event.pull_request.number }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "### Nock (CLI) — see logs for JSON verdict" > body.md
+          gh pr comment ${{ github.event.pull_request.number }} -F body.md
 
