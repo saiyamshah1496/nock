@@ -6,7 +6,7 @@ Status: Accepted • Audience: product + engineering • Owner: Saiyam (Founding
 
 - “Estate” is the product term for a database’s shape at a point in time — primarily its tables and their sizes/row counts used for safety gating. It is not an acronym.
 - We previously used “stats” as Postgres jargon for table statistics; that leaked into user‑facing copy and wire names.
-- Decision: prefer “estate” (and “estate snapshot”) in product docs and user‑facing copy. Wire names remain “stats” until a dedicated rename PR ships.
+- Decision: prefer “estate” (and “estate snapshot”) in product docs and user‑facing copy. This rename has now landed across wire names as well.
 
 ## Glossary
 
@@ -15,20 +15,21 @@ Status: Accepted • Audience: product + engineering • Owner: Saiyam (Founding
 - Estate ID (`estate_id`): a short identifier for the database/environment within a repo/org (e.g., `prod-primary`, `stg-replica-1`).
 - “Stats”: existing wire term used in filenames/paths/commands today; remains supported and documented as an alias during the migration.
 
-## Naming + aliasing plan (no breaking changes in this PR)
+## Naming status (rename landed)
 
-We will move product language first, then add non‑breaking aliases, and only later do a wire rename:
+The wire rename from “stats” → “estate” is complete in main:
 
-1) Docs: adopt “estate / estate snapshot” throughout (this PR).
-2) CLI: add aliases so `--estate` == `--stats` where flags reference snapshots (follow‑up PR).
-3) API: add `/v1/estate` as an alias to `/v1/stats` (follow‑up PR).
-4) File artifact: allow `estate.json` as an alias to `stats.json` (follow‑up PR).
-5) Eventually: consider deprecating the “stats” names after a long overlap.
+1) Docs: “estate / estate snapshot” adopted.
+2) CLI: `--estate` replaces `--stats`; command renamed to `nock sync-estate`.
+3) API: `/v1/estate` replaces `/v1/stats`.
+4) File artifact: `estate.json` replaces `stats.json`.
+5) Packages: `@nock/secure-estate` replaces `@nock/secure-stats`.
 
-Explicitly retained (current wire names):
-- File: `stats.json`
-- CLI: `nock sync-stats`
-- API: `/v1/stats/:repoId`
+Temporary compatibility (infra identifiers only):
+- Environment secrets: prefer `NOCK_ESTATE_API_TOKEN` / `NOCK_ESTATE_KEK` with fallback to `NOCK_STATS_API_TOKEN` / `NOCK_STATS_KEK`.
+- Dev plaintext switch: prefer `NOCK_DEV_PLAINTEXT_ESTATE` with fallback to `NOCK_DEV_PLAINTEXT_STATS`.
+- Store selection: prefer `NOCK_ESTATE_STORE` / `NOCK_ESTATE_STORE_DIR` with fallback to `NOCK_STATS_STORE` / `NOCK_STATS_STORE_DIR`.
+- Cloudflare R2 bucket name `nock-stats` may remain unchanged.
 
 ## Multi‑DB model (one repo → many estates)
 
@@ -46,7 +47,7 @@ Explicitly retained (current wire names):
 
 ## References
 
-- 008 — sync‑stats (Path B): `docs/design/008-sync-stats.md`
-- 009 — thin hosted stats API (Path B+): `docs/design/009-hosted-stats-api.md`
-- 014 — Action with hosted stats default: `docs/design/014-action-hosted-stats-default.md`
+- 008 — sync‑estate (Path B): `docs/design/008-sync-stats.md`
+- 009 — thin hosted estate API (Path B+): `docs/design/009-hosted-stats-api.md`
+- 014 — Action with hosted estate default: `docs/design/014-action-hosted-stats-default.md`
 

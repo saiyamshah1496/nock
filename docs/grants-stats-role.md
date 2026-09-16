@@ -1,6 +1,6 @@
-# Grants for Nock sync-stats (Path B)
+# Grants for Nock sync-estate (Path B)
 
-Purpose: create a least-privilege role that can run the `sync-stats` catalogue query (no table row data). Prefer connecting to a read replica.
+Purpose: create a least-privilege role that can run the `sync-estate` catalogue query (no table row data). Prefer connecting to a read replica.
 
 Status: initial guidance. Managed providers vary; mark caveats as UNVERIFIED where noted. Validate on PG 14–16 in follow-up.
 
@@ -27,7 +27,7 @@ GRANT USAGE ON SCHEMA public TO nock_stats;
 
 Notes:
 - Managed providers may restrict `pg_stat_activity` and `pg_locks` to superusers. This PR does not require them.
-- Avoid granting table `SELECT` on application data — `sync-stats` does not read row data.
+- Avoid granting table `SELECT` on application data — `sync-estate` does not read row data.
 - Prefer replicas and network/IP allowlists when available.
 
 ## Connection examples

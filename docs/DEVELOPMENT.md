@@ -11,9 +11,9 @@ Senior-staff quickstart for contributing to Nock Phase 1.
 │  ├─ cli/       # @nock/cli  — bin `nock` (commander)
 │  ├─ mcp/       # @nock/mcp  — local MCP server tools + parity tests
 │  ├─ action/    # @nock/action — GitHub Action runner + comment renderer
-│  ├─ api/       # @nock/api — thin hosted stats API (Path B+)
-│  └─ secure-stats/ # @nock/secure-stats — AES-GCM envelope utils shared by CLI/API
-├─ fixtures/     # Golden SQL + stats snapshots used by tests
+│  ├─ api/       # @nock/api — thin hosted estate API (Path B+)
+│  └─ secure-stats/ # @nock/secure-estate — AES-GCM envelope utils shared by CLI/API
+├─ fixtures/     # Golden SQL + estate snapshots used by tests
 ├─ policy.default.yml  # Default policy pack (thresholds only, no marketplace)
 ├─ docs/design/  # 000–008 design notes
 └─ README.md
@@ -48,21 +48,21 @@ Two easy ways after building:
 ```bash
 node packages/cli/dist/bin/nock.js check \
   --sql fixtures/railway_oct.sql \
-  --stats fixtures/stats_billion.json \
+  --estate fixtures/estate_billion.json \
   --format json
 ```
 
 2) With pnpm filter exec
 ```bash
 pnpm --filter @nock/cli exec node dist/bin/nock.js \
-  check --sql fixtures/railway_oct.sql --stats fixtures/stats_billion.json --format json
+  check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 
 Exit codes: 0 pass, 1 warn-only (yellow when `fail_on: yellow`), 2 fail.
 
-## Estate / stats explained
+## Estate snapshot explained
 
-Nock’s engine joins migration statements to an estate snapshot (`stats.json`) with table sizes and version:
+Nock’s engine joins migration statements to an estate snapshot (`estate.json`) with table sizes and version:
 
 ```json
 {
@@ -75,11 +75,11 @@ Nock’s engine joins migration statements to an estate snapshot (`stats.json`) 
 }
 ```
 
-Path A supports a paste/file path: point `--stats` to a local file (or our fixtures).
-Path B is available: `nock sync-stats --database-url $PG_URL --out .nock/stats.json` queries a replica with a stats-only role and writes the same shape.
+Path A supports a paste/file path: point `--estate` to a local file (or our fixtures).
+Path B is available: `nock sync-estate --database-url $PG_URL --out .nock/estate.json` queries a replica with a read-only role and writes the same shape.
 Path C (hosted pull) is future opt‑in only.
 
-Illustrative SQL used by `sync-stats` (no table row data; only catalog/stats):
+Illustrative SQL used by `sync-estate` (no table row data; only catalog/stats):
 
 ```sql
 SELECT
@@ -106,28 +106,28 @@ WHERE c.relkind IN ('r', 'p')
 ORDER BY s.n_live_tup DESC NULLS LAST;
 ```
 
-This repo now includes Path B (sync) and Path B+ (hosted stats API). See `docs/design/008-sync-stats.md` (sync) and `docs/design/009-hosted-stats-api.md` (API), plus `docs/grants-stats-role.md`.
+This repo now includes Path B (sync) and Path B+ (hosted estate API). See `docs/design/008-sync-stats.md` (sync) and `docs/design/009-hosted-stats-api.md` (API), plus `docs/grants-stats-role.md`.
 Also see `docs/design/010-workers-r2-hosting.md` for the Workers + R2 deploy path.
 
-### Running sync-stats locally
+### Running sync-estate locally
 
 ```bash
-node packages/cli/dist/bin/nock.js sync-stats \
-  --database-url "$PG_STATS_URL" \
-  --out .nock/stats.json
+node packages/cli/dist/bin/nock.js sync-estate \
+  --database-url "$PG_ESTATE_URL" \
+  --out .nock/estate.json
 ```
 
 Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip the live query.
 
-## Hosted stats for the GitHub Action (Path B+)
+## Hosted estate for the GitHub Action (Path B+)
 
 - Default API base (Saiyam’s Worker): `https://nock.saiyamshah1496.workers.dev`
-- Action inputs on `main`: `stats-api-url`, `stats-api-token`, with `stats-path` as fallback
-- Required secrets (names only): `NOCK_STATS_API_TOKEN`, `NOCK_STATS_KEK` (for scheduled pushes)
+- Action inputs on `main`: `estate-api-url`, `estate-api-token`, with `estate-path` as fallback
+- Required secrets (names only): `NOCK_ESTATE_API_TOKEN`, `NOCK_ESTATE_KEK` (accepts fallbacks `NOCK_STATS_API_TOKEN`/`NOCK_STATS_KEK` for existing env)
 - See runnable examples under `examples/workflows/`:
-  - `nock-action.yml` — Action with hosted stats (Path B+)
+  - `nock-action.yml` — Action with hosted estate (Path B+)
   - `nock.yml` — CLI workflow (works without a packaged Action)
-  - `nock-sync-push.yml` — scheduled `sync-stats` + push to hosted API
+  - `nock-sync-push.yml` — scheduled `sync-estate` + push to hosted API
 
 ## How to add a rule
 
@@ -171,8 +171,8 @@ Tip: Unknown DDL must remain YELLOW (never silent green).
 
 ## Store selection (local vs R2)
 
-- Default (tests/local): `NOCK_STATS_STORE=file` (or unset) → filesystem at `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
-- R2 (Cloudflare): set `NOCK_STATS_STORE=r2` and provide:
+- Default (tests/local): `NOCK_ESTATE_STORE=file` (or unset) → filesystem at `data/estate/` (override with `NOCK_ESTATE_STORE_DIR`; falls back to legacy `NOCK_STATS_*` vars).
+- R2 (Cloudflare): set `NOCK_ESTATE_STORE=r2` (falls back to `NOCK_STATS_STORE=r2`) and provide:
   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
   - Works in both Node and Workers via S3‑compatible HTTPS + SigV4 (`aws4fetch`).
 

@@ -1,16 +1,16 @@
-## 008 — sync-stats (Path B: customer-run sync)
+## 008 — sync-estate (Path B: customer-run sync)
 
 Audience: engineering. Status: proposed → implemented in this PR. Scope: Path B only. Path C (hosted pull) and Stripe are explicitly out-of-scope.
 
 ### Goal
-Add a CLI command `nock sync-stats` that connects to a customer-provided Postgres (ideally a read replica) using a least‑privilege stats role, executes the catalog query from architecture §9.2 / opportunity-1 §4.2, and writes a `stats.json` compatible with `@nock/core` and the existing fixtures. No table row data is read or written.
+Add a CLI command `nock sync-estate` that connects to a customer-provided Postgres (ideally a read replica) using a least‑privilege read-only role, executes the catalog query from architecture §9.2 / opportunity-1 §4.2, and writes an `estate.json` compatible with `@nock/core` and the existing fixtures. No table row data is read or written.
 
 ### Interface (CLI)
 
 ```
-nock sync-stats \
-  --database-url "$PG_STATS_URL" \
-  --out .nock/stats.json \
+nock sync-estate \
+  --database-url "$PG_ESTATE_URL" \
+  --out .nock/estate.json \
   [--sql-file ./custom.sql]      # optional override later
 ```
 
@@ -21,7 +21,7 @@ Output JSON matches schema §6.1 in the architecture doc:
   "schema_version": "1",
   "captured_at": "2026-09-16T05:00:00Z",
   "pg_version": "16.4",
-  "source": "sync-stats",
+  "source": "sync-estate",
   "tables": [{ "schema":"public","name":"sessions","n_live_tup":1040000000, ... }]
 }
 ```
@@ -66,7 +66,7 @@ We surface only table‑level statistics (counts, sizes, last analyze) — no ta
 - Alternatives: `pg` (node-postgres) is mature and also fine; heavier surface, pooling defaults that we do not need for a single query. We can swap later with minimal surface impact since the collector is isolated in `@nock/cli`.
 
 ### Testing strategy (Path B)
-- Unit test: pure mapping from query rows → `StatsSnapshot` (no DB required).
+- Unit test: pure mapping from query rows → `EstateSnapshot` (no DB required).
 - Integration (optional): behind `NOCK_TEST_DATABASE_URL`. If set, run the exact query and assert basic shape. Skipped in CI when unset.
 - Decision: do not add Docker Compose Postgres in this PR to keep CI deterministic. Future work: an opt‑in compose service can be added once it proves reliable across CI providers.
 
@@ -91,7 +91,7 @@ We surface only table‑level statistics (counts, sizes, last analyze) — no ta
 
 ### GTM notes
 - README and `docs/DEVELOPMENT.md` call out Path A (file/paste) and Path B (customer sync) now; Path C (hosted pull) mentioned as future opt‑in only.
-- Provide a scheduled GitHub Actions snippet that runs `nock sync-stats` and stores the JSON as an artifact (no secrets leaked in the example).
+- Provide a scheduled GitHub Actions snippet that runs `nock sync-estate` and stores the JSON as an artifact (no secrets leaked in the example).
 
 ### Cost / complexity estimate (eng)
 - Small, isolated CLI addition; one dependency (`postgres`).
@@ -99,5 +99,5 @@ We surface only table‑level statistics (counts, sizes, last analyze) — no ta
 - No impact on `@nock/core` or existing golden tests.
 
 ### Decision
-- Implement `nock sync-stats` in `@nock/cli` using `postgres` driver, default SQL from §9.2, write `stats.json` with schema_version=1, captured_at, pg_version, source=sync-stats, and tables[]. No row data. Unit + optional integration tests included. README/docs wired; GRANTs doc added.
+- Implement `nock sync-estate` in `@nock/cli` using `postgres` driver, default SQL from §9.2, write `estate.json` with schema_version=1, captured_at, pg_version, source=sync-estate, and tables[]. No row data. Unit + optional integration tests included. README/docs wired; GRANTs doc added.
 

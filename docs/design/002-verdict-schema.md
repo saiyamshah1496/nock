@@ -14,7 +14,7 @@ Pros/cons
 
 Decision
 - TS types now (keep Zod optional for later); schema_version = "1".
-- Fields: verdict, statements[], violations[], meta{ pg_version, stats_captured_at, policy_id, engine }.
+- Fields: verdict, statements[], violations[], meta{ pg_version, estate_captured_at, policy_id, engine }.
 - Estimated hold reported as {min,max}+label "approximate".
 
 Acceptance criteria
