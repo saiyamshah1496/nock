@@ -9,11 +9,9 @@ compatibility_flags = ["nodejs_compat"]
 # NOCK_DEV_PLAINTEXT_STATS = "1"
 # NOCK_AUDIT_RETENTION_DAYS = "30"
 
-## Example D1 binding (fill values in your own deploy config)
-## Do not commit real database_id; keep as example only.
 [[d1_databases]]
 binding = "NOCK_D1"
 database_name = "nock-team"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "e4afe7b2-48ca-47fc-9df4-a8f9a74c937f"
 migrations_dir = "d1/migrations"
 

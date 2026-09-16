@@ -25,6 +25,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "NOCK_D1"
 database_name = "nock-team"
-database_id = "00000000-0000-0000-0000-000000000000" # replace with real
+## Placeholder only — set your real database_id in wrangler.toml (deploy path)
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
 migrations_dir = "d1/migrations"
 
