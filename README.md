@@ -157,7 +157,7 @@ Store location default: `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
 
 ## Deploying the thin API to Cloudflare Workers (primary)
 
-See `docs/design/010-workers-r2-hosting.md` and `packages/api/wrangler.toml.example`. High-level:
+See `docs/design/010-workers-r2-hosting.md` and `packages/api/wrangler.toml`. High-level:
 
 ```bash
 pnpm -r build
@@ -174,7 +174,11 @@ npx wrangler deploy
 ```
 
 Note: Fly is not required. Workers + R2 is the default hosting path.
-Tip: Use `main = "src/worker.ts"` and set `compatibility_flags = ["nodejs_compat"]` in `wrangler.toml` (see example) so Wrangler compiles TS to Worker‑compatible ESM and provides `process.env` shims.
+Tip: Use `wrangler.toml` committed at `packages/api/wrangler.toml` (has `main = "src/worker.ts"`, `compatibility_flags = ["nodejs_compat"]`, and a recent `compatibility_date`). For manual uploads in CI services, prefer:
+
+```
+npx wrangler versions upload --config packages/api/wrangler.toml --name nock
+```
 
 ## MCP one-liner (local)
 
