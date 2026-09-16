@@ -119,6 +119,16 @@ node packages/cli/dist/bin/nock.js sync-stats \
 
 Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip the live query.
 
+## Hosted stats for the GitHub Action (Path B+)
+
+- Default API base (Saiyam’s Worker): `https://nock.saiyamshah1496.workers.dev`
+- Action inputs on `main`: `stats-api-url`, `stats-api-token`, with `stats-path` as fallback
+- Required secrets (names only): `NOCK_STATS_API_TOKEN`, `NOCK_STATS_KEK` (for scheduled pushes)
+- See runnable examples under `examples/workflows/`:
+  - `nock-action.yml` — Action with hosted stats (Path B+)
+  - `nock.yml` — CLI workflow (works without a packaged Action)
+  - `nock-sync-push.yml` — scheduled `sync-stats` + push to hosted API
+
 ## How to add a rule
 
 Phase 1 keeps shape matchers in `packages/core/src/index.ts`.

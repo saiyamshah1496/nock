@@ -1,0 +1,30 @@
+## Example: Nock — GitHub Action with hosted stats (Path B+)
+## NOTE: The `uses:` line below assumes you've copied the packaged action
+## to `.github/actions/nock` in YOUR repo, or replaced it with a published action reference.
+## The action on this repo is in `packages/action/` and is not packaged with `dist/` here.
+name: Nock — Action (hosted stats)
+on:
+  pull_request:
+    paths:
+      - "migrations/**"
+      - ".nock/**"
+jobs:
+  nock:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nock check (Action)
+        uses: ./.github/actions/nock  # replace with your published action ref if applicable
+        with:
+          migration-path: migrations/
+          # Hosted stats (Path B+): GET last-good from Saiyam’s Worker
+          stats-api-url: https://nock.saiyamshah1496.workers.dev/v1/stats/my-repo
+          stats-api-token: ${{ secrets.NOCK_STATS_API_TOKEN }}
+          # Fallback to file when hosted is unavailable (OSS/local)
+          stats-path: .nock/stats.json
+          policy-path: policy.default.yml
+          fail-on: red
+          github-token: ${{ secrets.GITHUB_TOKEN }}

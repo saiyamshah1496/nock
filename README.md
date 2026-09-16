@@ -92,14 +92,24 @@ jobs:
         uses: ./.github/actions/nock  # example-only; replace with your published action or use CLI
         with:
           migration-path: migrations/
+          # Hosted stats (Path B+): GET last-good from Saiyam’s Worker
+          stats-api-url: https://nock.saiyamshah1496.workers.dev/v1/stats/my-repo
+          stats-api-token: ${{ secrets.NOCK_STATS_API_TOKEN }}
+          # Fallback to file when hosted is unavailable (OSS/local)
           stats-path: .nock/stats.json
-          # Optional Path B+ fetch:
-          # stats-api-url: https://api.example.com/v1/stats/my-repo
-          # stats-api-token: ${{ secrets.NOCK_STATS_API_TOKEN }}
           policy-path: policy.default.yml
           fail-on: red
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+### Hosted stats (Path B+) — default API base and secrets
+
+- Default API base (Saiyam’s current Worker): `https://nock.saiyamshah1496.workers.dev`
+- GET path used by the Action: `/v1/stats/<your-repo-id>` (returns plaintext JSON)
+- Required GitHub Actions secrets (names only; do NOT commit values):
+  - `NOCK_STATS_API_TOKEN` — bearer token for hosted API (GET in Action and POST in sync job)
+  - `NOCK_STATS_KEK` — base64 32‑byte key for encrypting pushes in production
+- This is the project’s hosted endpoint for now. A future multi‑tenant product would issue per‑customer URLs.
 
 ### Scheduled stats sync (artifact) — example
 
