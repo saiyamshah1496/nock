@@ -24,9 +24,9 @@
       <section class="hero">
         <div class="container">
           <span class="badge">Private beta</span>
-          <h1 class="hero-title">Approve/block safety gate for Postgres DDL before merge</h1>
+          <h1 class="hero-title">Prevent risky Postgres DDL from shipping</h1>
           <p class="hero-subtitle">
-            Deterministic checks on proposed schema-change DDL using your estate snapshot (table sizes), lock class, and a <code>lock_timeout</code> policy. Never applies migrations.
+            Deterministic checks on proposed schema changes using your estate snapshot (table sizes), lock class awareness, and a <code>lock_timeout</code> policy - and it never applies migrations.
           </p>
 
           <div class="waitlist-card">
@@ -58,12 +58,12 @@
       <section class="section">
         <div class="container">
           <div class="section-header">
-            <h3 class="section-title">Problem + AI context</h3>
-            <p class="section-kicker">Credible pattern; outcome-first, then governance.</p>
+            <h3 class="section-title">What breaks in production</h3>
+            <p class="section-kicker">AI made schema change faster - locks didn't get kinder.</p>
           </div>
           <div class="grid-2">
             <div class="card">
-              <h4 class="card-heading">The pattern in production</h4>
+              <h4 class="card-heading">What teams see in prod</h4>
               <p class="section-body">
                 Postgres DDL isn’t just a migration. A bad <code>ALTER</code> or index build can take locks that
                 queue behind live traffic and stall control surfaces while apps keep running.
@@ -76,7 +76,7 @@
               </ul>
             </div>
             <div class="card">
-              <h4 class="card-heading">Why now / AI</h4>
+              <h4 class="card-heading">AI accelerates DDL</h4>
               <ul class="bullets">
                 <li>Coding agents and copilots generate migrations/diffs faster than humans review them.</li>
                 <li>Schema churn rises; shared intuition about hot tables, lock risk, <code>lock_timeout</code>, and sizes does not.</li>
@@ -102,7 +102,7 @@
               </p>
             </div>
             <div class="card">
-              <h3 class="section-title">How it thinks</h3>
+              <h3 class="section-title">How the gate decides</h3>
               <ul class="bullets">
                 <li><strong>Estate snapshot (table sizes)</strong>: evaluates DDL against your latest estate snapshot.</li>
                 <li><strong>Lock class awareness</strong>: predicts which locks a change will take and where they block.</li>
@@ -121,7 +121,7 @@
             <div>
               <h3 class="section-title">Free CLI + Team</h3>
               <p class="section-body"><strong>Free</strong>: local and CI checks with your estate. Bring your own estate and sync yourself (CLI / GitHub Action / MCP).</p>
-              <p class="section-body"><strong>Team</strong>: hosted estate plus org policy and audit (same engine; ops convenience). <strong>Team pricing TBA - from ~$79-99/mo</strong>.</p>
+              <p class="section-body"><strong>Team</strong>: hosted estate plus org policy and audit (same engine; ops convenience). <strong>Coming soon.</strong></p>
             </div>
             <p class="small-muted">Private beta / waitlist only - not a public launch.</p>
           </div>
