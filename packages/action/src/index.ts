@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as fs from "fs";
 import * as path from "path";
-import { check, type PolicyResolved, type EstateSnapshot } from "@nockhq/core";
+import { check, type PolicyResolved, type EstateSnapshot, evaluateEstateFreshness } from "@nockhq/core";
 import https from "https";
 import http from "http";
 import { URL } from "url";
@@ -49,15 +49,12 @@ async function run() {
       ? JSON.parse(fs.readFileSync(estatePath, "utf8"))
       : ({ tables: [] } as any);
     const estateResolved: EstateSnapshot = (estate as EstateSnapshot) || fallback;
-    // Warn if stale >24h
-    if ((estateResolved as any).captured_at) {
-      const cap = new Date(String((estateResolved as any).captured_at)).getTime();
-      if (Number.isFinite(cap)) {
-        const ageMs = Date.now() - cap;
-        if (ageMs > 24 * 3600 * 1000) {
-          core.warning("Estate snapshot appears older than 24h; results may be stale.");
-        }
-      }
+    // Freshness: warn if >7d; neutralize size-gated if >30d
+    const fres = evaluateEstateFreshness(estateResolved);
+    if (fres.classification === "warn") {
+      core.warning("Estate snapshot appears older than 7 days; results may be stale.");
+    } else if (fres.classification === "neutral_stale") {
+      core.warning("Estate snapshot is older than 30 days; size-gated rules will be neutralized.");
     }
     // Derive API base from explicit input or statsApiUrl origin
     const apiBase = apiBaseUrlInput
@@ -106,7 +103,12 @@ async function run() {
         }
       } as any);
 
-    const verdict = check({ sql, estate: estateResolved, policy });
+    const verdict = check({
+      sql,
+      estate: estateResolved,
+      policy,
+      noStatsBehavior: fres.classification === "neutral_stale" ? "warn" : undefined,
+    });
     core.setOutput("verdict", JSON.stringify(verdict));
 
     // Append audit to API when configured

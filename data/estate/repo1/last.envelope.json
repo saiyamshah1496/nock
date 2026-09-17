@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "payload": {
+    "ct": "0M5IlqZlsLo5ppXxEF26UJ76nv1piDMttZT25F9bZc6flPcJHhBsXTC4SapdsRWodgHRrSLLnvxNtvnxQVVCC9Vg604lS35gfpwwI65XawS1tYOLYdPighL+2UklkVMCEuXWUVYanD90rwIEKhvW7bAHJxVVDQ==",
+    "iv": "dCZqk6p2ovoEgXSx",
+    "tag": "WBOtUT3ZvqqQj/j+UoDWZQ=="
+  },
+  "dek": {
+    "ct": "xmOrwzdszyvrOvWXPihZ5n3oc6nUcg4xUEuSpXYOvv8=",
+    "iv": "1sMmde3C5EfvfYsS",
+    "tag": "OsHxY7RWVRK/D1h9fnDG5A=="
+  },
+  "schema_version": "1",
+  "captured_at": "2026-09-17T05:14:34.319Z",
+  "source": "sync-estate"
+}
