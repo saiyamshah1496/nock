@@ -10,6 +10,7 @@ Document the locked Team thin‑slice data‑plane contract and add shared types
 - Push path: existing `POST /v1/estate/:repoId` (URL‑encoded `owner/repo`)
 - Policy: single canonical schema identical to `policy.default.yml`
 - Audit: append‑only, add rule hit detail and freshness metadata (document columns; FE ships migration)
+- Naming is aligned with FE’s PR [#34](https://github.com/saiyamshah1496/nock/pull/34) (do not invent synonyms)
 
 Partner‑facing copy: “Bring your own estate / Sync estate yourself / Nock Team” — not Path A/B/C in public docs.
 
@@ -77,10 +78,13 @@ Crypto model (design‑partner phase): Nock‑held KEK. Worker decrypts for GET/
 - Warn: 7d < age ≤ 30d — full size‑gating + emit yellow `estate_stale_warn` (does not fail alone unless `fail_on: yellow`)
 - Stale → Neutral: age > 30d — size‑gated rules follow `no_stats` path; non‑size rules still apply; emit `estate_stale_neutral`
 - Missing: no estate — existing Neutral / `no_stats`
-- Push skew guard: reject Team push if `captured_at` > server clock + 1 hour (or missing/unparseable on Team push)
 
-Shared helper: `computeFreshness(capturedAt, now?) → "fresh" | "warn" | "stale" | "missing"` with constants
+Shared helper: `computeFreshness(capturedAt, now?) → Freshness` where `Freshness = "fresh" | "warn" | "stale" | "missing"`, with constants
 `FRESHNESS_WARN_MS` (7d), `FRESHNESS_STALE_MS` (30d), `PUSH_SKEW_MS` (1h).
+
+#### Push‑time clock skew (not a Freshness value)
+- Reject push if `captured_at` > server clock + 1 hour (or missing/unparseable on Team push).
+- This is enforced at ingestion time and is not represented as a Freshness band.
 
 ---
 
@@ -100,13 +104,17 @@ Keep existing columns from 015 (D1 `0001_init.sql`):
 
 Additive columns for FE’s `0002` migration (documented here; not landed in this PR):
 - `estate_captured_at TEXT NULL` — snapshot clock used for the run
-- `freshness TEXT NULL` — one of `"fresh" | "warn" | "stale" | "missing"`
-- `rule_hits_json TEXT NULL` — richer detail than ids (shape below)
+- `freshness TEXT NULL` — enum values `fresh` | `warn` | `stale` | `missing`
+- `rule_hits_json TEXT NULL` — JSON array of RuleHitDetail (shape below)
 
-Rule hit shape (export/detail), no full SQL:
+RuleHitDetail shape (export/detail), no full SQL:
 ```json
 { "id": "R010", "severity": "red", "table": "sessions", "n_live_tup": 1234567, "reason_code": "missing_lock_timeout" }
 ```
+
+Ownership split:
+- FE owns the SQL migration and API store in PR [#34](https://github.com/saiyamshah1496/nock/pull/34) (keeps existing `rule_ids_json`; adds `rule_hits_json`, `freshness`, `estate_captured_at`).
+- This PR owns `computeFreshness` and the contract/types only.
 
 Exports:
 - Estate export = plaintext JSON identical to input (decrypt on GET)
@@ -129,6 +137,7 @@ Avoid Path A/B/C labels in public prose; use them only in internal design refere
 This PR:
 - Adds this design doc
 - Adds shared types and a pure `computeFreshness` helper + unit tests in `@nockhq/core` (re‑exported from package entry)
+  - Type names: `Freshness` and `RuleHitDetail` (matching FE)
 
 Follow‑ups:
 - Policy parity tests (hosted JSON ≡ file ≡ `check()`)
@@ -145,3 +154,4 @@ Follow‑ups:
 - 016 — estate naming and multi‑DB (`docs/design/016-estate-naming-and-multi-db.md`)
 - Policy pack (`policy.default.yml`)
 - D1 schema init (`packages/api/d1/migrations/0001_init.sql`)
+- FE D1 `0002` migration + API changes: PR [#34](https://github.com/saiyamshah1496/nock/pull/34)
