@@ -433,9 +433,13 @@ function parseAlterColumnType(sql: string): { table?: TableRef; column?: string;
 // Heuristic: binary-coercible widen (varchar(n)->varchar(m≥n), varchar->text) — assume safe, skip
 function isLikelyBinaryCoercibleWiden(newType?: string, hasUsing?: boolean): boolean {
   if (!newType || hasUsing) return false;
-  const up = newType.toUpperCase().replace(/\s+/g, " ");
-  if (/\bTEXT\b/.test(up)) return true;
-  if (/\bCHARACTER\s+VARYING\b/.test(up) || /\bVARCHAR\b/.test(up)) return true;
+  // Only treat clearly text-family targets as safe widen; everything else is unknown
+  const up = newType.toUpperCase().replace(/\s+/g, " ").trim();
+  // TEXT is binary-coercible with (unlimited) VARCHAR in Postgres
+  if (up === "TEXT") return true;
+  // CHARACTER VARYING / VARCHAR (with or without length) — likely widen within text family
+  if (/^CHARACTER\s+VARYING(\s*\(\s*\d+\s*\))?$/.test(up)) return true;
+  if (/^VARCHAR(\s*\(\s*\d+\s*\))?$/.test(up)) return true;
   return false;
 }
 
@@ -456,7 +460,7 @@ function parseRefreshMatviewNonConcurrent(sql: string): { view?: TableRef } | nu
 // R014 — ATTACH/DETACH PARTITION
 function parseAttachOrDetachPartition(
   sql: string
-): { action: "ATTACH" | "DETACH"; parent?: TableRef; child?: TableRef } | null {
+): { action: "ATTACH" | "DETACH"; parent?: TableRef; child?: TableRef; concurrently?: boolean } | null {
   const clean = stripSqlComments(sql);
   const up = clean.toUpperCase();
   if (!up.startsWith("ALTER TABLE")) return null;
@@ -472,10 +476,12 @@ function parseAttachOrDetachPartition(
       pparts.length === 2 ? { schema: pparts[0], name: pparts[1] } : { schema: "public", name: pparts[0] };
     const child: TableRef =
       cparts.length === 2 ? { schema: cparts[0], name: cparts[1] } : { schema: "public", name: cparts[0] };
-    return { action: "ATTACH", parent, child };
+    return { action: "ATTACH", parent, child, concurrently: false };
   }
   // ALTER TABLE <parent> DETACH PARTITION <child>
-  m = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+DETACH\s+PARTITION\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  m = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+DETACH\s+PARTITION\s+([A-Za-z0-9_".]+)(?:\s+CONCURRENTLY\b)?/i.exec(
+    clean
+  );
   if (m) {
     const pfq = m[1].replace(/"/g, "");
     const cfx = m[2].replace(/"/g, "");
@@ -485,7 +491,8 @@ function parseAttachOrDetachPartition(
       pparts.length === 2 ? { schema: pparts[0], name: pparts[1] } : { schema: "public", name: pparts[0] };
     const child: TableRef =
       cparts.length === 2 ? { schema: cparts[0], name: cparts[1] } : { schema: "public", name: cparts[0] };
-    return { action: "DETACH", parent, child };
+    const concurrently = /\bDETACH\s+PARTITION\s+[A-Za-z0-9_".]+\s+CONCURRENTLY\b/i.test(clean);
+    return { action: "DETACH", parent, child, concurrently };
   }
   return null;
 }
@@ -686,10 +693,16 @@ export function check(input: CheckInput): VerdictV1 {
       const tstats = findTableEstate(input.estate, alterType.table);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R008?.red_rows ?? 10_000;
+      const newTypeUp = (alterType.newType ?? "").toUpperCase();
       const binaryWiden = isLikelyBinaryCoercibleWiden(alterType.newType, alterType.hasUsing);
       if (!binaryWiden) {
+        // Clear rewrite cases: explicit USING, integer-width changes, JSONB, numeric/decimal typmod changes
         const clearlyRewrite =
-          alterType.hasUsing || /\bTEXT\b/i.test(alterType.newType ?? "") || /\bINT(2|4|8)\b/i.test(alterType.newType ?? "");
+          alterType.hasUsing ||
+          /\b(INT2|INT4|INT8|SMALLINT|INTEGER|BIGINT)\b/.test(newTypeUp) ||
+          /\bJSONB\b/.test(newTypeUp) ||
+          /\bNUMERIC\s*\(/.test(newTypeUp) ||
+          /\bDECIMAL\s*\(/.test(newTypeUp);
         const severity: "red" | "yellow" =
           clearlyRewrite && typeof nLive === "number" && nLive >= redRows ? "red" : "yellow";
         violations.push({
@@ -765,15 +778,33 @@ export function check(input: CheckInput): VerdictV1 {
     if (part) {
       const pstats = findTableEstate(input.estate, part.parent);
       const cstats = findTableEstate(input.estate, part.child);
-      const nLive = Math.max(pstats?.n_live_tup ?? 0, cstats?.n_live_tup ?? 0) || undefined;
+      const nLiveParent = pstats?.n_live_tup;
+      const nLiveChild = cstats?.n_live_tup;
+      const nLive = Math.max(nLiveParent ?? 0, nLiveChild ?? 0) || undefined;
       const redRows = policy.rules?.R014?.red_rows ?? 100_000;
-      const sev: "red" | "yellow" = typeof nLive === "number" && nLive >= redRows ? "red" : "yellow";
+      let sev: "red" | "yellow" = "yellow";
+      if (part.action === "DETACH") {
+        // DETACH without CONCURRENTLY on a hot parent is riskier (blocks scans)
+        if (!part.concurrently && typeof nLiveParent === "number" && nLiveParent >= redRows) {
+          sev = "red";
+        } else {
+          sev = "yellow";
+        }
+      } else {
+        // ATTACH is usually routine when constraints match; keep yellow even on large estates
+        sev = "yellow";
+      }
       violations.push({
         rule_id: "R014",
         severity: sev,
-        message: `${part.action} PARTITION may lock/scan parent/child ${part.parent ? part.parent.name : "unknown"} (${formatRows(
-          nLive
-        )} rows)`
+        message:
+          part.action === "DETACH" && part.concurrently
+            ? `DETACH PARTITION CONCURRENTLY reduces blocking on ${part.parent ? part.parent.name : "unknown"} (${formatRows(
+                nLiveParent
+              )} rows)`
+            : `${part.action} PARTITION may lock/scan parent/child ${part.parent ? part.parent.name : "unknown"} (${formatRows(
+                nLive
+              )} rows)`
       });
       statements.push({
         sql,
