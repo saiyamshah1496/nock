@@ -11,6 +11,14 @@ You’ll do this once and schedule it:
 
 CLI ≡ Action ≡ MCP — same verdict surface; this guide uses CLI in workflows for simplicity.
 
+### In this repo’s CI
+
+This repository runs a self‑contained integration that proves the “sync‑estate → check” loop against a real Postgres service container. See `/.github/workflows/ci.yml` job `estate-sync-integration` for a complete example:
+- Boots Postgres as a service and waits for health
+- Seeds a “hot” table and a tiny table (`fixtures/ci-estate/seed.sql`)
+- Runs `nock sync-estate` to write `.nock/estate.json`
+- Checks one SQL that should RED on the hot table and one that should PASS on the tiny table
+
 ## 1) Grants for a read‑only role
 
 Use a dedicated role that can read catalog/statistics only — not table rows.
