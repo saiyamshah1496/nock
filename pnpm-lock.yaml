@@ -29,7 +29,7 @@ importers:
       '@actions/github':
         specifier: ^6.0.0
         version: 6.0.1
-      '@nock/core':
+      '@nockhq/core':
         specifier: workspace:*
         version: link:../core
       yaml:
@@ -45,10 +45,10 @@ importers:
       '@hono/node-server':
         specifier: ^1.12.2
         version: 1.19.17(hono@4.13.8)
-      '@nock/core':
+      '@nockhq/core':
         specifier: workspace:*
         version: link:../core
-      '@nock/secure-estate':
+      '@nockhq/secure-estate':
         specifier: workspace:*
         version: link:../secure-stats
       aws4fetch:
@@ -64,10 +64,10 @@ importers:
 
   packages/cli:
     dependencies:
-      '@nock/core':
+      '@nockhq/core':
         specifier: workspace:*
         version: link:../core
-      '@nock/secure-estate':
+      '@nockhq/secure-estate':
         specifier: workspace:*
         version: link:../secure-stats
       commander:
@@ -95,7 +95,7 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.6.0
         version: 1.30.0(zod@4.6.5)
-      '@nock/core':
+      '@nockhq/core':
         specifier: workspace:*
         version: link:../core
       zod:
@@ -108,7 +108,7 @@ importers:
 
   packages/secure-stats:
     dependencies:
-      '@nock/core':
+      '@nockhq/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
