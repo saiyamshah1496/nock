@@ -4,14 +4,24 @@
 - The Action works, but every repo must copy a workflow and wire inputs/secrets. That’s friction and drift.
 - A GitHub App installs once and “just works” on PRs that touch migrations/estate, with least‑privilege scopes.
 - Same engine, same verdict JSON: CLI ≡ Action ≡ MCP ≡ App. App is a first‑class surface, not a new engine.
-- On PRs, run the check and post an approve/block summary where developers look (Checks, and optionally a PR comment).
+- On PRs, run the check and post an approve/block summary where developers look. Checks API is the source of truth; PR comment only on fail (see §6–§8).
 
 ## 2) Architecture (high‑level)
 - GitHub App → webhook handler (pull_request events; optionally check_suite) → resolve PR head/base and changed files.
 - Fetch changed files and any `.nock/estate.json` via GitHub Contents API (no local clone required).
 - Invoke `@nockhq/core` (or `@nockhq/cli` in a sandbox) with: SQL file diffs + resolved estate + policy.
 - Produce VerdictV1 (identical to other surfaces) → publish a Checks API check_run on the PR head SHA.
-- Optional: post a concise PR comment with top violations and remediation hints (off by default; see Open Questions).
+- Always publish a Checks API check_run. PR comment is posted by default only on fail (red) with top violations + remediation hints; no comment on pass/neutral (configurable later).
+
+## 2a) Default trigger globs (locked)
+Run when the PR touches any of:
+- `**/migrations/**/*.sql`
+- `**/db/migrations/**/*.sql`
+- `**/supabase/migrations/**/*.sql`
+- `**/.nock/**` (estate/policy changes DO re‑run)
+
+Notes:
+- Overridable later via `nock.yml` / `.github/nock.yml` (document how to add globs). v1 does not attempt to cover every ORM folder.
 
 ## 3) Estate resolution order (App v1)
 1. `.nock/estate.json` at repo root in PR head (preferred). If absent in head, check base branch.
@@ -38,13 +48,10 @@ Notes:
 - Minimize retained data: store verdict summary + minimal audit; no SQL body persistence beyond transient processing.
 - Deterministic parity with CLI/Action/MCP to avoid “works in CI, different in App” drift.
 
-## 6) User‑facing naming (PROPOSALS for Product Lead)
-- App name: “Nock Migration Guard”
-  - Check title / PR header: “Nock: Migration Guard”
-- App name: “Nock DDL Check”
-  - Check title / PR header: “Nock: DDL check”
-- App name: “Nock DDL Gate”
-  - Check title / PR header: “Nock: DDL gate”
+## 6) Naming (locked)
+- App name: Nock DDL Gate
+- Check title / PR header: Nock: DDL gate
+- Explicitly avoid: “Migration Guard”, “DDL Check”.
 
 ## 7) Sequencing (what ships first)
 - PR1: App skeleton + install + webhook plumbing (no‑op or always‑Neutral check_run).
@@ -52,9 +59,9 @@ Notes:
 - PR3: Optional PR comment renderer + docs for estate fallbacks (config key `estate-path`, examples).
 - Later: Team‑hosted estate download (no change to App scopes; feature‑gated via repo config).
 
-## 8) Open questions for Product Lead
-- Copy/name: pick App + check title from the proposals above.
-- Trigger paths: default globs for “migrations” (e.g., `**/migrations/**/*.sql`, `**/*.ddl.sql`?), and whether touching `.nock/estate.json` alone should re‑run the check.
-- Default UX: Checks‑only by default or also a PR comment? If comment is on, should it post only on regressions/red?
-- Neutral policy: confirm Neutral (not Success) when no estate is present, with clear next‑step links.
+## 8) No‑estate behavior (locked)
+- If no estate is resolvable, the check is Neutral (not Success, not Failure) with clear links to:
+  - `docs/guides/quick-start-estate-file.md`
+  - `docs/guides/sync-estate.md`
+- Never silent green when estate is missing.
 
