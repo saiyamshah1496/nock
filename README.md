@@ -77,7 +77,7 @@ Create a least‑privilege read‑only role that can run the catalogue query (no
 
 ## MCP: check before apply
 
-See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: `docs/guides/mcp-check-before-apply.md`
+See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: `docs/guides/mcp-check-before-apply.md` (use the from‑source config in the guide until packages are published; `npx @nock/mcp` will work after publish).
 
 ## Rules
 
