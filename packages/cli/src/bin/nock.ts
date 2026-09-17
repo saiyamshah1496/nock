@@ -2,7 +2,7 @@
 import { Command } from "commander";
 import * as fs from "fs";
 import * as path from "path";
-import { check, type PolicyResolved, type EstateSnapshot, evaluateEstateFreshness } from "@nockhq/core";
+import { check, type PolicyResolved, type EstateSnapshot, computeFreshness } from "@nockhq/core";
 import { runSyncStats } from "../syncStats";
 import { envelopeEncrypt } from "@nockhq/secure-estate";
 import https from "https";
@@ -47,10 +47,10 @@ program
       policy = { ...policy, fail_on: String(opts.failOn) as any };
     }
 
-    const fres = evaluateEstateFreshness(estate);
-    if (fres.classification === "warn") {
+    const band = computeFreshness(estate.captured_at);
+    if (band === "warn") {
       console.warn("Warning: estate snapshot appears older than 7 days; results may be stale.");
-    } else if (fres.classification === "neutral_stale") {
+    } else if (band === "stale") {
       console.warn("Warning: estate snapshot is older than 30 days; size-gated rules will be neutralized.");
     }
     const verdict = check({
@@ -58,7 +58,7 @@ program
       estate,
       policy,
       pgVersion: opts.pgVersion ? String(opts.pgVersion) : undefined,
-      noStatsBehavior: fres.classification === "neutral_stale" ? "warn" : undefined,
+      noStatsBehavior: band === "stale" ? "warn" : undefined,
     });
 
     if (opts.format === "json") {

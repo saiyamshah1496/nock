@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as fs from "fs";
 import * as path from "path";
-import { check, type PolicyResolved, type EstateSnapshot, evaluateEstateFreshness } from "@nockhq/core";
+import { check, type PolicyResolved, type EstateSnapshot, computeFreshness } from "@nockhq/core";
 import https from "https";
 import http from "http";
 import { URL } from "url";
@@ -50,10 +50,10 @@ async function run() {
       : ({ tables: [] } as any);
     const estateResolved: EstateSnapshot = (estate as EstateSnapshot) || fallback;
     // Freshness: warn if >7d; neutralize size-gated if >30d
-    const fres = evaluateEstateFreshness(estateResolved);
-    if (fres.classification === "warn") {
+    const band = computeFreshness(estateResolved.captured_at);
+    if (band === "warn") {
       core.warning("Estate snapshot appears older than 7 days; results may be stale.");
-    } else if (fres.classification === "neutral_stale") {
+    } else if (band === "stale") {
       core.warning("Estate snapshot is older than 30 days; size-gated rules will be neutralized.");
     }
     // Derive API base from explicit input or statsApiUrl origin
@@ -107,7 +107,7 @@ async function run() {
       sql,
       estate: estateResolved,
       policy,
-      noStatsBehavior: fres.classification === "neutral_stale" ? "warn" : undefined,
+      noStatsBehavior: band === "stale" ? "warn" : undefined,
     });
     core.setOutput("verdict", JSON.stringify(verdict));
 

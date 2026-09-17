@@ -1455,6 +1455,5 @@ export function check(input: CheckInput): VerdictV1 {
   };
 }
 
-// Freshness helper
-export { evaluateEstateFreshness } from "./freshness";
+// Team data-plane freshness/types are exported above from ./team/data-plane
 
