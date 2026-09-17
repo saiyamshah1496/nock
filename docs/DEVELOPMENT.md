@@ -231,6 +231,29 @@ PR CI runs on GitHub Actions with:
 
 No deploy in CI. Tests pass without R2/Cloudflare secrets; any online integrations are skipped if env is unset.
 
+## How to publish (npm)
+
+Nock is a pnpm workspaces monorepo. Source `package.json` files intentionally use `workspace:*` for intra‑repo dependencies — this MUST remain in source. Only pnpm resolves the `workspace:` protocol correctly on publish. Do NOT run plain `npm publish` from a package directory; it will leak `workspace:*` into the published tarball and break `npx`/installs.
+
+From the repo root:
+
+```bash
+# Publish all public packages (tagged versions in each package.json)
+pnpm -r publish --access public --no-git-checks
+
+# Or publish a single package
+pnpm --filter @nockhq/cli publish --access public --no-git-checks
+```
+
+Auth/2FA:
+- Prefer a granular npm token with “Automation” type (publish scope only). Automation tokens bypass OTP/2FA for CI while honoring package access. Set `NPM_TOKEN` in your environment.
+- If using a classic token with 2FA on publish, be ready to enter an OTP when prompted.
+
+Checklist:
+- Ensure versions are bumped in publishable packages: `@nockhq/core`, `@nockhq/cli`, `@nockhq/mcp`, `@nockhq/secure-estate`.
+- Keep `publishConfig.access = public` and `files: ["dist"]` in each published package.
+- Never replace `workspace:*` in source; pnpm rewrites these to pinned versions during publish.
+
 ## Design notes
 
 Read these before expanding scope:

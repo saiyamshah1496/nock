@@ -6,6 +6,23 @@ Pattern linters catch shapes. Nock catches “this is unsafe on your data.”
 Nock never applies migrations. CLI ≡ Action ≡ MCP — the same verdict JSON for the same inputs.
 
 ## Install
+ 
+Use directly with npx (recommended):
+
+```bash
+npx @nockhq/cli@0.1.1 --help
+# or run a check
+npx @nockhq/cli@0.1.1 check --sql migrations/001.sql --estate .nock/estate.json --format json
+```
+
+Or install globally:
+
+```bash
+npm i -g @nockhq/cli
+nock --help
+```
+
+From source (developers):
 
 ```bash
 corepack enable
@@ -33,7 +50,7 @@ Minimal shape:
 ## Quick start: check a migration with an estate file
 
 ```bash
-node packages/cli/dist/bin/nock.js check \
+npx @nockhq/cli@0.1.1 check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --format json
@@ -67,7 +84,7 @@ Input B — estate excerpt (`fixtures/estate_billion.json`)
 Command
 
 ```bash
-node packages/cli/dist/bin/nock.js check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
+npx @nockhq/cli@0.1.1 check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 
 Output (real CLI JSON)
@@ -137,7 +154,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Nock check
-        uses: ./.github/actions/nock  # example-only; replace with your published action or use CLI
+        uses: ./.github/actions/nock  # example-only; prefer the CLI workflow below if not publishing an Action yet
         with:
           migration-path: migrations/
           # Optional: download hosted estate to file (Team)
@@ -150,7 +167,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Prefer the CLI workflow in `examples/workflows/nock.yml` if you’re not using a published Action yet — the `uses: ./.github/actions/nock` path above is example‑only until a package is published. GitHub App later.
+Prefer the CLI workflow in `examples/workflows/nock.yml` if you’re not using a published Action yet — it runs `npx @nockhq/cli` directly on your runner. GitHub App later.
 
 ## How to read results
 
@@ -165,7 +182,7 @@ Create a least‑privilege read‑only role that can run the catalogue query (no
 
 ## MCP: check before apply
 
-See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: `docs/guides/mcp-check-before-apply.md` (use the from‑source config in the guide until packages are published; `npx @nockhq/mcp` will work after publish).
+See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: `docs/guides/mcp-check-before-apply.md`. Use either `npx @nockhq/mcp` (bin `nock-mcp`) or the from‑source config in the guide.
 
 ## Rules
 
