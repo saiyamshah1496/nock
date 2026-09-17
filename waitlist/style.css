@@ -65,7 +65,7 @@ body {
 }
 
 .hero {
-  padding: 64px 0 24px;
+  padding: 56px 0 24px;
 }
 .badge {
   display: inline-block;
@@ -88,6 +88,27 @@ body {
   margin: 0;
   color: var(--muted);
   font-size: clamp(15px, 2.2vw, 18px);
+}
+
+/* Stacked hero bands */
+.primary-band,
+.secondary-band {
+  width: 100%;
+  max-width: 800px; /* ~720–800px target */
+  margin: 16px auto 0;
+}
+.primary-band .cta-card {
+  margin-top: 0; /* rely on band spacing */
+}
+.secondary-band .waitlist-card {
+  /* Quieter look: softer border, no glow */
+  box-shadow: none;
+  border-color: rgba(255,255,255,0.07);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}
+.secondary-band .waitlist-form button {
+  /* Match teal, remove competing glow */
+  box-shadow: none;
 }
 code {
   background: var(--chip-bg);
@@ -133,7 +154,7 @@ code {
 
 .code-block {
   position: relative;
-  margin: 8px 0 10px;
+  margin: 6px 0 8px; /* tighten so code block doesn't dominate */
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -179,7 +200,7 @@ code {
 
 .waitlist-form .form-row {
   display: flex;
-  gap: 10px;
+  gap: 12px; /* un-cramp */
   align-items: center;
 }
 .waitlist-form input[type="email"] {
@@ -205,7 +226,7 @@ code {
   border-radius: 10px;
   cursor: pointer;
   transition: transform 0.04s ease;
-  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.25);
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.18);
 }
 .waitlist-form button:hover {
   transform: translateY(-1px);
@@ -274,7 +295,7 @@ code {
   background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px; /* consistent with waitlist-card */
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
@@ -336,8 +357,8 @@ code {
 
 @media (min-width: 840px) {
   .grid-2 { grid-template-columns: 1fr 1fr; gap: 20px; }
-  .hero { padding: 80px 0 32px; }
-  .waitlist-card { padding: 24px; }
+  .hero { padding: 64px 0 28px; }
+  .waitlist-card { padding: 20px; }
 }
 
 .site-footer {
