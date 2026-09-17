@@ -1,8 +1,9 @@
 # Nock
 
-Pattern linters for DDL. Nock gates risky migrations in CI and MCP using your table sizes, Postgres lock classes, and `lock_timeout` policy — and it never applies migrations.
-
-CLI ≡ Action ≡ MCP — the same verdict JSON for the same inputs.
+Nock gates risky Postgres migrations before they merge.
+It checks your DDL against an estate snapshot (table sizes) and policy — lock class, `lock_timeout`, hot‑table risk — and returns approve or block.
+Pattern linters catch shapes. Nock catches “this is unsafe on your data.”
+Nock never applies migrations. CLI ≡ Action ≡ MCP — the same verdict JSON for the same inputs.
 
 ## Install
 
@@ -10,6 +11,23 @@ CLI ≡ Action ≡ MCP — the same verdict JSON for the same inputs.
 corepack enable
 pnpm install
 pnpm build
+```
+
+## What is an estate?
+
+An estate is a small JSON snapshot of your Postgres tables’ sizes that Nock uses to reason about locks and risk on your actual data. It is not a dump — no row contents, no passwords.
+
+Minimal shape:
+
+```json
+{
+  "schema_version": "1",
+  "captured_at": "2026-09-16T05:00:00Z",
+  "pg_version": "16.4",
+  "tables": [
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000000 }
+  ]
+}
 ```
 
 ## Quick start: check a migration with an estate file
@@ -26,6 +44,76 @@ Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 Two ways to provide an estate:
 - Bring your own estate — paste/commit `.nock/estate.json`: see `docs/guides/quick-start-estate-file.md`
 - Sync estate yourself — run `nock sync-estate` on your runner: see `docs/guides/sync-estate.md`
+
+### Example: input → output
+
+Input A — migration SQL (`fixtures/railway_oct.sql`)
+
+```sql
+ALTER TABLE sessions ADD COLUMN archived_at timestamptz;
+CREATE INDEX idx_sessions_archived_at ON sessions (archived_at);
+```
+
+Input B — estate excerpt (`fixtures/estate_billion.json`)
+
+```json
+{
+  "tables": [
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000000 }
+  ]
+}
+```
+
+Command
+
+```bash
+node packages/cli/dist/bin/nock.js check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
+```
+
+Output (real CLI JSON)
+
+```json
+{
+  "schema_version": "1",
+  "verdict": "fail",
+  "statements": [
+    {
+      "sql": "-- Pattern-level Railway Oct 2025 shape: non-concurrent index on billion-row table\nALTER TABLE sessions ADD COLUMN archived_at timestamptz",
+      "lock_mode": "ACCESS EXCLUSIVE",
+      "blocks_reads": true,
+      "blocks_writes": true,
+      "target": { "schema": "public", "name": "sessions" },
+      "n_live_tup": 1040000000,
+      "rules_hit": []
+    },
+    {
+      "sql": "CREATE INDEX idx_sessions_archived_at ON sessions (archived_at)",
+      "lock_mode": "SHARE",
+      "blocks_reads": false,
+      "blocks_writes": true,
+      "target": { "schema": "public", "name": "sessions" },
+      "n_live_tup": 1040000000,
+      "estimated_hold_ms": { "min": 520000, "max": 1040000 },
+      "estimated_hold_label": "approximate",
+      "rules_hit": ["R001", "R010"]
+    }
+  ],
+  "violations": [
+    { "rule_id": "R004", "severity": "yellow", "message": "ADD COLUMN without lock_timeout on hot table sessions (1.04B rows)", "remediation_sql": "SET lock_timeout = '3s';" },
+    { "rule_id": "R010", "severity": "red", "message": "Missing lock_timeout for DDL on hot table sessions (1.04B rows)", "remediation_sql": "SET lock_timeout = '3s';" },
+    { "rule_id": "R001", "severity": "red", "message": "CREATE INDEX without CONCURRENTLY on sessions (1.04B rows) takes SHARE lock and may block writes", "remediation_sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>);", "docs_url": "https://www.postgresql.org/docs/current/sql-createindex.html" },
+    { "rule_id": "R010", "severity": "red", "message": "Missing lock_timeout for DDL on hot table sessions (1.04B rows)", "remediation_sql": "SET lock_timeout = '3s';" }
+  ],
+  "meta": {
+    "pg_version": "16.4",
+    "estate_captured_at": "2026-09-16T05:00:00Z",
+    "policy_id": "nock.postgres.ddl.default",
+    "engine": "postgres"
+  }
+}
+```
+
+Exit code: 2 (fail). 1 = warn when `fail_on=yellow`. 0 = pass.
 
 ## Keep estate fresh with sync-estate
 
