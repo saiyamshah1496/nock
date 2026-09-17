@@ -1,0 +1,2 @@
+ALTER TABLE public.sessions ATTACH PARTITION public.sessions_2026 FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
+

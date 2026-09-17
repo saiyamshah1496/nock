@@ -398,6 +398,180 @@ function parseValidateConstraint(sql: string): { table?: TableRef; constraint?: 
   return { table, constraint };
 }
 
+// R007 — ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... without NOT VALID
+function parseAddForeignKeyWithoutNotValid(sql: string): { table?: TableRef } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean)) return null;
+  if (!/\bADD\s+CONSTRAINT\b/i.test(clean)) return null;
+  if (!/\bFOREIGN\s+KEY\b/i.test(clean)) return null;
+  if (/\bNOT\s+VALID\b/i.test(clean)) return null; // safe path
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  if (!fq) return { table: undefined };
+  const parts = fq.split(".");
+  const table: TableRef = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+  return { table };
+}
+
+// R008 — ALTER TABLE ... ALTER COLUMN ... TYPE ...
+function parseAlterColumnType(sql: string): { table?: TableRef; column?: string; newType?: string; hasUsing: boolean } | null {
+  const clean = stripSqlComments(sql);
+  const m =
+    /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+ALTER\s+(?:COLUMN\s+)?([A-Za-z0-9_".]+)\s+TYPE\s+([A-Za-z0-9_\s()"',]+?)(?:\s+USING\b|\s*$)/i.exec(
+      clean.trim()
+    );
+  if (!m) return null;
+  const fq = m[1].replace(/"/g, "");
+  const parts = fq.split(".");
+  const table: TableRef = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+  const column = m[2]?.replace(/"/g, "");
+  const newType = m[3]?.trim();
+  const hasUsing = /\bUSING\b/i.test(clean);
+  return { table, column, newType, hasUsing };
+}
+
+// Heuristic: binary-coercible widen (varchar(n)->varchar(m≥n), varchar->text) — assume safe, skip
+function isLikelyBinaryCoercibleWiden(newType?: string, hasUsing?: boolean): boolean {
+  if (!newType || hasUsing) return false;
+  const up = newType.toUpperCase().replace(/\s+/g, " ");
+  if (/\bTEXT\b/.test(up)) return true;
+  if (/\bCHARACTER\s+VARYING\b/.test(up) || /\bVARCHAR\b/.test(up)) return true;
+  return false;
+}
+
+// R013 — REFRESH MATERIALIZED VIEW without CONCURRENTLY
+function parseRefreshMatviewNonConcurrent(sql: string): { view?: TableRef } | null {
+  const clean = stripSqlComments(sql);
+  const up = clean.toUpperCase();
+  if (!up.startsWith("REFRESH MATERIALIZED VIEW")) return null;
+  if (/\bCONCURRENTLY\b/i.test(up)) return null;
+  const m = /REFRESH\s+MATERIALIZED\s+VIEW\s+(?:IF\s+EXISTS\s+)?([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = m?.[1]?.replace(/"/g, "");
+  if (!fq) return { view: undefined };
+  const parts = fq.split(".");
+  const view: TableRef = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+  return { view };
+}
+
+// R014 — ATTACH/DETACH PARTITION
+function parseAttachOrDetachPartition(
+  sql: string
+): { action: "ATTACH" | "DETACH"; parent?: TableRef; child?: TableRef } | null {
+  const clean = stripSqlComments(sql);
+  const up = clean.toUpperCase();
+  if (!up.startsWith("ALTER TABLE")) return null;
+  // ALTER TABLE <parent> ATTACH PARTITION <child> ...
+  let m =
+    /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+ATTACH\s+PARTITION\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  if (m) {
+    const pfq = m[1].replace(/"/g, "");
+    const cfx = m[2].replace(/"/g, "");
+    const pparts = pfq.split(".");
+    const cparts = cfx.split(".");
+    const parent: TableRef =
+      pparts.length === 2 ? { schema: pparts[0], name: pparts[1] } : { schema: "public", name: pparts[0] };
+    const child: TableRef =
+      cparts.length === 2 ? { schema: cparts[0], name: cparts[1] } : { schema: "public", name: cparts[0] };
+    return { action: "ATTACH", parent, child };
+  }
+  // ALTER TABLE <parent> DETACH PARTITION <child>
+  m = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+DETACH\s+PARTITION\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  if (m) {
+    const pfq = m[1].replace(/"/g, "");
+    const cfx = m[2].replace(/"/g, "");
+    const pparts = pfq.split(".");
+    const cparts = cfx.split(".");
+    const parent: TableRef =
+      pparts.length === 2 ? { schema: pparts[0], name: pparts[1] } : { schema: "public", name: pparts[0] };
+    const child: TableRef =
+      cparts.length === 2 ? { schema: cparts[0], name: cparts[1] } : { schema: "public", name: cparts[0] };
+    return { action: "DETACH", parent, child };
+  }
+  return null;
+}
+
+// R015 / R021 helpers for CIC
+function parseCreateIndexConcurrently(sql: string): { table?: TableRef; indexName?: string } | null {
+  const clean = stripSqlComments(sql);
+  const m =
+    /CREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_"]+)?\s*ON\s+([A-Za-z0-9_".]+)/i.exec(
+      clean
+    );
+  if (!m) return null;
+  const indexName = m[1]?.replace(/"/g, "");
+  const fq = m[2]?.replace(/"/g, "");
+  let table: TableRef | undefined = undefined;
+  if (fq) {
+    const parts = fq.split(".");
+    table = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+  }
+  return { table, indexName };
+}
+
+// R017 — ADD UNIQUE/PRIMARY KEY without USING INDEX
+function parseAddUniqueOrPrimaryKeyWithoutUsingIndex(sql: string): { table?: TableRef; kind: "UNIQUE" | "PRIMARY KEY" } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean)) return null;
+  if (!/\bADD\s+CONSTRAINT\b/i.test(clean)) return null;
+  if (/\bUSING\s+INDEX\b/i.test(clean)) return null; // safe path
+  const isPk = /\bPRIMARY\s+KEY\b/i.test(clean);
+  const isUnique = /\bUNIQUE\b/i.test(clean);
+  if (!isPk && !isUnique) return null;
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  const parts = fq ? fq.split(".") : [];
+  const table = fq
+    ? parts.length === 2
+      ? { schema: parts[0], name: parts[1] }
+      : { schema: "public", name: parts[0] }
+    : undefined;
+  return isPk ? { table, kind: "PRIMARY KEY" } : { table, kind: "UNIQUE" };
+}
+
+// R018 — ADD EXCLUDE constraint
+function parseAddExcludeConstraint(sql: string): { table?: TableRef } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean)) return null;
+  if (!/\bADD\s+(CONSTRAINT\s+[A-Za-z0-9_".]+\s+)?EXCLUDE\b/i.test(clean)) return null;
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  if (!fq) return { table: undefined };
+  const parts = fq.split(".");
+  const table: TableRef = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+  return { table };
+}
+
+// R019 — TRUNCATE on estate table
+function parseTruncate(sql: string): { table?: TableRef } | null {
+  const clean = stripSqlComments(sql);
+  const m = /TRUNCATE\s+(TABLE\s+)?([A-Za-z0-9_".]+)/i.exec(clean);
+  if (!m) return null;
+  const fq = m[2]?.replace(/"/g, "");
+  if (!fq) return { table: undefined };
+  const parts = fq.split(".");
+  const table: TableRef = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+  return { table };
+}
+
+// R009 — DROP/RENAME helpers
+function parseDropRename(sql: string):
+  | { kind: "DROP COLUMN" | "RENAME COLUMN" | "RENAME TABLE" | "DROP CONSTRAINT"; table?: TableRef } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean)) return null;
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  const table = fq
+    ? fq.split(".").length === 2
+      ? { schema: fq.split(".")[0], name: fq.split(".")[1] }
+      : { schema: "public", name: fq }
+    : undefined;
+  if (/\bDROP\s+COLUMN\b/i.test(clean)) return { kind: "DROP COLUMN", table };
+  if (/\bRENAME\s+COLUMN\b/i.test(clean)) return { kind: "RENAME COLUMN", table };
+  if (/\bRENAME\s+TO\b/i.test(clean)) return { kind: "RENAME TABLE", table };
+  if (/\bDROP\s+CONSTRAINT\b/i.test(clean)) return { kind: "DROP CONSTRAINT", table };
+  return null;
+}
+
 // Detect expand/contract: ADD CONSTRAINT ... NOT VALID then VALIDATE CONSTRAINT for same table/column before SET NOT NULL
 function hasExpandContractForNotNull(
   sqls: string[],
@@ -451,6 +625,8 @@ export function check(input: CheckInput): VerdictV1 {
   let seenLockTimeout = false;
   // Track explicit transaction blocks (BEGIN/START TRANSACTION ... COMMIT/ROLLBACK/END)
   let insideExplicitTxn = false;
+  // Track ACCESS EXCLUSIVE lock-taking statements by table (for R016)
+  const aeOpsByTable: Record<string, number[]> = {};
 
   for (let stmtIdx = 0; stmtIdx < sqls.length; stmtIdx++) {
     const sql = sqls[stmtIdx];
@@ -467,6 +643,330 @@ export function check(input: CheckInput): VerdictV1 {
         blocks_writes: false,
         rules_hit: []
       });
+      continue;
+    }
+
+    // R007: ADD FOREIGN KEY without NOT VALID (size-gated)
+    const addFk = parseAddForeignKeyWithoutNotValid(sql);
+    if (addFk) {
+      const tstats = findTableEstate(input.estate, addFk.table);
+      const nLive = tstats?.n_live_tup;
+      const redRows = policy.rules?.R007?.red_rows ?? 100_000;
+      if (typeof nLive === "number" && nLive >= redRows) {
+        violations.push({
+          rule_id: "R007",
+          severity: "red",
+          message: `ADD FOREIGN KEY without NOT VALID on ${addFk.table ? addFk.table.name : "unknown"} (${formatRows(
+            nLive
+          )} rows)`,
+          remediation_sql:
+            "ALTER TABLE <child> ADD CONSTRAINT <name> FOREIGN KEY (<col>) REFERENCES <parent>(<col>) NOT VALID; ALTER TABLE <child> VALIDATE CONSTRAINT <name>;"
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: addFk.table,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      if (addFk.table) {
+        const key = `${addFk.table.schema.toLowerCase()}.${addFk.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
+      continue;
+    }
+
+    // R008: ALTER COLUMN TYPE (rewrite-likely or unknown coercibility)
+    const alterType = parseAlterColumnType(sql);
+    if (alterType) {
+      const tstats = findTableEstate(input.estate, alterType.table);
+      const nLive = tstats?.n_live_tup;
+      const redRows = policy.rules?.R008?.red_rows ?? 10_000;
+      const binaryWiden = isLikelyBinaryCoercibleWiden(alterType.newType, alterType.hasUsing);
+      if (!binaryWiden) {
+        const clearlyRewrite =
+          alterType.hasUsing || /\bTEXT\b/i.test(alterType.newType ?? "") || /\bINT(2|4|8)\b/i.test(alterType.newType ?? "");
+        const severity: "red" | "yellow" =
+          clearlyRewrite && typeof nLive === "number" && nLive >= redRows ? "red" : "yellow";
+        violations.push({
+          rule_id: "R008",
+          severity,
+          message: `ALTER COLUMN TYPE on ${alterType.table ? alterType.table.name : "unknown"} (${formatRows(
+            nLive
+          )} rows) may rewrite; prefer online patterns`
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: alterType.table,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      if (alterType.table) {
+        const key = `${alterType.table.schema.toLowerCase()}.${alterType.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
+      continue;
+    }
+
+    // R013: REFRESH MATERIALIZED VIEW without CONCURRENTLY
+    const refresh = parseRefreshMatviewNonConcurrent(sql);
+    if (refresh) {
+      const tstats = findTableEstate(input.estate, refresh.view);
+      const nLive = tstats?.n_live_tup;
+      const redRows = policy.rules?.R013?.red_rows ?? 10_000;
+      if (typeof nLive === "number") {
+        if (nLive >= redRows) {
+          violations.push({
+            rule_id: "R013",
+            severity: "red",
+            message: `REFRESH MATERIALIZED VIEW without CONCURRENTLY on ${refresh.view ? refresh.view.name : "unknown"} (${formatRows(
+              nLive
+            )} rows) blocks reads/writes`
+          });
+        } else {
+          violations.push({
+            rule_id: "R013",
+            severity: "yellow",
+            message: `REFRESH MATERIALIZED VIEW without CONCURRENTLY on small view ${refresh.view ? refresh.view.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`
+          });
+        }
+      } else {
+        violations.push({
+          rule_id: "R013",
+          severity: "yellow",
+          message: "REFRESH MATERIALIZED VIEW without CONCURRENTLY (size unknown)"
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: refresh.view,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      continue;
+    }
+
+    // R014: ATTACH/DETACH PARTITION — risk size-gated
+    const part = parseAttachOrDetachPartition(sql);
+    if (part) {
+      const pstats = findTableEstate(input.estate, part.parent);
+      const cstats = findTableEstate(input.estate, part.child);
+      const nLive = Math.max(pstats?.n_live_tup ?? 0, cstats?.n_live_tup ?? 0) || undefined;
+      const redRows = policy.rules?.R014?.red_rows ?? 100_000;
+      const sev: "red" | "yellow" = typeof nLive === "number" && nLive >= redRows ? "red" : "yellow";
+      violations.push({
+        rule_id: "R014",
+        severity: sev,
+        message: `${part.action} PARTITION may lock/scan parent/child ${part.parent ? part.parent.name : "unknown"} (${formatRows(
+          nLive
+        )} rows)`
+      });
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: part.parent ?? part.child,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      const t = part.parent ?? part.child;
+      if (t) {
+        const key = `${t.schema.toLowerCase()}.${t.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
+      continue;
+    }
+
+    // R015: CREATE INDEX CONCURRENTLY without prior lock_timeout on hot tables, and R021 name advisory
+    const cic = parseCreateIndexConcurrently(sql);
+    if (cic && !insideExplicitTxn) {
+      const tstats = findTableEstate(input.estate, cic.table);
+      const nLive = tstats?.n_live_tup;
+      const hotRows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+      const yellowRows = policy.rules?.R015?.yellow_rows ?? 100_000;
+      if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1]) {
+        if (typeof nLive === "number" && nLive >= hotRows) {
+          violations.push({
+            rule_id: "R015",
+            severity: "red",
+            message: `CREATE INDEX CONCURRENTLY without lock_timeout on hot table ${cic.table ? cic.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql: "SET lock_timeout = '3s'; -- before CIC"
+          });
+        } else if (typeof nLive === "number" && nLive >= yellowRows) {
+          violations.push({
+            rule_id: "R015",
+            severity: "yellow",
+            message: `CREATE INDEX CONCURRENTLY without lock_timeout on ${cic.table ? cic.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`
+          });
+        }
+      }
+      if (!cic.indexName || cic.indexName.length === 0) {
+        violations.push({
+          rule_id: "R021",
+          severity: "yellow",
+          message:
+            "CREATE INDEX CONCURRENTLY without explicit index name — failed CIC can leave an invalid, hard-to-drop index; name indexes explicitly"
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "UNKNOWN",
+        blocks_reads: false,
+        blocks_writes: false,
+        target: cic.table,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      continue;
+    }
+
+    // R017: ADD UNIQUE/PRIMARY KEY without USING INDEX
+    const uniq = parseAddUniqueOrPrimaryKeyWithoutUsingIndex(sql);
+    if (uniq) {
+      const tstats = findTableEstate(input.estate, uniq.table);
+      const nLive = tstats?.n_live_tup;
+      const redRows = policy.rules?.R017?.red_rows ?? 10_000;
+      if (typeof nLive === "number" && nLive >= redRows) {
+        violations.push({
+          rule_id: "R017",
+          severity: "red",
+          message: `ADD ${uniq.kind} without USING INDEX on ${uniq.table ? uniq.table.name : "unknown"} (${formatRows(
+            nLive
+          )} rows) builds unique index under strong lock`,
+          remediation_sql:
+            "CREATE UNIQUE INDEX CONCURRENTLY <idx> ON <table>(<col(s)>); ALTER TABLE <table> ADD CONSTRAINT <name> UNIQUE USING INDEX <idx>;"
+        });
+      } else {
+        violations.push({
+          rule_id: "R017",
+          severity: "yellow",
+          message: `ADD ${uniq.kind} without USING INDEX — consider online build with CIC then USING INDEX`
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: uniq.table,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      if (uniq.table) {
+        const key = `${uniq.table.schema.toLowerCase()}.${uniq.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
+      continue;
+    }
+
+    // R018: ADD EXCLUDE constraint (no NOT VALID path)
+    const ex = parseAddExcludeConstraint(sql);
+    if (ex) {
+      const tstats = findTableEstate(input.estate, ex.table);
+      const nLive = tstats?.n_live_tup;
+      const redRows = policy.rules?.R018?.red_rows ?? 100_000;
+      const yellowRows = policy.rules?.R018?.yellow_rows ?? 10_000;
+      let sev: "red" | "yellow" = "yellow";
+      if (typeof nLive === "number" && nLive >= redRows) sev = "red";
+      else if (typeof nLive === "number" && nLive >= yellowRows) sev = "yellow";
+      violations.push({
+        rule_id: "R018",
+        severity: sev,
+        message: `ADD EXCLUDE constraint on ${ex.table ? ex.table.name : "unknown"} (${formatRows(
+          nLive
+        )} rows) cannot use NOT VALID; ensure off-peak`
+      });
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: ex.table,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      if (ex.table) {
+        const key = `${ex.table.schema.toLowerCase()}.${ex.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
+      continue;
+    }
+
+    // R019: TRUNCATE on estate table — red in CI policy
+    const trunc = parseTruncate(sql);
+    if (trunc) {
+      const tstats = findTableEstate(input.estate, trunc.table);
+      const inEstate = !!tstats;
+      if (inEstate) {
+        violations.push({
+          rule_id: "R019",
+          severity: "red",
+          message: `TRUNCATE ${trunc.table ? trunc.table.name : "table"} is destructive and takes ACCESS EXCLUSIVE lock`
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: trunc.table,
+        n_live_tup: tstats?.n_live_tup,
+        rules_hit: inEstate ? ["R019"] : []
+      });
+      if (trunc.table) {
+        const key = `${trunc.table.schema.toLowerCase()}.${trunc.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
+      continue;
+    }
+
+    // R009: DROP COLUMN / RENAME COLUMN|TABLE / DROP CONSTRAINT — advisory yellow
+    const dr = parseDropRename(sql);
+    if (dr) {
+      const tstats = findTableEstate(input.estate, dr.table);
+      const nLive = tstats?.n_live_tup;
+      violations.push({
+        rule_id: "R009",
+        severity: "yellow",
+        message: `${dr.kind} on ${dr.table ? dr.table.name : "unknown"} (${formatRows(nLive)} rows) — review for application impact`
+      });
+      statements.push({
+        sql,
+        lock_mode: "ACCESS EXCLUSIVE",
+        blocks_reads: true,
+        blocks_writes: true,
+        target: dr.table,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      if (dr.table) {
+        const key = `${dr.table.schema.toLowerCase()}.${dr.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
       continue;
     }
 
@@ -642,6 +1142,11 @@ export function check(input: CheckInput): VerdictV1 {
         n_live_tup: nLive,
         rules_hit: hitRules
       });
+      if (addCol.table) {
+        const key = `${addCol.table.schema.toLowerCase()}.${addCol.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
       continue;
     }
 
@@ -729,14 +1234,20 @@ export function check(input: CheckInput): VerdictV1 {
         n_live_tup: nLive,
         rules_hit: []
       });
+      if (setNotNull.table) {
+        const key = `${setNotNull.table.schema.toLowerCase()}.${setNotNull.table.name.toLowerCase()}`;
+        aeOpsByTable[key] = aeOpsByTable[key] || [];
+        aeOpsByTable[key].push(stmtIdx);
+      }
       continue;
     }
 
-    // R012: VACUUM FULL / CLUSTER / non-concurrent REINDEX
+    // R012/R020: VACUUM FULL / CLUSTER / non-concurrent REINDEX
     const heavy = isVacuumFullOrClusterOrNonConcurrentReindex(sql);
     if (heavy) {
+      const rid = heavy.kind === "CLUSTER" ? "R020" : "R012";
       violations.push({
-        rule_id: "R012",
+        rule_id: rid,
         severity: "red",
         message: `${heavy.kind} is not allowed in CI`
       });
@@ -745,7 +1256,7 @@ export function check(input: CheckInput): VerdictV1 {
         lock_mode: "ACCESS EXCLUSIVE",
         blocks_reads: true,
         blocks_writes: true,
-        rules_hit: ["R012"]
+        rules_hit: [rid]
       });
       continue;
     }
@@ -763,6 +1274,28 @@ export function check(input: CheckInput): VerdictV1 {
       severity: "yellow",
       message: "Unrecognized DDL — review manually; Nock refuses silent green"
     });
+  }
+
+  // R016: Multiple ACCESS EXCLUSIVE statements on the same hot table without lock_timeout — yellow
+  for (const [tkey, indices] of Object.entries(aeOpsByTable)) {
+    if (indices.length >= 2) {
+      const [schema, name] = tkey.split(".");
+      const tstats = input.estate.tables.find(
+        (t) => t.schema.toLowerCase() === schema && t.name.toLowerCase() === name
+      );
+      const nLive = tstats?.n_live_tup;
+      const hotRows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+      const anyHadPriorLockTimeout = indices.some((idx) => priorLockTimeoutFlags[idx] === true);
+      if (!anyHadPriorLockTimeout && typeof nLive === "number" && nLive >= hotRows) {
+        violations.push({
+          rule_id: "R016",
+          severity: "yellow",
+          message: `Multiple ACCESS EXCLUSIVE DDLs on hot table ${name} (${formatRows(
+            nLive
+          )}) without prior lock_timeout — combine or stage with timeouts`
+        });
+      }
+    }
   }
 
   const failOn = policy.fail_on ?? "red";
