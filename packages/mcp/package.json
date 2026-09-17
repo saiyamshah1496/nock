@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.0",
-    "@nock/core": "workspace:*"
+    "@nock/core": "workspace:*",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "typescript": "^5.5.4"
