@@ -7,6 +7,7 @@ import { check, type EstateSnapshot, type PolicyResolved, type VerdictV1 } from 
 // ---- Constants (locked naming from 018) ----
 export const CHECK_RUN_NAME = "Nock: DDL gate";
 export const APP_DISPLAY_NAME = "Nock DDL Gate";
+export const PR_COMMENT_MARKER = "<!-- nock-ddl-gate -->";
 
 // ---- Utilities ----
 function toHex(bytes: ArrayBuffer | Uint8Array): string {
@@ -427,6 +428,106 @@ function renderTopViolations(verdict: VerdictV1, limit = 10): string {
   return lines.join("\n\n");
 }
 
+export function buildPrCommentBodyFromVerdict(verdict: VerdictV1): string {
+  const reds = verdict.violations.filter((v) => v.severity === "red").length;
+  const yellows = verdict.violations.filter((v) => v.severity === "yellow").length;
+  const header = `**Nock: DDL gate**`;
+  const summary = `FAIL — red=${reds}, yellow=${yellows}\n\nPolicy: ${verdict.meta.policy_id}\nEngine: ${verdict.meta.engine}${
+    verdict.meta.estate_captured_at ? `\nEstate captured at: ${verdict.meta.estate_captured_at}` : ""
+  }`;
+  const body = `${PR_COMMENT_MARKER}
+${header}
+
+${summary}
+
+Top findings:
+
+${renderTopViolations(verdict, 8)}
+`;
+  return body;
+}
+
+async function upsertPrCommentWithMarker(opts: {
+  owner: string;
+  repo: string;
+  pullNumber: number;
+  installationToken: string;
+  body: string;
+  apiBase?: string;
+}): Promise<void> {
+  const apiBase = (opts.apiBase || "https://api.github.com").replace(/\/+$/, "");
+  // 1) List existing issue comments and find a marker
+  const listUrl = `${apiBase}/repos/${opts.owner}/${opts.repo}/issues/${opts.pullNumber}/comments?per_page=100`;
+  const headers = {
+    Authorization: `Bearer ${opts.installationToken}`,
+    Accept: "application/vnd.github+json",
+    "Content-Type": "application/json",
+    "User-Agent": "nock-github-app/0.1.0",
+  };
+  let existingId: number | null = null;
+  // Best-effort list; if it fails, fall back to POST below
+  try {
+    const res = await fetch(listUrl, { headers });
+    if (res.ok) {
+      const arr: any[] = await res.json();
+      for (const c of arr) {
+        if (typeof c?.id === "number" && typeof c?.body === "string" && c.body.includes(PR_COMMENT_MARKER)) {
+          existingId = c.id as number;
+          break;
+        }
+      }
+    }
+  } catch {
+    // ignore list failure; we'll just POST
+  }
+  if (existingId != null) {
+    // PATCH to update in place
+    const patchUrl = `${apiBase}/repos/${opts.owner}/${opts.repo}/issues/comments/${existingId}`;
+    const res = await fetch(patchUrl, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ body: opts.body }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`failed to patch PR comment: ${res.status} ${text}`);
+    }
+    return;
+  }
+  // POST new
+  const postUrl = `${apiBase}/repos/${opts.owner}/${opts.repo}/issues/${opts.pullNumber}/comments`;
+  const res = await fetch(postUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ body: opts.body }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`failed to create PR comment: ${res.status} ${text}`);
+  }
+}
+
+export async function postFailOnlyPrCommentIfNeeded(opts: {
+  owner: string;
+  repo: string;
+  pullNumber: number;
+  installationToken: string;
+  verdict: VerdictV1;
+  apiBase?: string;
+}): Promise<void> {
+  const mapped = mapVerdictToConclusion(opts.verdict);
+  if (mapped.conclusion !== "failure") return; // fail-only as product lock
+  const body = buildPrCommentBodyFromVerdict(opts.verdict);
+  await upsertPrCommentWithMarker({
+    owner: opts.owner,
+    repo: opts.repo,
+    pullNumber: opts.pullNumber,
+    installationToken: opts.installationToken,
+    body,
+    apiBase: opts.apiBase,
+  });
+}
+
 async function postVerdictCheckRun(opts: {
   owner: string;
   repo: string;
@@ -576,6 +677,18 @@ export async function handleWebhook(c: Context, rawBody: ArrayBuffer): Promise<R
       // Run engine
       const verdict = check({ sql: sqls, estate, policy });
       await postVerdictCheckRun({ owner, repo, headSha, installationToken: token, verdict });
+      // PR3: fail-only PR comment with dedupe
+      try {
+        await postFailOnlyPrCommentIfNeeded({
+          owner,
+          repo,
+          pullNumber: pr.pull_request.number,
+          installationToken: token,
+          verdict,
+        });
+      } catch {
+        // Ignore comment failures; Checks API remains source of truth
+      }
       return c.json({ ok: true, verdict: verdict.verdict });
     } catch {
       // If listing fails, still proceed with neutral (noisy but ensures visibility)

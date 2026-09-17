@@ -254,11 +254,24 @@ PR2 adds the real DDL verdict:
 - App permissions (documented in 018):
   - Metadata: Read
   - Contents: Read
-  - Pull requests: Read (Write will be needed later for PR comments)
+  - Pull requests: Read & Write (Write is needed for PR3 comments)
   - Checks: Read & Write
 - Local dev: `packages/api/src/server.ts` runs the Hono app with Node 20. Webhook signature verification uses HMAC SHA‑256. JWT/installation token flow uses `jose`.
 
-See `docs/design/019-github-app-pr1.md` (PR1 status) and `docs/design/020-github-app-pr2.md` (this change).
+PR3 adds a fail‑only PR comment (issues comment on the PR) when the verdict is red. The comment is de‑duplicated using a stable HTML marker and is updated in place on synchronize events. No comment is posted for PASS, WARN/neutral, or the Neutral no‑estate path. See `docs/design/021-github-app-pr3.md`.
+
+Estate path example:
+
+Create `nock.yml` (or `.github/nock.yml`) in your repo to point Nock to a custom estate file location:
+
+```yaml
+# nock.yml
+estate-path: config/estate.json
+```
+
+Commit the referenced `config/estate.json` to your repo. Nock will first look for `.nock/estate.json` on the PR head (else base), then follow `estate-path` if configured.
+
+See `docs/design/019-github-app-pr1.md`, `docs/design/020-github-app-pr2.md`, and `docs/design/021-github-app-pr3.md`.
 
 ## How to publish (npm)
 
