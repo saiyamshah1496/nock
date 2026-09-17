@@ -2,6 +2,10 @@
 
 Senior-staff quickstart for contributing to Nock Phase 1.
 
+For product usage, see:
+- `docs/guides/path-a-paste.md` (free Path A quickstart)
+- `docs/guides/path-b-connect.md` (free Path B connect)
+
 ## Repo map
 
 ```
