@@ -15,12 +15,26 @@ export interface PolicyRecord {
   createdAt: string; // ISO
 }
 
+// Optional freshness classification for an audit (external classifier; not implemented here)
+export type Freshness = "fresh" | "warn" | "stale" | "missing";
+export interface RuleHitDetail {
+  id: string;
+  severity?: string;
+  table?: string;
+  n_live_tup?: number;
+  reason_code?: string;
+}
+
 export interface AuditEventInput {
   org_id: string;
   repo_id: string;
   sql_hash: string;
   verdict: "pass" | "fail";
   rule_ids: string[];
+  // Optional enrichment fields
+  estate_captured_at?: string;
+  freshness?: Freshness;
+  rule_hits?: RuleHitDetail[];
   policy_version?: number;
   actor?: string;
   ci_run_id?: string;

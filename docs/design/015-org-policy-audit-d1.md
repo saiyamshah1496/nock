@@ -1,5 +1,11 @@
 ## 015 — Org policy store + audit on D1 (Workers)
 
+Note: Migration 0002 (Team audit enrichment) adds optional columns on `audit_events`:
+- `estate_captured_at TEXT NULL`
+- `freshness TEXT NULL` — values `fresh` | `warn` | `stale` | `missing`
+- `rule_hits_json TEXT NULL` — array of `{id, severity, table, n_live_tup, reason_code}` (no full SQL stored)
+See Staff DB design reference “022-team-data-plane” for broader context (owned by Staff DB).
+
 ### Overview
 
 - Store versioned org/repo policy packs and append-only audit events in Cloudflare D1.
