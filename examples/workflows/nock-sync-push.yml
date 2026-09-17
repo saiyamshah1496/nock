@@ -1,4 +1,4 @@
-## Example: Scheduled sync-estate + push to hosted API (Path B+)
+## Example: Scheduled sync-estate + push to hosted estate API (Nock Team)
 name: Nock — Sync estate and push
 on:
   schedule:

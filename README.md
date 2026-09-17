@@ -4,12 +4,17 @@ Pattern linters for DDL. Nock gates risky migrations in CI and MCP using your ta
 
 CLI ≡ Action ≡ MCP — the same verdict JSON for the same inputs.
 
-## Quick start: check a migration with an estate file
+## Install
 
 ```bash
 corepack enable
 pnpm install
 pnpm build
+```
+
+## Quick start: check a migration with an estate file
+
+```bash
 node packages/cli/dist/bin/nock.js check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
@@ -57,6 +62,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+GitHub App later.
+
+### How to read results
+
+- Green: safe to merge
+- Yellow: risky or unknown pattern; warn by default, or fail when `fail-on: yellow`
+- Red: unsafe; fix or defer until off-peak or with mitigations
+- Exit codes: 0 pass, 1 warn-only (when `fail-on: yellow`), 2 fail
+
 ## Grants for sync-estate
 
 Create a least‑privilege read‑only role that can run the catalogue query (no row data) and prefer connecting to a replica. Guide: `docs/guides/grants-sync-estate.md`
@@ -93,7 +107,7 @@ See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`.
 
 ## Stub only: Nock Team (hosted estate + org policy + audit)
 
-Not launch focus. Hosted estate distribution with envelope encryption, organization policy storage, and audit trails. Public docs will expand here when available.
+Hosted estate distribution (Nock Team) with envelope encryption, organization policy storage, and audit trails — design partners / coming soon. Hosted customers will be able to export estate snapshots and audit logs at any time. No Stripe or signup UI yet. Docs live in this repo (`README.md` and `docs/`).
 
 ## License
 

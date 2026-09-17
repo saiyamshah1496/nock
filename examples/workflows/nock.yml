@@ -21,7 +21,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
 
-      # Optional: fetch hosted stats (Path B+) into file fallback before running CLI
+      # Optional: fetch hosted estate (Nock Team) into file fallback before running CLI
       # Provide NOCK_ESTATE_API_TOKEN in repo secrets if you enable this step.
       - name: (Optional) Download hosted estate to .nock/estate.json
         if: ${{ vars.NOCK_USE_HOSTED_STATS == '1' }}

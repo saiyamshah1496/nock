@@ -96,6 +96,6 @@ jobs:
 That’s it — no hosted service required.
 
 See also
-- `examples/workflows/nock-sync-push.yml` shows an optional “push to hosted API” job.
-- `docs/guides/local-estate-file.md` for a zero‑DB, paste/file quickstart.
+- `examples/workflows/nock-sync-push.yml` shows an optional “push to hosted estate API (Nock Team)” job.
+- `docs/guides/quick-start-estate-file.md` for a zero‑DB, paste/file quickstart.
 
