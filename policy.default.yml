@@ -13,6 +13,15 @@ rules:
   R008: { red_rows: 10000 }
   R009: { severity: yellow }
   R010: { always_require_lock_timeout_above_rows: 1000000 }
+  R013: { red_rows: 10000 }
+  R014: { red_rows: 100000 }
+  R015: { yellow_rows: 100000 }
   R012: { severity: red }
+  R016: { severity: yellow }
+  R017: { red_rows: 10000 }
+  R018: { red_rows: 100000, yellow_rows: 10000 }
+  R019: { severity: red }
+  R020: { severity: red }
+  R021: { severity: yellow }
 no_stats: warn
 

@@ -177,12 +177,21 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 | R004 — ADD COLUMN nullable/constant-default on hot table w/o lock_timeout | Implemented (partial) | Size-gated; requires `lock_timeout`; constant-default nuance later |
 | R005 — SET NOT NULL w/o validated CHECK | Implemented (partial) | Assumes unsafe on large tables (no catalog check yet) |
 | R006 — ADD CHECK w/o NOT VALID | Implemented | Red ≥50k rows |
-| R007 — ADD FK w/o NOT VALID | Stub | Will add matcher |
-| R008 — ALTER TYPE non-binary-coercible | Stub | Will add matcher |
-| R009 — DROP/RENAME | Stub | Will add matcher (yellow) |
+| R007 — ADD FK w/o NOT VALID | Implemented | Red ≥100k rows; remediate NOT VALID → VALIDATE |
+| R008 — ALTER TYPE non-binary-coercible | Implemented | Yellow unknown; red when clearly rewriting (USING); widen to text/varchar passes |
+| R009 — DROP/RENAME | Implemented | Yellow advisory; includes DROP COLUMN/CONSTRAINT, RENAME COLUMN/TABLE |
 | R010 — DDL w/o lock_timeout on hot tables | Implemented (partial) | Applied to common DDL shapes |
 | R011 — Live locks advisory | Out of scope |
-| R012 — VACUUM FULL / CLUSTER / non-concurrent REINDEX | Implemented | Always red in CI |
+| R012 — VACUUM FULL / non-concurrent REINDEX | Implemented | Always red in CI |
+| R013 — REFRESH MATERIALIZED VIEW w/o CONCURRENTLY | Implemented | Red ≥10k rows; yellow if unknown size |
+| R014 — ATTACH/DETACH PARTITION | Implemented | Yellow/red by size; notes on lock/scan |
+| R015 — CIC w/o prior lock_timeout on hot table | Implemented | Yellow/red per size thresholds |
+| R016 — Multiple AE DDLs on same hot table w/o lock_timeout | Implemented | Yellow advisory |
+| R017 — ADD UNIQUE/PRIMARY KEY w/o USING INDEX | Implemented | Red ≥10k; remediate CIC + USING INDEX |
+| R018 — ADD EXCLUDE constraint | Implemented | Size-gated red/yellow; no NOT VALID path |
+| R019 — TRUNCATE on estate table | Implemented | Always red in CI policy |
+| R020 — CLUSTER | Implemented | Always red in CI (R012 family) |
+| R021 — CIC without explicit index name | Implemented | Yellow advisory |
 
 ## Docs index
 
