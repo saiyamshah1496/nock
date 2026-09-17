@@ -9,20 +9,7 @@ What this is
 
 ## Install and configure (Cursor/Claude MCP)
 
-Option A — from source (this repo)
-
-```json
-{
-  "mcpServers": {
-    "nock": {
-      "command": "node",
-      "args": ["./packages/mcp/dist/bin.js"]
-    }
-  }
-}
-```
-
-Option B — via npx (after packages are published to npm)
+Option A — via npx (recommended)
 
 ```json
 {
@@ -30,6 +17,19 @@ Option B — via npx (after packages are published to npm)
     "nock": {
       "command": "npx",
       "args": ["-y", "@nockhq/mcp"]
+    }
+  }
+}
+```
+
+Option B — from source (this repo)
+
+```json
+{
+  "mcpServers": {
+    "nock": {
+      "command": "node",
+      "args": ["./packages/mcp/dist/bin.js"]
     }
   }
 }

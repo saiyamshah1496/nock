@@ -1,6 +1,6 @@
 {
   "name": "@nockhq/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Estate-aware approve/block for Postgres DDL. Never applies migrations. CLI ≡ Action ≡ MCP.",
   "license": "MIT",
   "main": "dist/index.js",
