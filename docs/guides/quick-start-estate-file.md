@@ -1,4 +1,4 @@
-# Path A — Paste or commit `estate.json` (free)
+# Quick start: check a migration with an estate file
 
 Goal: make Nock reproducible in minutes with no database connection. You provide an estate snapshot JSON file, and Nock checks your migrations locally or in CI.
 
@@ -98,5 +98,5 @@ jobs:
 - Red: unsafe; fix or defer until off-peak or with stronger mitigations
 
 Next steps
-- To generate `.nock/estate.json` from a database on your runner (no hosted service required), see Path B: `docs/guides/path-b-connect.md`.
+- To generate `.nock/estate.json` from a database on your runner (no hosted service required), see: `docs/guides/sync-estate.md`.
 

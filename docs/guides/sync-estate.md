@@ -1,4 +1,4 @@
-# Path B — Connect and sync estate on your runner (free)
+# Keep estate fresh with sync-estate
 
 Goal: generate `.nock/estate.json` from your Postgres replica on your own GitHub runner (no hosted service). Then use that file in PR checks.
 
@@ -11,10 +11,10 @@ You’ll do this once and schedule it:
 
 CLI ≡ Action ≡ MCP — same verdict surface; this guide uses CLI in workflows for simplicity.
 
-## 1) GRANTs for a read‑only role
+## 1) Grants for a read‑only role
 
 Use a dedicated role that can read catalog/statistics only — not table rows.
-- See `docs/grants-stats-role.md` (uses estate terminology) for SQL you can adapt
+- See `docs/guides/grants-sync-estate.md` for SQL you can adapt
 - Prefer connecting to a read replica
 - Managed PGs often require `?sslmode=require` on the connection URL
 
@@ -57,7 +57,7 @@ jobs:
 ```
 
 Tips
-- Keep `.nock/estate.json` in the repo (commit) or publish it as an artifact — both are free‑path.
+- Keep `.nock/estate.json` in the repo (commit) or publish it as an artifact.
 - Estate contains sizes and version only; no row data or secrets.
 
 ## 4) PR check that uses `.nock/estate.json`
@@ -93,9 +93,9 @@ jobs:
             --format "json"
 ```
 
-That’s it — no hosted Team or external API required for Path B.
+That’s it — no hosted service required.
 
 See also
-- `examples/workflows/nock-sync-push.yml` shows an optional Path B+ “push to hosted API” job. Ignore that for the free path.
-- `docs/guides/path-a-paste.md` for a zero‑DB, paste/file quickstart.
+- `examples/workflows/nock-sync-push.yml` shows an optional “push to hosted API” job.
+- `docs/guides/local-estate-file.md` for a zero‑DB, paste/file quickstart.
 

@@ -1,4 +1,4 @@
-# Grants for Nock sync-estate (Path B)
+# Grants for sync-estate
 
 Purpose: create a least-privilege role that can run the `sync-estate` catalogue query (no table row data). Prefer connecting to a read replica.
 
