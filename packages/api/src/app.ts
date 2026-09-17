@@ -8,6 +8,7 @@ import {
   type PolicyAuditStoreFactory,
   type PolicyPack,
 } from "./policy_audit_store";
+import { handleWebhook } from "./github_app";
 
 function requireToken(c: any): string | null {
   const header = c.req.header("authorization") || c.req.header("Authorization");
@@ -47,6 +48,11 @@ export function createApp(
   const app = new Hono();
   // Health
   app.get("/healthz", (c) => c.text("ok"));
+  // GitHub App webhook (PR1: always-Neutral check_run on relevant PR events)
+  app.post("/github/webhook", async (c) => {
+    const raw = await c.req.arrayBuffer();
+    return await handleWebhook(c, raw);
+  });
   // POST /v1/estate/:repoId
   app.post("/v1/estate/:repoId", async (c) => {
     const repoId = c.req.param("repoId");

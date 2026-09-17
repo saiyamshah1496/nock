@@ -231,6 +231,23 @@ PR CI runs on GitHub Actions with:
 
 No deploy in CI. Tests pass without R2/Cloudflare secrets; any online integrations are skipped if env is unset.
 
+## GitHub App (PR1 skeleton)
+
+The API Worker now exposes a GitHub App webhook at `/github/webhook` (Hono route), per design `docs/design/018-github-app.md`. PR1 only publishes an always‑Neutral check_run named “Nock: DDL gate” on relevant `pull_request` events.
+
+- Required Worker secrets (set via `wrangler secret put ...`):
+  - `GITHUB_WEBHOOK_SECRET`
+  - `GITHUB_APP_ID` (numeric)
+  - `GITHUB_APP_PRIVATE_KEY` (PEM; paste with newlines or `\n`)
+- App permissions (documented in 018):
+  - Metadata: Read
+  - Contents: Read
+  - Pull requests: Read (Write will be needed later for PR comments)
+  - Checks: Read & Write
+- Local dev: `packages/api/src/server.ts` runs the Hono app with Node 20. Webhook signature verification uses HMAC SHA‑256. JWT/installation token flow uses `jose`.
+
+See `docs/design/019-github-app-pr1.md` for a brief status note on what’s included in PR1 and what’s deferred.
+
 ## How to publish (npm)
 
 Nock is a pnpm workspaces monorepo. Source `package.json` files intentionally use `workspace:*` for intra‑repo dependencies — this MUST remain in source. Only pnpm resolves the `workspace:` protocol correctly on publish. Do NOT run plain `npm publish` from a package directory; it will leak `workspace:*` into the published tarball and break `npx`/installs.
