@@ -6,6 +6,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "nock-mcp": "dist/bin.js"
+  },
   "scripts": {
     "build": "tsc -b",
     "clean": "rimraf dist || true",

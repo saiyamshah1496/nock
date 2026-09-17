@@ -62,9 +62,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-GitHub App later.
+Prefer the CLI workflow in `examples/workflows/nock.yml` if you’re not using a published Action yet — the `uses: ./.github/actions/nock` path above is example‑only until a package is published. GitHub App later.
 
-### How to read results
+## How to read results
 
 - Green: safe to merge
 - Yellow: risky or unknown pattern; warn by default, or fail when `fail-on: yellow`
@@ -77,7 +77,7 @@ Create a least‑privilege read‑only role that can run the catalogue query (no
 
 ## MCP: check before apply
 
-See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs.
+See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: `docs/guides/mcp-check-before-apply.md`
 
 ## Rules
 
@@ -101,9 +101,11 @@ See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`.
 - Quick start: check a migration with an estate file — `docs/guides/quick-start-estate-file.md`
 - Keep estate fresh with sync-estate — `docs/guides/sync-estate.md`
 - Grants for sync-estate — `docs/guides/grants-sync-estate.md`
+- MCP: check before apply — `docs/guides/mcp-check-before-apply.md`
 - Security notes — `docs/SECURITY.md`
 - Development — `docs/DEVELOPMENT.md`
 - License — MIT (see `LICENSE`)
+ - Nock Team (hosted estate + org policy + audit) — `docs/guides/nock-team.md`
 
 ## Stub only: Nock Team (hosted estate + org policy + audit)
 
