@@ -1,5 +1,5 @@
 {
-  "name": "@nock/action",
+  "name": "@nockhq/action",
   "version": "0.1.0",
   "private": true,
   "description": "Nock GitHub Action wrapper",
@@ -14,7 +14,7 @@
   "dependencies": {
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0",
-    "@nock/core": "workspace:*",
+    "@nockhq/core": "workspace:*",
     "yaml": "^2.5.0"
   },
   "devDependencies": {
