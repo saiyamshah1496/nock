@@ -105,6 +105,68 @@ code {
   padding: 20px;
   box-shadow: var(--shadow);
 }
+
+/* Primary CTA card */
+.cta-card {
+  margin-top: 28px;
+}
+.cta-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 4px 0 10px;
+}
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand);
+  color: #0B0F14;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.25);
+  transition: transform 0.04s ease;
+}
+.cta-btn:hover { transform: translateY(-1px); }
+
+.code-block {
+  position: relative;
+  margin: 8px 0 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.code-header {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 12px 0;
+}
+.code-pre {
+  margin: 0;
+  padding: 8px 12px 12px;
+  overflow-x: auto;
+}
+.code-pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #d4dbe3;
+}
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
 .card-title {
   margin: 0 0 4px;
   font-size: 18px;

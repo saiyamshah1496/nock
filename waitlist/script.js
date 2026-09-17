@@ -3,6 +3,7 @@
   const emailInput = document.getElementById('email');
   const submitBtn = document.getElementById('submit-btn');
   const statusEl = document.getElementById('form-status');
+  const copyBtn = document.querySelector('.copy-btn');
 
   const setStatus = (msg, type) => {
     statusEl.textContent = msg;
@@ -66,5 +67,34 @@
       submitBtn.disabled = false;
     }
   });
+
+  // Copy to clipboard for primary CTA command
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const selector = copyBtn.getAttribute('data-copy-target');
+      const target = selector ? document.querySelector(selector) : null;
+      const text = target ? target.textContent : '';
+      if (!text) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        const original = copyBtn.textContent;
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => { copyBtn.textContent = original; }, 1200);
+      } catch (_) {
+        // no-op
+      }
+    });
+  }
 })();
 

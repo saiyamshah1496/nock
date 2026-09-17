@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Nock - Governance for Postgres DDL</title>
-    <meta name="description" content="Nock adds approve/block governance before risky Postgres DDL ships. Private beta waitlist." />
+    <meta name="description" content="Nock adds approve/block governance before risky Postgres DDL ships. Try the free CLI path today." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,40 +16,57 @@
         <div class="brand">
           <div class="logo">Nock</div>
         </div>
-        <div class="beta-tag">Private beta · Waitlist</div>
+        <div class="beta-tag">Open source · Free path</div>
       </div>
     </header>
 
     <main>
       <section class="hero">
         <div class="container">
-          <span class="badge">Private beta</span>
+          <span class="badge">Open source free path</span>
           <h1 class="hero-title">Prevent risky Postgres DDL from shipping</h1>
           <p class="hero-subtitle">
             Deterministic checks on proposed schema changes using your estate snapshot (table sizes), lock class awareness, and a <code>lock_timeout</code> policy - and it never applies migrations.
           </p>
-
-          <div class="waitlist-card">
-            <h2 class="card-title">Join the waitlist</h2>
-            <p class="card-subtitle">Platform and SRE leaders, get early access updates.</p>
-
-            <form id="waitlist-form" class="waitlist-form" novalidate>
-              <div class="form-row">
-                <label class="visually-hidden" for="email">Work email</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  inputmode="email"
-                  autocomplete="email"
-                  placeholder="name@company.com"
-                  required
-                />
-                <button id="submit-btn" type="submit">Request invite</button>
+          <div class="grid-2">
+            <!-- Primary CTA: Try free now -->
+            <div class="card cta-card">
+              <h2 class="card-title">Try free now</h2>
+              <p class="card-subtitle">Use the CLI to check migrations locally and in CI.</p>
+              <div class="cta-actions">
+                <a class="cta-btn" href="https://github.com/saiyamshah1496/nock" target="_blank" rel="noopener">View on GitHub</a>
               </div>
-              <p class="form-hint">We’ll only use this to contact you about the private beta.</p>
-              <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
-            </form>
+              <div class="code-block">
+                <div class="code-header">Copy and run:</div>
+                <pre class="code-pre"><code id="npx-command">npx @nockhq/cli@0.1.1 check --sql migrations/001.sql --estate .nock/estate.json --format json</code></pre>
+                <button class="copy-btn" data-copy-target="#npx-command" type="button" aria-label="Copy command">Copy</button>
+              </div>
+              <p class="small-muted">Free modes: bring your own estate / sync estate yourself (CLI / Action / MCP).</p>
+            </div>
+
+            <!-- Secondary: optional updates -->
+            <div class="waitlist-card">
+              <h2 class="card-title">Get updates</h2>
+              <p class="card-subtitle">Platform and SRE leaders, optional updates on releases and design partner calls.</p>
+
+              <form id="waitlist-form" class="waitlist-form" novalidate>
+                <div class="form-row">
+                  <label class="visually-hidden" for="email">Work email</label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    placeholder="name@company.com"
+                    required
+                  />
+                  <button id="submit-btn" type="submit">Get updates</button>
+                </div>
+                <p class="form-hint">We’ll only use this to contact you with Nock updates.</p>
+                <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+              </form>
+            </div>
           </div>
         </div>
       </section>
@@ -119,11 +136,10 @@
         <div class="container">
           <div class="pricing-card card">
             <div>
-              <h3 class="section-title">Free CLI + Team</h3>
+              <h3 class="section-title">Free path today</h3>
               <p class="section-body"><strong>Free</strong>: local and CI checks with your estate. Bring your own estate and sync yourself (CLI / GitHub Action / MCP).</p>
-              <p class="section-body"><strong>Team</strong>: hosted estate plus org policy and audit (same engine; ops convenience). <strong>Coming soon.</strong></p>
+              <p class="section-body small-muted"><strong>Team</strong>: hosted estate plus policy and audit - same engine, ops convenience. <strong>Coming soon</strong> for design partners.</p>
             </div>
-            <p class="small-muted">Private beta / waitlist only - not a public launch.</p>
           </div>
         </div>
       </section>
