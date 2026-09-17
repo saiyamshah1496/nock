@@ -159,7 +159,7 @@ function isAlterTableAddColumn(sql: string): { table?: TableRef; column?: string
 function isAlterTableSetNotNull(sql: string): { table?: TableRef; column?: string } | null {
   const clean = stripSqlComments(sql);
   const m =
-    /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+ALTER\s+COLUMN\s+([A-Za-z0-9_".]+)\s+SET\s+NOT\s+NULL/i.exec(
+    /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)\s+ALTER\s+(?:COLUMN\s+)?([A-Za-z0-9_".]+)\s+SET\s+NOT\s+NULL/i.exec(
       clean.trim()
     );
   if (!m) return null;
@@ -232,6 +232,92 @@ function stripSqlComments(sql: string): string {
   return sql.replace(/--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").trim();
 }
 
+// Parse: ALTER TABLE <tbl> ADD CONSTRAINT <name> CHECK (<col> IS NOT NULL) NOT VALID;
+function parseAddNotValidCheckOnColumn(
+  sql: string
+): { table?: TableRef; column?: string; constraint?: string } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean) || !/\bADD\s+CONSTRAINT\b/i.test(clean) || !/\bCHECK\s*\(/i.test(clean)) {
+    return null;
+  }
+  if (!/\bNOT\s+VALID\b/i.test(clean)) return null;
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const cm = /\bADD\s+CONSTRAINT\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const exprM = /\bCHECK\s*\(([\s\S]*?)\)\s*NOT\s+VALID/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  const parts = fq ? fq.split(".") : [];
+  const table: TableRef | undefined = fq
+    ? parts.length === 2
+      ? { schema: parts[0], name: parts[1] }
+      : { schema: "public", name: parts[0] }
+    : undefined;
+  const constraint = cm?.[1]?.replace(/"/g, "");
+  let column: string | undefined = undefined;
+  if (exprM?.[1]) {
+    const expr = exprM[1].replace(/\s+/g, " ").trim().replace(/"/g, "");
+    const m2 = /^([A-Za-z0-9_.]+)\s+IS\s+NOT\s+NULL$/i.exec(expr) || /^\(([A-Za-z0-9_.]+)\)\s+IS\s+NOT\s+NULL$/i.exec(expr);
+    column = m2?.[1]?.split(".").pop();
+  }
+  return { table, column, constraint };
+}
+
+// Parse: ALTER TABLE <tbl> VALIDATE CONSTRAINT <name>;
+function parseValidateConstraint(sql: string): { table?: TableRef; constraint?: string } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean) || !/\bVALIDATE\s+CONSTRAINT\b/i.test(clean)) return null;
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const cm = /\bVALIDATE\s+CONSTRAINT\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  const parts = fq ? fq.split(".") : [];
+  const table: TableRef | undefined = fq
+    ? parts.length === 2
+      ? { schema: parts[0], name: parts[1] }
+      : { schema: "public", name: parts[0] }
+    : undefined;
+  const constraint = cm?.[1]?.replace(/"/g, "");
+  return { table, constraint };
+}
+
+// Detect expand/contract: ADD CONSTRAINT ... NOT VALID then VALIDATE CONSTRAINT for same table/column before SET NOT NULL
+function hasExpandContractForNotNull(
+  sqls: string[],
+  table?: TableRef,
+  column?: string,
+  setIndexHint?: number
+): boolean {
+  if (!table || !column) return false;
+  const tkey = `${table.schema.toLowerCase()}.${table.name.toLowerCase()}`;
+  // collect all matches with their positions
+  const adds: Array<{ idx: number; constraint: string }> = [];
+  const validates: Array<{ idx: number; constraint: string }> = [];
+  for (let i = 0; i < sqls.length; i++) {
+    const add = parseAddNotValidCheckOnColumn(sqls[i]);
+    if (add?.table && add?.column && add?.constraint) {
+      const akey = `${add.table.schema.toLowerCase()}.${add.table.name.toLowerCase()}`;
+      if (akey === tkey && add.column.toLowerCase() === column.toLowerCase()) {
+        adds.push({ idx: i, constraint: add.constraint });
+      }
+    }
+    const val = parseValidateConstraint(sqls[i]);
+    if (val?.table && val?.constraint) {
+      const vkey = `${val.table.schema.toLowerCase()}.${val.table.name.toLowerCase()}`;
+      if (vkey === tkey) {
+        validates.push({ idx: i, constraint: val.constraint });
+      }
+    }
+  }
+  const maxSetIdx = typeof setIndexHint === "number" ? setIndexHint : sqls.length;
+  // look for a pair add<validate where both come before SET NOT NULL
+  for (const a of adds) {
+    for (const v of validates) {
+      if (v.idx > a.idx && v.idx < maxSetIdx && v.constraint.toLowerCase() === a.constraint.toLowerCase()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function check(input: CheckInput): VerdictV1 {
   const sqls = Array.isArray(input.sql)
     ? input.sql.flatMap((s) => splitSqlStatements(s))
@@ -244,11 +330,12 @@ export function check(input: CheckInput): VerdictV1 {
   const priorLockTimeoutFlags: boolean[] = [];
   let seenLockTimeout = false;
 
-  for (const sql of sqls) {
+  for (let stmtIdx = 0; stmtIdx < sqls.length; stmtIdx++) {
+    const sql = sqls[stmtIdx];
     const up = sql.trim().toUpperCase();
     priorLockTimeoutFlags.push(seenLockTimeout);
-    // Track SET lock_timeout and SET LOCAL lock_timeout; either clears R004/R010 for subsequent DDL
-    if (/^SET\s+(?:LOCAL\s+)?LOCK_TIMEOUT\s*(=|TO)/i.test(up)) {
+    // Recognize both SET and SET LOCAL, with '=' or 'TO' assignment forms
+    if (/^SET(\s+LOCAL)?\s+LOCK_TIMEOUT\s*(=|TO)\s*/i.test(up)) {
       seenLockTimeout = true;
       // Not a DDL to classify — continue to next
       statements.push({
@@ -331,7 +418,8 @@ export function check(input: CheckInput): VerdictV1 {
       if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= hotRows) {
         violations.push({
           rule_id: "R004",
-          severity: (policy.rules?.R004?.require_lock_timeout ? "red" : "yellow") as "red" | "yellow",
+          // Default: red floor at 1M rows for hot/lock_timeout rules
+          severity: "red",
           message: `ADD COLUMN without lock_timeout on hot table ${addCol.table ? addCol.table.name : "unknown"} (${formatRows(
             nLive
           )} rows)`,
@@ -403,21 +491,38 @@ export function check(input: CheckInput): VerdictV1 {
       continue;
     }
 
-    // R005: SET NOT NULL without validated CHECK (simplified: treat as unsafe on large tables)
+    // R005: SET NOT NULL without validated CHECK (size-gated)
     const setNotNull = isAlterTableSetNotNull(sql);
     if (setNotNull) {
       const tstats = findTableEstate(input.estate, setNotNull.table);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R005?.red_rows ?? 100_000;
-      if (typeof nLive === "number" && nLive >= redRows) {
+      // Suppress/downgrade when expand/contract pattern is present in the same batch:
+      //  ADD CONSTRAINT ... CHECK (<col> IS NOT NULL) NOT VALID; VALIDATE CONSTRAINT ...; then SET NOT NULL
+      // Estate-only limitation: without a live DB we cannot see already-validated catalog CHECKs.
+      const expandContractOk =
+        hasExpandContractForNotNull(sqls, setNotNull.table, setNotNull.column, stmtIdx) === true;
+      if (typeof nLive === "number" && nLive >= redRows && !expandContractOk) {
         violations.push({
           rule_id: "R005",
           severity: "red",
-          message: `SET NOT NULL without validated CHECK on ${setNotNull.table ? setNotNull.table.name : "unknown"} (${formatRows(
+          message: `SET NOT NULL may scan/rewrite on ${setNotNull.table ? setNotNull.table.name : "unknown"} (${formatRows(
             nLive
-          )} rows)`,
+          )} rows); remediate with NOT VALID CHECK → VALIDATE → SET NOT NULL`,
           remediation_sql:
             "ALTER TABLE <table> ADD CONSTRAINT <col>_nn CHECK (<col> IS NOT NULL) NOT VALID; ALTER TABLE <table> VALIDATE CONSTRAINT <col>_nn; ALTER TABLE <table> ALTER COLUMN <col> SET NOT NULL;"
+        });
+      }
+      // R010: generic hot DDL without prior lock_timeout
+      const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+      if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+        violations.push({
+          rule_id: "R010",
+          severity: "red",
+          message: `Missing lock_timeout for DDL on hot table ${setNotNull.table ? setNotNull.table.name : "unknown"} (${formatRows(
+            nLive
+          )} rows)`,
+          remediation_sql: "SET lock_timeout = '3s';"
         });
       }
       statements.push({
