@@ -1,4 +1,4 @@
-# Grants for Nock sync-estate (Path B)
+# Grants for sync-estate
 
 Purpose: create a least-privilege role that can run the `sync-estate` catalogue query (no table row data). Prefer connecting to a read replica.
 
@@ -7,16 +7,16 @@ Status: initial guidance. Managed providers vary; mark caveats as UNVERIFIED whe
 ## Minimal role (illustrative)
 
 ```sql
--- Create a dedicated stats role (use stronger password / secret manager in practice)
-CREATE ROLE nock_stats LOGIN PASSWORD 'REDACTED';
+-- Create a dedicated estate role (use stronger password / secret manager in practice)
+CREATE ROLE nock_estate LOGIN PASSWORD 'REDACTED';
 
 -- Allow connections to the target database
-GRANT CONNECT ON DATABASE appdb TO nock_stats;
+GRANT CONNECT ON DATABASE appdb TO nock_estate;
 
 -- Allow usage on application schemas you want to inspect (or all non-system schemas)
-GRANT USAGE ON SCHEMA public TO nock_stats;
+GRANT USAGE ON SCHEMA public TO nock_estate;
 -- Repeat for other schemas as needed, e.g.:
--- GRANT USAGE ON SCHEMA accounting, users TO nock_stats;
+-- GRANT USAGE ON SCHEMA accounting, users TO nock_estate;
 
 -- Grant SELECT on required catalogue / stats sources
 -- UNVERIFIED: exact object-level GRANTs depend on provider defaults.
@@ -32,10 +32,10 @@ Notes:
 
 ## Connection examples
 
-- Plain: `postgres://nock_stats:****@replica.example.com:5432/appdb`
+- Plain: `postgres://nock_estate:****@replica.example.com:5432/appdb`
 - SSL (many managed PGs): `postgres://…/appdb?sslmode=require`
 
 ## Revocation
 
-Rotate the role password periodically and `REVOKE CONNECT` / `DROP ROLE nock_stats` to disable.
+Rotate the role password periodically and `REVOKE CONNECT` / `DROP ROLE nock_estate` to disable.
 

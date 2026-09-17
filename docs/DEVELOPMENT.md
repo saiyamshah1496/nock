@@ -2,6 +2,10 @@
 
 Senior-staff quickstart for contributing to Nock Phase 1.
 
+For product usage, see:
+- `docs/guides/quick-start-estate-file.md` (bring your own estate)
+- `docs/guides/sync-estate.md` (sync estate yourself)
+
 ## Repo map
 
 ```
@@ -75,9 +79,8 @@ Nock’s engine joins migration statements to an estate snapshot (`estate.json`)
 }
 ```
 
-Path A supports a paste/file path: point `--estate` to a local file (or our fixtures).
-Path B is available: `nock sync-estate --database-url $PG_URL --out .nock/estate.json` queries a replica with a read-only role and writes the same shape.
-Path C (hosted pull) is future opt‑in only.
+Bring your own estate: point `--estate` to a local file (or our fixtures).
+Sync estate yourself: `nock sync-estate --database-url $PG_URL --out .nock/estate.json` queries a replica with a read-only role and writes the same shape.
 
 Illustrative SQL used by `sync-estate` (no table row data; only catalog/stats):
 
@@ -106,7 +109,7 @@ WHERE c.relkind IN ('r', 'p')
 ORDER BY s.n_live_tup DESC NULLS LAST;
 ```
 
-This repo now includes Path B (sync) and Path B+ (hosted estate API). See `docs/design/008-sync-stats.md` (sync) and `docs/design/009-hosted-stats-api.md` (API), plus `docs/grants-stats-role.md`.
+This repo includes sync-estate and a thin hosted estate API. See `docs/design/008-sync-stats.md` (sync) and `docs/design/009-hosted-stats-api.md` (API), plus `docs/guides/grants-sync-estate.md`.
 Also see `docs/design/010-workers-r2-hosting.md` for the Workers + R2 deploy path.
 
 ### Running sync-estate locally
@@ -119,13 +122,13 @@ node packages/cli/dist/bin/nock.js sync-estate \
 
 Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip the live query.
 
-## Hosted estate for the GitHub Action (Path B+)
+## Hosted estate for the GitHub Action (Team)
 
 - Default API base (Saiyam’s Worker): `https://nock.saiyamshah1496.workers.dev`
 - Action inputs on `main`: `estate-api-url`, `estate-api-token`, with `estate-path` as fallback
 - Required secrets (names only): `NOCK_ESTATE_API_TOKEN`, `NOCK_ESTATE_KEK` (accepts fallbacks `NOCK_STATS_API_TOKEN`/`NOCK_STATS_KEK` for existing env)
 - See runnable examples under `examples/workflows/`:
-  - `nock-action.yml` — Action with hosted estate (Path B+)
+  - `nock-action.yml` — Action with optional hosted estate
   - `nock.yml` — CLI workflow (works without a packaged Action)
   - `nock-sync-push.yml` — scheduled `sync-estate` + push to hosted API
 

@@ -14,7 +14,7 @@ inputs:
     required: false
     default: ".nock/estate.json"
   estate-api-url:
-    description: "Optional: GET URL for hosted estate API (Path B+)"
+    description: "Optional: GET URL for hosted estate API (Nock Team)"
     required: false
   estate-api-token:
     description: "Optional: Bearer token for hosted estate API"

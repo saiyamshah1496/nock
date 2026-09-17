@@ -1,8 +1,8 @@
-## Example: Nock — GitHub Action with hosted stats (Path B+)
+## Example: Nock — GitHub Action with hosted estate (Nock Team)
 ## NOTE: The `uses:` line below assumes you've copied the packaged action
 ## to `.github/actions/nock` in YOUR repo, or replaced it with a published action reference.
 ## The action on this repo is in `packages/action/` and is not packaged with `dist/` here.
-name: Nock — Action (hosted stats)
+name: Nock — Action (hosted estate)
 on:
   pull_request:
     paths:
@@ -20,7 +20,7 @@ jobs:
         uses: ./.github/actions/nock  # replace with your published action ref if applicable
         with:
           migration-path: migrations/
-          # Hosted estate (Path B+): GET last-good from Saiyam’s Worker
+          # Hosted estate (Nock Team): GET last-good from hosted API
           estate-api-url: https://nock.saiyamshah1496.workers.dev/v1/estate/my-repo
           estate-api-token: ${{ secrets.NOCK_ESTATE_API_TOKEN }}
           # Fallback to file when hosted is unavailable (OSS/local)

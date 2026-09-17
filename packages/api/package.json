@@ -1,7 +1,7 @@
 {
   "name": "@nock/api",
   "version": "0.1.0",
-  "description": "Nock hosted estate API (Path B+)",
+  "description": "Nock hosted estate API (Team)",
   "license": "MIT",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
