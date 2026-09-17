@@ -119,6 +119,49 @@ export class D1PolicyAuditStore implements PolicyAuditStore {
     }));
   }
 
+  async exportAuditByRepo(
+    repoId: string,
+    opts?: { since?: string; until?: string }
+  ): Promise<AuditEventRow[]> {
+    const clauses = ["repo_id = ?1"];
+    const params: any[] = [repoId];
+    let bindIndex = 2;
+    if (opts?.since && Number.isFinite(Date.parse(String(opts.since)))) {
+      clauses.push(`created_at >= ?${bindIndex++}`);
+      params.push(String(opts.since));
+    }
+    if (opts?.until && Number.isFinite(Date.parse(String(opts.until)))) {
+      clauses.push(`created_at <= ?${bindIndex++}`);
+      params.push(String(opts.until));
+    }
+    const where = clauses.join(" AND ");
+    const sql = `
+      SELECT id, org_id, repo_id, sql_hash, verdict, rule_ids_json,
+             estate_captured_at, freshness, rule_hits_json,
+             policy_version, actor, ci_run_id, created_at
+      FROM audit_events
+      WHERE ${where}
+      ORDER BY created_at ASC
+    `;
+    const stmt = this.db.prepare(sql);
+    const { results } = await (stmt as any).bind(...params).all();
+    return (results || []).map((r: any) => ({
+      id: Number(r.id),
+      org_id: String(r.org_id),
+      repo_id: String(r.repo_id),
+      sql_hash: String(r.sql_hash),
+      verdict: String(r.verdict) as "pass" | "fail",
+      rule_ids: JSON.parse(String(r.rule_ids_json) || "[]"),
+      estate_captured_at: r.estate_captured_at != null ? String(r.estate_captured_at) : undefined,
+      freshness: r.freshness != null ? (String(r.freshness) as any) : undefined,
+      rule_hits: r.rule_hits_json != null ? JSON.parse(String(r.rule_hits_json)) : undefined,
+      policy_version: r.policy_version != null ? Number(r.policy_version) : undefined,
+      actor: r.actor != null ? String(r.actor) : undefined,
+      ci_run_id: r.ci_run_id != null ? String(r.ci_run_id) : undefined,
+      created_at: String(r.created_at),
+    }));
+  }
+
   async pruneOld(days?: number): Promise<number> {
     const d = days ?? this.retentionDays;
     const { meta } = await this.db
