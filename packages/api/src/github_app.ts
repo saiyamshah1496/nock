@@ -2,7 +2,7 @@ import { type Context } from "hono";
 import picomatch from "picomatch";
 import { importPKCS8, SignJWT, jwtVerify } from "jose";
 import YAML from "yaml";
-import { check, type EstateSnapshot, type PolicyResolved, type VerdictV1 } from "@nockhq/core";
+import { check, type EstateSnapshot, type PolicyResolved, type VerdictV1, computeFreshness } from "@nockhq/core";
 
 // ---- Constants (locked naming from 018) ----
 export const CHECK_RUN_NAME = "Nock: DDL gate";
@@ -539,10 +539,19 @@ async function postVerdictCheckRun(opts: {
   const apiBase = (opts.apiBase || "https://api.github.com").replace(/\/+$/, "");
   const url = `${apiBase}/repos/${opts.owner}/${opts.repo}/check-runs`;
   const mapped = mapVerdictToConclusion(opts.verdict);
+  const ageH = opts.verdict.meta.estate_age_hours;
+  const staleWarn =
+    typeof ageH === "number" && ageH >= 7 * 24
+      ? `\nNote: Estate is stale (${Math.floor(ageH / 24)}d).` +
+        (typeof ageH === "number" && ageH > 30 * 24
+          ? " Size‑gated rules neutralized."
+          : "")
+      : "";
   const summary =
     mapped.summary +
     `\n\nPolicy: ${opts.verdict.meta.policy_id}\nEngine: ${opts.verdict.meta.engine}` +
-    (opts.verdict.meta.estate_captured_at ? `\nEstate captured at: ${opts.verdict.meta.estate_captured_at}` : "");
+    (opts.verdict.meta.estate_captured_at ? `\nEstate captured at: ${opts.verdict.meta.estate_captured_at}` : "") +
+    staleWarn;
   const body = {
     name: CHECK_RUN_NAME,
     head_sha: opts.headSha,
@@ -675,7 +684,13 @@ export async function handleWebhook(c: Context, rawBody: ArrayBuffer): Promise<R
       const policy = await resolvePolicy(repoLoc);
       const sqls = await fetchChangedSqlContents({ ...repoLoc, changedFiles: files });
       // Run engine
-      const verdict = check({ sql: sqls, estate, policy });
+      const band = computeFreshness(estate.captured_at);
+      const verdict = check({
+        sql: sqls,
+        estate,
+        policy,
+        noStatsBehavior: band === "stale" ? "warn" : undefined,
+      });
       await postVerdictCheckRun({ owner, repo, headSha, installationToken: token, verdict });
       // PR3: fail-only PR comment with dedupe
       try {

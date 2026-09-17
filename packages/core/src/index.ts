@@ -67,6 +67,7 @@ export interface VerdictV1 {
     pg_version?: string;
     estate_captured_at?: string;
     estate_age_hours?: number;
+    size_gates_neutralized?: boolean;
     policy_id: string;
     engine: "postgres";
   };
@@ -77,6 +78,17 @@ export interface CheckInput {
   estate: EstateSnapshot;
   policy: PolicyResolved;
   pgVersion?: string;
+  /**
+   * When set to "warn", treat size-gated rules as no-stats: any
+   * red-size violations are downgraded to yellow so checks are neutral.
+   * When "fail_closed", size-gated unknowns are escalated — currently
+   * unused in product but kept for schema lock.
+   */
+  noStatsBehavior?: "warn" | "fail_closed";
+  /**
+   * Optional wall clock for tests; defaults to Date.now()
+   */
+  nowMs?: number;
 }
 
 // Expansion hooks (interfaces)
@@ -623,6 +635,11 @@ function hasExpandContractForNotNull(
 }
 
 export function check(input: CheckInput): VerdictV1 {
+  const nowMs = typeof input.nowMs === "number" ? input.nowMs : Date.now();
+  const capturedAtMs = input.estate?.captured_at ? Date.parse(String(input.estate.captured_at)) : NaN;
+  const estateAgeHours = Number.isFinite(capturedAtMs) ? Math.max(0, Math.round((nowMs - capturedAtMs) / 3600000)) : undefined;
+  const sizeGatesNeutralized = input.noStatsBehavior === "warn";
+
   const sqls = Array.isArray(input.sql)
     ? input.sql.flatMap((s) => splitSqlStatements(s))
     : splitSqlStatements(input.sql);
@@ -1394,6 +1411,34 @@ export function check(input: CheckInput): VerdictV1 {
   const verdictFlag =
     failOn === "red" ? (hasRed ? "fail" : "pass") : hasRed || hasYellow ? "fail" : "pass";
 
+  // Post-process: apply no-stats behavior to size-gated rules when requested
+  if (input.noStatsBehavior === "warn") {
+    const sizeGated = new Set([
+      "R001",
+      "R003",
+      "R004",
+      "R005",
+      "R006",
+      "R007",
+      "R008",
+      "R010",
+      "R013",
+      "R014",
+      "R015",
+      "R016",
+      "R017",
+      "R018",
+    ]);
+    for (const v of violations) {
+      if (v.severity === "red" && sizeGated.has(v.rule_id)) {
+        v.severity = "yellow";
+        if (!/due to stale estate|no-stats/i.test(v.message)) {
+          v.message = `${v.message} — downgraded due to no-stats/stale estate`;
+        }
+      }
+    }
+  }
+
   return {
     schema_version: "1",
     verdict: verdictFlag,
@@ -1402,9 +1447,13 @@ export function check(input: CheckInput): VerdictV1 {
     meta: {
       pg_version: input.pgVersion ?? input.estate.pg_version,
       estate_captured_at: input.estate.captured_at,
+      estate_age_hours: estateAgeHours,
+      size_gates_neutralized: sizeGatesNeutralized || undefined,
       policy_id: policy.id,
       engine: "postgres"
     }
   };
 }
+
+// Team data-plane freshness/types are exported above from ./team/data-plane
 

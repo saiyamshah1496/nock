@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { EstateStore } from "./store";
 import type { EstateSnapshot } from "@nockhq/core";
+import { PUSH_SKEW_MS } from "@nockhq/core";
 import { envelopeDecryptToSnapshot, type EnvelopeV1 } from "@nockhq/secure-estate";
 import {
   InMemoryPolicyAuditStore,
@@ -64,13 +65,22 @@ export function createApp(
       const body = await c.req.json();
       if (isDevPlain) {
         const snapshot = body as EstateSnapshot;
+        // Enforce freshness skew: reject if captured_at deviates > 1 hour from server time
+        const cap = snapshot?.captured_at ? Date.parse(String(snapshot.captured_at)) : NaN;
+        if (Number.isFinite(cap) && Math.abs(Date.now() - cap) > PUSH_SKEW_MS) {
+          return errJson(c, "captured_at skew exceeds 1 hour", 400);
+        }
         await statsStore.savePlaintext(repoId, snapshot);
         return okJson(c, { status: "ok", mode: "plaintext" }, 200);
       } else {
         const env = body as EnvelopeV1;
         const kek = process.env.NOCK_ESTATE_KEK || process.env.NOCK_STATS_KEK;
         if (!kek) return errJson(c, "server missing NOCK_ESTATE_KEK", 500);
-        envelopeDecryptToSnapshot(env, kek);
+        const snap = envelopeDecryptToSnapshot(env, kek);
+        const cap = snap?.captured_at ? Date.parse(String(snap.captured_at)) : NaN;
+        if (Number.isFinite(cap) && Math.abs(Date.now() - cap) > PUSH_SKEW_MS) {
+          return errJson(c, "captured_at skew exceeds 1 hour", 400);
+        }
         await statsStore.saveEnvelope(repoId, env);
         return okJson(c, { status: "ok", mode: "envelope" }, 200);
       }
