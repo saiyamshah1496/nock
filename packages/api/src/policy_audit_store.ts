@@ -15,12 +15,22 @@ export interface PolicyRecord {
   createdAt: string; // ISO
 }
 
+// Canonical Team data-plane types from @nockhq/core
+export type { FreshnessBand as Freshness } from "@nockhq/core"; // re-export alias to preserve API surface
+export type { RuleHit as RuleHitDetail } from "@nockhq/core"; // re-export alias
+export { computeFreshness } from "@nockhq/core";
+import type { FreshnessBand, RuleHit } from "@nockhq/core";
+
 export interface AuditEventInput {
   org_id: string;
   repo_id: string;
   sql_hash: string;
   verdict: "pass" | "fail";
   rule_ids: string[];
+  // Optional enrichment fields
+  estate_captured_at?: string;
+  freshness?: FreshnessBand;
+  rule_hits?: RuleHit[];
   policy_version?: number;
   actor?: string;
   ci_run_id?: string;

@@ -173,12 +173,22 @@ export function createApp(
     if (!org_id || !repo_id || !sql_hash || !verdict || !Array.isArray(rule_ids)) {
       return errJson(c, "missing required fields", 400);
     }
+    // Optional enrichment
+    const estate_captured_at: string | undefined =
+      typeof body?.estate_captured_at === "string" ? body.estate_captured_at : undefined;
+    const f = String(body?.freshness || "").toLowerCase();
+    const freshness: "fresh" | "warn" | "stale" | "missing" | undefined =
+      f === "fresh" || f === "warn" || f === "stale" || f === "missing" ? (f as any) : undefined;
+    const rule_hits = Array.isArray(body?.rule_hits) ? body.rule_hits : undefined;
     await store.appendAudit({
       org_id,
       repo_id,
       sql_hash,
       verdict: verdict === "pass" ? "pass" : "fail",
       rule_ids,
+      estate_captured_at,
+      freshness,
+      rule_hits,
       policy_version: body?.policy_version,
       actor: body?.actor,
       ci_run_id: body?.ci_run_id,
@@ -202,7 +212,7 @@ export function createApp(
     const repoId = c.req.param("repoId");
     const limit = Number(c.req.query("limit") || 50) || 50;
     const rows = await store.listAuditByRepo(repoId, limit);
-    // Map rule_ids_json → rule_ids
+    // Map rule_ids_json → rule_ids and include enrichment
     const out = rows.map((r) => ({
       id: r.id,
       org_id: r.org_id,
@@ -210,6 +220,9 @@ export function createApp(
       sql_hash: r.sql_hash,
       verdict: r.verdict,
       rule_ids: r.rule_ids,
+      estate_captured_at: r.estate_captured_at,
+      freshness: r.freshness,
+      rule_hits: r.rule_hits,
       policy_version: r.policy_version,
       actor: r.actor,
       ci_run_id: r.ci_run_id,

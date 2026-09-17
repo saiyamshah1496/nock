@@ -62,8 +62,12 @@ export class D1PolicyAuditStore implements PolicyAuditStore {
     await this.db
       .prepare(
         `
-        INSERT INTO audit_events (org_id, repo_id, sql_hash, verdict, rule_ids_json, policy_version, actor, ci_run_id)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        INSERT INTO audit_events (
+          org_id, repo_id, sql_hash, verdict, rule_ids_json,
+          estate_captured_at, freshness, rule_hits_json,
+          policy_version, actor, ci_run_id
+        )
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
         `
       )
       .bind(
@@ -72,6 +76,9 @@ export class D1PolicyAuditStore implements PolicyAuditStore {
         ev.sql_hash,
         ev.verdict,
         JSON.stringify(ev.rule_ids || []),
+        ev.estate_captured_at ?? null,
+        ev.freshness ?? null,
+        ev.rule_hits ? JSON.stringify(ev.rule_hits) : null,
         ev.policy_version ?? null,
         ev.actor ?? null,
         ev.ci_run_id ?? null
@@ -84,7 +91,9 @@ export class D1PolicyAuditStore implements PolicyAuditStore {
     const { results } = await this.db
       .prepare(
         `
-        SELECT id, org_id, repo_id, sql_hash, verdict, rule_ids_json, policy_version, actor, ci_run_id, created_at
+        SELECT id, org_id, repo_id, sql_hash, verdict, rule_ids_json,
+               estate_captured_at, freshness, rule_hits_json,
+               policy_version, actor, ci_run_id, created_at
         FROM audit_events
         WHERE repo_id = ?1
         ORDER BY created_at DESC
@@ -100,6 +109,9 @@ export class D1PolicyAuditStore implements PolicyAuditStore {
       sql_hash: String(r.sql_hash),
       verdict: String(r.verdict) as "pass" | "fail",
       rule_ids: JSON.parse(String(r.rule_ids_json) || "[]"),
+      estate_captured_at: r.estate_captured_at != null ? String(r.estate_captured_at) : undefined,
+      freshness: r.freshness != null ? (String(r.freshness) as any) : undefined,
+      rule_hits: r.rule_hits_json != null ? JSON.parse(String(r.rule_hits_json)) : undefined,
       policy_version: r.policy_version != null ? Number(r.policy_version) : undefined,
       actor: r.actor != null ? String(r.actor) : undefined,
       ci_run_id: r.ci_run_id != null ? String(r.ci_run_id) : undefined,
