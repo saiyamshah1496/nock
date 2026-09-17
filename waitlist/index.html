@@ -24,9 +24,9 @@
       <section class="hero">
         <div class="container">
           <span class="badge">Private beta</span>
-          <h1 class="hero-title">Prevent risky Postgres DDL from shipping</h1>
+          <h1 class="hero-title">Approve/block safety gate for Postgres DDL before merge</h1>
           <p class="hero-subtitle">
-            Approve/block governance for schema changes before locks or bad ALTERs hit production.
+            Deterministic checks on proposed schema-change DDL using your estate snapshot (table sizes), lock class, and a <code>lock_timeout</code> policy. Never applies migrations.
           </p>
 
           <div class="waitlist-card">
@@ -98,16 +98,16 @@
             <div class="card">
               <h3 class="section-title">What Nock does</h3>
               <p class="section-body">
-                Nock enforces an approve/block gate before risky schema changes ship. It evaluates proposed DDL
-                and requires explicit approval, helping teams build safe, consistent habits around schema evolution.
+                Nock is a Postgres migration safety gate: deterministic approve/block on schema-change DDL before merge using your estate snapshot (table sizes), lock class, and a <code>lock_timeout</code> policy. It never applies migrations. Not a pattern or style linter - pattern tools catch shapes, Nock catches unsafe on your data.
               </p>
             </div>
             <div class="card">
               <h3 class="section-title">How it thinks</h3>
               <ul class="bullets">
-                <li><strong>Size-aware checks</strong>: considers table/object sizes when flagging risk.</li>
-                <li><strong><code>lock_timeout</code> discipline</strong>: prevents untamed locks from stalling production.</li>
-                <li><strong>Plain-language guidance</strong>: pragmatic for platform/SRE leads.</li>
+                <li><strong>Estate snapshot (table sizes)</strong>: evaluates DDL against your latest estate snapshot.</li>
+                <li><strong>Lock class awareness</strong>: predicts which locks a change will take and where they block.</li>
+                <li><strong><code>lock_timeout</code> policy</strong>: enforces safe timeouts so production does not stall.</li>
+                <li><strong>Plain-language guidance</strong>: pragmatic for platform and SRE leads.</li>
               </ul>
             </div>
           </div>
@@ -120,8 +120,8 @@
           <div class="pricing-card card">
             <div>
               <h3 class="section-title">Free CLI + Team</h3>
-              <p class="section-body"><strong>Free</strong>: CLI (and GitHub Action/MCP) to check DDL locally or in CI.</p>
-              <p class="section-body"><strong>Team</strong>: hosted governance for orgs, <strong>~$79-99/mo</strong>. Packaging to be finalized.</p>
+              <p class="section-body"><strong>Free</strong>: local and CI checks with your estate. Bring your own estate and sync yourself (CLI / GitHub Action / MCP).</p>
+              <p class="section-body"><strong>Team</strong>: hosted estate plus org policy and audit (same engine; ops convenience). <strong>Team pricing TBA - from ~$79-99/mo</strong>.</p>
             </div>
             <p class="small-muted">Private beta / waitlist only - not a public launch.</p>
           </div>
