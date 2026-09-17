@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
 import { join } from "path";
-import { check } from "@nock/core";
+import { check } from "@nockhq/core";
 import { readFileSync } from "fs";
 
 function runCli(args: string[]) {

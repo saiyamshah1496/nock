@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as fs from "fs";
 import * as path from "path";
-import { check, type PolicyResolved, type EstateSnapshot } from "@nock/core";
+import { check, type PolicyResolved, type EstateSnapshot } from "@nockhq/core";
 import https from "https";
 import http from "http";
 import { URL } from "url";

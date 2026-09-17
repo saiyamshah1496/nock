@@ -1,4 +1,4 @@
-import { check, type PolicyResolved, type EstateSnapshot } from "@nock/core";
+import { check, type PolicyResolved, type EstateSnapshot } from "@nockhq/core";
 import * as fs from "fs";
 import { z } from "zod";
 
@@ -9,7 +9,7 @@ export async function startMcpServer() {
 
   // Create server (high-level API exposes tool registration)
   const server = new McpServer(
-    { name: "@nock/mcp", version: "0.1.0" },
+    { name: "@nockhq/mcp", version: "0.1.0" },
     { capabilities: { tools: {} } }
   );
 

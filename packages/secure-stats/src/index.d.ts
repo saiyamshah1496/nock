@@ -1,4 +1,4 @@
-import { type EstateSnapshot } from "@nock/core";
+import { type EstateSnapshot } from "@nockhq/core";
 export interface GcmBox {
     ct: string;
     iv: string;

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { EstateStore } from "./store";
-import type { EstateSnapshot } from "@nock/core";
-import { envelopeDecryptToSnapshot, type EnvelopeV1 } from "@nock/secure-estate";
+import type { EstateSnapshot } from "@nockhq/core";
+import { envelopeDecryptToSnapshot, type EnvelopeV1 } from "@nockhq/secure-estate";
 import {
   InMemoryPolicyAuditStore,
   type PolicyAuditStore,

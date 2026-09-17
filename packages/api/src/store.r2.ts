@@ -1,5 +1,5 @@
-import { type EstateSnapshot } from "@nock/core";
-import { type EnvelopeV1 } from "@nock/secure-estate";
+import { type EstateSnapshot } from "@nockhq/core";
+import { type EnvelopeV1 } from "@nockhq/secure-estate";
 import { AwsClient } from "aws4fetch";
 
 export interface EstateStore {
