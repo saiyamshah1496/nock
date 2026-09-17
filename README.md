@@ -2,6 +2,30 @@
 
 Pattern linters catch shapes. Nock stops merges when staging lies — using your table sizes, Postgres lock classes, and `lock_timeout` policy — in CI and via MCP.
 
+CLI ≡ Action ≡ MCP — the same verdict JSON for the same inputs.
+
+## Free quickstart — Path A (paste/file)
+
+Fastest way to try Nock with no database:
+- Put an estate snapshot at `.nock/estate.json` (or reuse `fixtures/estate_billion.json`)
+- Run a check locally or in CI to approve/block PRs based on green/yellow/red
+
+Start here: `docs/guides/path-a-paste.md`
+
+## Connect — Path B (free)
+
+Generate `.nock/estate.json` on your own runner (prefer a read replica) and use it in PR checks:
+- Create a least‑privilege estate role (see GRANTs guide)
+- Add `PG_ESTATE_URL` repo secret
+- Schedule `nock sync-estate` to refresh `.nock/estate.json`
+- Run the PR check that reads the file
+
+Wizard guide: `docs/guides/path-b-connect.md`
+
+## Paid Team (heads‑up)
+
+Hosted Worker for estate distribution plus policy and audit are available in the paid Team edition. Free paths A/B keep estate generation and storage on your own runner; no row data and no production DSN are required in CI.
+
 ## Phase 1 wedge (what works)
 
 - pnpm monorepo with `@nock/core`, `@nock/cli`, `@nock/mcp`, `@nock/action`
@@ -243,6 +267,10 @@ See `docs/DEVELOPMENT.md` for setup, repo map, running the CLI, adding rules/fix
 - See design note `docs/design/016-estate-naming-and-multi-db.md`.
 
 ## Docs
+
+Product guides:
+- Path A — paste/file: `docs/guides/path-a-paste.md`
+- Path B — connect and sync: `docs/guides/path-b-connect.md`
 
 Design notes live under `docs/design/` (see `008-sync-stats.md`, `009-hosted-stats-api.md`). GRANTs guidance in `docs/grants-stats-role.md`. Teardown doc stub: `docs/teardown-railway-locks.md`.
 
