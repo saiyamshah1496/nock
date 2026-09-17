@@ -265,4 +265,5 @@ Read these before expanding scope:
 - `docs/design/005-action-pr-comment.md`
 - `docs/design/006-mcp-surface.md`
 - `docs/design/007-gitignore-and-fixtures.md`
+- `docs/design/018-github-app.md`
 
