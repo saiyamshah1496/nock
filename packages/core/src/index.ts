@@ -670,6 +670,20 @@ export function check(input: CheckInput): VerdictV1 {
             "ALTER TABLE <child> ADD CONSTRAINT <name> FOREIGN KEY (<col>) REFERENCES <parent>(<col>) NOT VALID; ALTER TABLE <child> VALIDATE CONSTRAINT <name>;"
         });
       }
+      // R010: generic hot DDL without prior lock_timeout
+      {
+        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+          violations.push({
+            rule_id: "R010",
+            severity: "red",
+            message: `Missing lock_timeout for DDL on hot table ${addFk.table ? addFk.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql: "SET lock_timeout = '3s';"
+          });
+        }
+      }
       statements.push({
         sql,
         lock_mode: "ACCESS EXCLUSIVE",
@@ -712,6 +726,20 @@ export function check(input: CheckInput): VerdictV1 {
             nLive
           )} rows) may rewrite; prefer online patterns`
         });
+      }
+      // R010: generic hot DDL without prior lock_timeout
+      {
+        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+          violations.push({
+            rule_id: "R010",
+            severity: "red",
+            message: `Missing lock_timeout for DDL on hot table ${alterType.table ? alterType.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql: "SET lock_timeout = '3s';"
+          });
+        }
       }
       statements.push({
         sql,
@@ -894,6 +922,20 @@ export function check(input: CheckInput): VerdictV1 {
           message: `ADD ${uniq.kind} without USING INDEX — consider online build with CIC then USING INDEX`
         });
       }
+      // R010: generic hot DDL without prior lock_timeout
+      {
+        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+          violations.push({
+            rule_id: "R010",
+            severity: "red",
+            message: `Missing lock_timeout for DDL on hot table ${uniq.table ? uniq.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql: "SET lock_timeout = '3s';"
+          });
+        }
+      }
       statements.push({
         sql,
         lock_mode: "ACCESS EXCLUSIVE",
@@ -928,6 +970,20 @@ export function check(input: CheckInput): VerdictV1 {
           nLive
         )} rows) cannot use NOT VALID; ensure off-peak`
       });
+      // R010: generic hot DDL without prior lock_timeout
+      {
+        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+          violations.push({
+            rule_id: "R010",
+            severity: "red",
+            message: `Missing lock_timeout for DDL on hot table ${ex.table ? ex.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql: "SET lock_timeout = '3s';"
+          });
+        }
+      }
       statements.push({
         sql,
         lock_mode: "ACCESS EXCLUSIVE",

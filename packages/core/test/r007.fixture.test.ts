@@ -25,5 +25,22 @@ describe("R007 — ADD FOREIGN KEY without NOT VALID", () => {
     const verdict = check({ sql, estate, policy });
     expect(verdict.violations.some((v) => v.rule_id === "R007")).toBe(false);
   });
+
+  it("R010 applies to FK add on hot table, cleared by preceding lock_timeout", () => {
+    const hot = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/estate_billion.json"), "utf8"));
+    const policy = {
+      id: "nock.postgres.ddl.default",
+      version: "1.0.0",
+      fail_on: "red",
+      rules: { R007: { red_rows: 100000 }, R010: { always_require_lock_timeout_above_rows: 1000000 } }
+    };
+    const sql1 = readFileSync(join(__dirname, "../../../fixtures/add_fk_without_not_valid.sql"), "utf8");
+    const v1 = check({ sql: sql1, estate: hot, policy });
+    expect(v1.violations.map((v) => v.rule_id)).toContain("R010");
+
+    const sql2 = readFileSync(join(__dirname, "../../../fixtures/add_fk_with_lock_timeout.sql"), "utf8");
+    const v2 = check({ sql: sql2, estate: hot, policy });
+    expect(v2.violations.map((v) => v.rule_id)).not.toContain("R010");
+  });
 });
 
