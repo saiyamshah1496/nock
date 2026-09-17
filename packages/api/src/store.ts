@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { type EstateSnapshot } from "@nock/core";
-import { type EnvelopeV1 } from "@nock/secure-estate";
+import { type EstateSnapshot } from "@nockhq/core";
+import { type EnvelopeV1 } from "@nockhq/secure-estate";
 
 export interface EstateStore {
   savePlaintext(repoId: string, snapshot: EstateSnapshot): Promise<void>;

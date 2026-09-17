@@ -1,17 +1,28 @@
 {
-  "name": "@nock/secure-estate",
+  "name": "@nockhq/secure-estate",
   "version": "0.1.0",
-  "description": "Nock secure estate envelope (AES-GCM) utils",
+  "description": "Estate-aware approve/block for Postgres DDL. Never applies migrations. CLI ≡ Action ≡ MCP.",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saiyamshah1496/nock.git"
+  },
+  "homepage": "https://github.com/saiyamshah1496/nock",
   "scripts": {
     "build": "tsc -b",
     "clean": "rimraf dist || true",
     "test": "vitest run"
   },
   "dependencies": {
-    "@nock/core": "workspace:*"
+    "@nockhq/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

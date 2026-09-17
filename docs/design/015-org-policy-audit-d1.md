@@ -4,7 +4,7 @@
 
 - Store versioned org/repo policy packs and append-only audit events in Cloudflare D1.
 - Keep encrypted stats blobs in R2 (already live) — unchanged.
-- Expose minimal API routes on `@nock/api`:
+- Expose minimal API routes on `@nockhq/api`:
   - `GET /v1/policy/:repoId` (fallback to org default)
   - `PUT /v1/policy/:repoId` (auth; version bump)
   - `POST /v1/audit` (auth; append-only)
@@ -147,7 +147,7 @@ Migration `d1/migrations/0001_init.sql` creates `policies` and `audit_events` as
 
 - Design doc committed.
 - D1 schema + example wrangler config added.
-- Routes implemented behind `@nock/api` Workers app.
+- Routes implemented behind `@nockhq/api` Workers app.
 - Local tests using in-memory store; `pnpm -r build && pnpm test` green.
 - Action updated to GET policy (optional) and POST audit (when configured).
 

@@ -1,10 +1,21 @@
 {
-  "name": "@nock/core",
+  "name": "@nockhq/core",
   "version": "0.1.0",
-  "description": "Nock core: parse → classify → rules → VerdictV1",
+  "description": "Estate-aware approve/block for Postgres DDL. Never applies migrations. CLI ≡ Action ≡ MCP.",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saiyamshah1496/nock.git"
+  },
+  "homepage": "https://github.com/saiyamshah1496/nock",
   "scripts": {
     "build": "tsc -b",
     "clean": "rimraf dist || true",

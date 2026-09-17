@@ -1,7 +1,7 @@
 {
-  "name": "@nock/cli",
+  "name": "@nockhq/cli",
   "version": "0.1.0",
-  "description": "Nock CLI",
+  "description": "Estate-aware approve/block for Postgres DDL. Never applies migrations. CLI ≡ Action ≡ MCP.",
   "license": "MIT",
   "bin": {
     "nock": "dist/bin/nock.js"
@@ -9,6 +9,17 @@
   "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saiyamshah1496/nock.git"
+  },
+  "homepage": "https://github.com/saiyamshah1496/nock",
   "scripts": {
     "build": "tsc -b",
     "clean": "rimraf dist || true",
@@ -16,9 +27,9 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
-    "@nock/core": "workspace:*",
+    "@nockhq/core": "workspace:*",
     "postgres": "^3.4.4",
-    "@nock/secure-estate": "workspace:*"
+    "@nockhq/secure-estate": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

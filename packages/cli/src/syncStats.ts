@@ -1,4 +1,4 @@
-import { type EstateSnapshot, type EstateTable } from "@nock/core";
+import { type EstateSnapshot, type EstateTable } from "@nockhq/core";
 import fs from "fs";
 import path from "path";
 import postgres from "postgres";

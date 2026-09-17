@@ -2,9 +2,9 @@
 import { Command } from "commander";
 import * as fs from "fs";
 import * as path from "path";
-import { check, type PolicyResolved, type EstateSnapshot } from "@nock/core";
+import { check, type PolicyResolved, type EstateSnapshot } from "@nockhq/core";
 import { runSyncStats } from "../syncStats";
-import { envelopeEncrypt } from "@nock/secure-estate";
+import { envelopeEncrypt } from "@nockhq/secure-estate";
 import https from "https";
 import http from "http";
 import { URL } from "url";

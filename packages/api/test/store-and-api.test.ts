@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { LocalFileStatsStore } from "../src/store";
-import { envelopeEncrypt } from "@nock/secure-estate";
+import { envelopeEncrypt } from "@nockhq/secure-estate";
 import { createApp } from "../src/server";
 import fs from "fs";
 import os from "os";

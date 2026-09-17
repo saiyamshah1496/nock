@@ -11,12 +11,12 @@ For product usage, see:
 ```
 .
 ├─ packages/
-│  ├─ core/      # @nock/core — parse → classify → rules → VerdictV1 (matchers live here)
-│  ├─ cli/       # @nock/cli  — bin `nock` (commander)
-│  ├─ mcp/       # @nock/mcp  — local MCP server tools + parity tests
-│  ├─ action/    # @nock/action — GitHub Action runner + comment renderer
-│  ├─ api/       # @nock/api — thin hosted estate API (Path B+)
-│  └─ secure-stats/ # @nock/secure-estate — AES-GCM envelope utils shared by CLI/API
+│  ├─ core/      # @nockhq/core — parse → classify → rules → VerdictV1 (matchers live here)
+│  ├─ cli/       # @nockhq/cli  — bin `nock` (commander)
+│  ├─ mcp/       # @nockhq/mcp  — local MCP server tools + parity tests
+│  ├─ action/    # @nockhq/action — GitHub Action runner + comment renderer
+│  ├─ api/       # @nockhq/api — thin hosted estate API (Path B+)
+│  └─ secure-stats/ # @nockhq/secure-estate — AES-GCM envelope utils shared by CLI/API
 ├─ fixtures/     # Golden SQL + estate snapshots used by tests
 ├─ policy.default.yml  # Default policy pack (thresholds only, no marketplace)
 ├─ docs/design/  # 000–008 design notes
@@ -58,7 +58,7 @@ node packages/cli/dist/bin/nock.js check \
 
 2) With pnpm filter exec
 ```bash
-pnpm --filter @nock/cli exec node dist/bin/nock.js \
+pnpm --filter @nockhq/cli exec node dist/bin/nock.js \
   check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 

@@ -1,4 +1,4 @@
-import { type EstateSnapshot } from "@nock/core";
+import { type EstateSnapshot } from "@nockhq/core";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 export interface GcmBox {

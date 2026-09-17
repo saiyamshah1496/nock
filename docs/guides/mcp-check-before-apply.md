@@ -29,14 +29,14 @@ Option B — via npx (after packages are published to npm)
   "mcpServers": {
     "nock": {
       "command": "npx",
-      "args": ["-y", "@nock/mcp"]
+      "args": ["-y", "@nockhq/mcp"]
     }
   }
 }
 ```
 
 Notes
-- Transport: stdio (no network port). The `@nock/mcp` package provides a `nock-mcp` bin that speaks MCP over stdio.
+- Transport: stdio (no network port). The `@nockhq/mcp` package provides a `nock-mcp` bin that speaks MCP over stdio.
 - Estate lives on your machine/repo; point `estatePath` to `.nock/estate.json` (or your chosen path).
 
 ## First tool call — check_before_apply
