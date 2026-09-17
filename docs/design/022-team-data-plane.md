@@ -79,7 +79,7 @@ Crypto model (design‑partner phase): Nock‑held KEK. Worker decrypts for GET/
 - Stale → Neutral: age > 30d — size‑gated rules follow `no_stats` path; non‑size rules still apply; emit `estate_stale_neutral`
 - Missing: no estate — existing Neutral / `no_stats`
 
-Shared helper: `computeFreshness(capturedAt, now?) → Freshness` where `Freshness = "fresh" | "warn" | "stale" | "missing"`, with constants
+Shared helper: `computeFreshness(capturedAt, now?) → FreshnessBand` where `FreshnessBand = "fresh" | "warn" | "stale" | "missing"`, with constants
 `FRESHNESS_WARN_MS` (7d), `FRESHNESS_STALE_MS` (30d), `PUSH_SKEW_MS` (1h).
 
 #### Push‑time clock skew (not a Freshness value)
@@ -105,9 +105,9 @@ Keep existing columns from 015 (D1 `0001_init.sql`):
 Additive columns for FE’s `0002` migration (documented here; not landed in this PR):
 - `estate_captured_at TEXT NULL` — snapshot clock used for the run
 - `freshness TEXT NULL` — enum values `fresh` | `warn` | `stale` | `missing`
-- `rule_hits_json TEXT NULL` — JSON array of RuleHitDetail (shape below)
+- `rule_hits_json TEXT NULL` — JSON array of RuleHit (shape below)
 
-RuleHitDetail shape (export/detail), no full SQL:
+RuleHit shape (export/detail), no full SQL:
 ```json
 { "id": "R010", "severity": "red", "table": "sessions", "n_live_tup": 1234567, "reason_code": "missing_lock_timeout" }
 ```
@@ -137,7 +137,7 @@ Avoid Path A/B/C labels in public prose; use them only in internal design refere
 This PR:
 - Adds this design doc
 - Adds shared types and a pure `computeFreshness` helper + unit tests in `@nockhq/core` (re‑exported from package entry)
-  - Type names: `Freshness` and `RuleHitDetail` (matching FE)
+  - Type names (canonical in core): `FreshnessBand` and `RuleHit`; FE‑compat aliases also exported: `Freshness` and `RuleHitDetail`
 
 Follow‑ups:
 - Policy parity tests (hosted JSON ≡ file ≡ `check()`)

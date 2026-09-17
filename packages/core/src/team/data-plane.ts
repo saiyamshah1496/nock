@@ -1,7 +1,10 @@
 // Shared types for Team thin-slice data-plane
-// Names aligned with FE (#34): Freshness, RuleHitDetail
+// Canonical names in core: FreshnessBand, RuleHit
+// Aliases provided to match FE (#34) API package: Freshness, RuleHitDetail
 
-export type Freshness = "fresh" | "warn" | "stale" | "missing";
+export type FreshnessBand = "fresh" | "warn" | "stale" | "missing";
+// FE alias
+export type Freshness = FreshnessBand;
 
 // Freshness thresholds
 export const FRESHNESS_WARN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -17,7 +20,10 @@ export const PUSH_SKEW_MS = 60 * 60 * 1000; // 1 hour
  *
  * Note: push-time skew (captured_at > now + 1h) is enforced at ingestion and is not a Freshness value.
  */
-export function computeFreshness(capturedAt: string | Date | null | undefined, now: Date = new Date()): Freshness {
+export function computeFreshness(
+  capturedAt: string | Date | null | undefined,
+  now: Date = new Date()
+): FreshnessBand {
   if (!capturedAt) return "missing";
   const ts = capturedAt instanceof Date ? capturedAt : new Date(capturedAt);
   if (isNaN(ts.getTime())) return "missing";
@@ -27,13 +33,15 @@ export function computeFreshness(capturedAt: string | Date | null | undefined, n
   return "stale";
 }
 
-export interface RuleHitDetail {
+export interface RuleHit {
   id: string;
   severity: string;
   table?: string;
   n_live_tup?: number;
   reason_code?: string;
 }
+// FE alias
+export type RuleHitDetail = RuleHit;
 
 export interface AuditEventV1 {
   org_id: string;
@@ -43,10 +51,10 @@ export interface AuditEventV1 {
   // D1 v1 (0001): rule_ids_json stored; export maps to rule_ids
   rule_ids?: string[];
   // Proposed v2 additions (0002): rule_hits_json + metadata
-  rule_hits?: RuleHitDetail[];
+  rule_hits?: RuleHit[];
   policy_version?: number | null;
   estate_captured_at?: string | null;
-  freshness?: Freshness | null;
+  freshness?: FreshnessBand | null;
   actor?: string | null;
   ci_run_id?: string | null;
   // Server-populated
