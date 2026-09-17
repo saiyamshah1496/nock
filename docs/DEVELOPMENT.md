@@ -126,7 +126,7 @@ Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip
 
 - Default API base (Saiyam’s Worker): `https://nock.saiyamshah1496.workers.dev`
 - Action inputs on `main`: `estate-api-url`, `estate-api-token`, with `estate-path` as fallback
-- Required secrets (names only): `NOCK_ESTATE_API_TOKEN`, `NOCK_ESTATE_KEK` (accepts fallbacks `NOCK_STATS_API_TOKEN`/`NOCK_STATS_KEK` for existing env)
+- Required secrets (names only): prefer `NOCK_TEAM_API_TOKEN` (partner bearer) and `NOCK_ESTATE_KEK`. For backward compatibility, `NOCK_ESTATE_API_TOKEN`/`NOCK_STATS_API_TOKEN` (and `NOCK_STATS_KEK`) remain accepted.
 - See runnable examples under `examples/workflows/`:
   - `nock-action.yml` — Action with optional hosted estate
   - `nock.yml` — CLI workflow (works without a packaged Action)
