@@ -114,21 +114,30 @@ export interface PolicyPack {
   require_lock_timeout?: "always" | "size_gated";
 }
 
-// Minimal shape matcher: CREATE INDEX (non-concurrent)
-function isCreateIndexNonConcurrent(sql: string): { table?: TableRef; indexName?: string } | null {
+// Minimal shape matcher: CREATE INDEX (non-concurrent), including UNIQUE and IF NOT EXISTS variants
+function isCreateIndexNonConcurrent(sql: string): {
+  table?: TableRef;
+  indexName?: string;
+  isUnique?: boolean;
+} | null {
   const clean = stripSqlComments(sql);
   const norm = clean.trim().replace(/\s+/g, " ").toUpperCase();
-  if (!norm.startsWith("CREATE INDEX")) return null;
+  // Accept: CREATE INDEX ..., CREATE UNIQUE INDEX ..., optional IF NOT EXISTS
+  if (!/^CREATE\s+(UNIQUE\s+)?INDEX\b/.test(norm)) return null;
   if (norm.includes(" CONCURRENTLY ")) return null;
-  // Try to extract table: CREATE INDEX <name> ON <schema?.>table (
-  const m = /CREATE INDEX\s+([A-Z0-9_"]+)\s+ON\s+([A-Z0-9_".]+)/i.exec(clean);
+  // Try to extract table: CREATE [UNIQUE] INDEX [IF NOT EXISTS] <name> ON <schema?.>table (
+  const m =
+    /CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_"]+)\s+ON\s+([A-Za-z0-9_".]+)/i.exec(
+      clean
+    );
   if (!m) return { table: undefined, indexName: undefined };
   const indexName = m[1];
   const fq = m[2].replace(/"/g, "");
   const parts = fq.split(".");
   const table: TableRef =
     parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
-  return { table, indexName };
+  const isUnique = /\bCREATE\s+UNIQUE\s+INDEX\b/i.test(clean);
+  return { table, indexName, isUnique };
 }
 
 // ALTER TABLE ... ADD COLUMN ...
@@ -238,7 +247,8 @@ export function check(input: CheckInput): VerdictV1 {
   for (const sql of sqls) {
     const up = sql.trim().toUpperCase();
     priorLockTimeoutFlags.push(seenLockTimeout);
-    if (/^SET\s+LOCK_TIMEOUT\s*=/i.test(up)) {
+    // Track SET lock_timeout and SET LOCAL lock_timeout; either clears R004/R010 for subsequent DDL
+    if (/^SET\s+(?:LOCAL\s+)?LOCK_TIMEOUT\s*(=|TO)/i.test(up)) {
       seenLockTimeout = true;
       // Not a DDL to classify — continue to next
       statements.push({
@@ -269,8 +279,9 @@ export function check(input: CheckInput): VerdictV1 {
           message: `CREATE INDEX without CONCURRENTLY on ${m.table ? m.table.name : "unknown"} (${formatRows(
             nLive
           )} rows) takes SHARE lock and may block writes`,
-          remediation_sql:
-            "CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>);" /* placeholder */,
+          remediation_sql: m.isUnique
+            ? "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>); -- note: cannot run inside a transaction block"
+            : "CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>); -- note: cannot run inside a transaction block",
           docs_url: "https://www.postgresql.org/docs/current/sql-createindex.html"
         });
       } else {
