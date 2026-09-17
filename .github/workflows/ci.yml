@@ -108,22 +108,15 @@ jobs:
           ESTATE: .nock/estate.json
         run: |
           set -euo pipefail
-          # Run check; expect reds (exit code 2); don't fail the step
+          # Run check once; expect red exit code; capture JSON without failing the step
           node packages/cli/dist/bin/nock.js check \
             --sql fixtures/ci-estate/create_index_nonconcurrent_sessions.sql \
             --estate "$ESTATE" \
             --format json \
             --fail-on red \
-            || echo "Expected non-zero exit for RED verdict"
-          # Capture JSON for assertions
-          node packages/cli/dist/bin/nock.js check \
-            --sql fixtures/ci-estate/create_index_nonconcurrent_sessions.sql \
-            --estate "$ESTATE" \
-            --format json \
-            --fail-on red \
-            || true | tee /tmp/nock_red.json
+            > /tmp/nock_red.json || true
           echo "RED verdict JSON:"
-          cat /tmp/nock_red.json
+          cat /tmp/nock_red.json || true
           # Assert verdict is fail and includes R001 with severity red
           test "$(jq -r '.verdict' /tmp/nock_red.json)" = "fail"
           jq -e '.violations[] | select(.rule_id=="R001" and .severity=="red")' /tmp/nock_red.json >/dev/null
