@@ -114,6 +114,9 @@ export interface PolicyPack {
   require_lock_timeout?: "always" | "size_gated";
 }
 
+// Team thin-slice data-plane shared types/consts/helpers
+export * from "./team/data-plane";
+
 // Minimal shape matcher: CREATE INDEX (non-concurrent), including UNIQUE and IF NOT EXISTS variants
 function isCreateIndexNonConcurrent(sql: string): {
   table?: TableRef;
