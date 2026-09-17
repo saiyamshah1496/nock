@@ -172,7 +172,7 @@ See `@nock/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`.
 | Rule | Status | Notes |
 |------|--------|-------|
 | R001 — CREATE INDEX w/o CONCURRENTLY | Implemented | Lock mode SHARE; red ≥10k rows |
-| R002 — CIC inside transaction | Stub | Will add matcher |
+| R002 — CIC inside transaction | Implemented | Concurrent DDL cannot run inside explicit txn |
 | R003 — ADD COLUMN … DEFAULT <volatile> (rewrite) | Stub | Will add matcher |
 | R004 — ADD COLUMN nullable/constant-default on hot table w/o lock_timeout | Implemented (partial) | Size-gated; requires `lock_timeout`; constant-default nuance later |
 | R005 — SET NOT NULL w/o validated CHECK | Implemented (partial) | Assumes unsafe on large tables (no catalog check yet) |

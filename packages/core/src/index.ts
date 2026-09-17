@@ -232,6 +232,63 @@ function stripSqlComments(sql: string): string {
   return sql.replace(/--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").trim();
 }
 
+// Detect explicit transaction control statements (BEGIN/START TRANSACTION ... COMMIT/ROLLBACK/END/ABORT)
+function isTxnBegin(sql: string): boolean {
+  const up = stripSqlComments(sql).toUpperCase().trim();
+  return up.startsWith("BEGIN") || up.startsWith("START TRANSACTION");
+}
+function isTxnEnd(sql: string): boolean {
+  const up = stripSqlComments(sql).toUpperCase().trim();
+  return up.startsWith("COMMIT") || up.startsWith("END") || up.startsWith("ROLLBACK") || up.startsWith("ABORT");
+}
+
+// Detect concurrent DDL forms that cannot run inside an explicit transaction block
+function parseConcurrentDdl(sql: string):
+  | {
+      kind:
+        | "CREATE INDEX CONCURRENTLY"
+        | "CREATE UNIQUE INDEX CONCURRENTLY"
+        | "DROP INDEX CONCURRENTLY"
+        | "REINDEX CONCURRENTLY"
+        | "REFRESH MATERIALIZED VIEW CONCURRENTLY";
+      target?: TableRef;
+    }
+  | null {
+  const clean = stripSqlComments(sql);
+  const up = clean.toUpperCase().trim().replace(/\s+/g, " ");
+
+  // CREATE [UNIQUE] INDEX CONCURRENTLY <name> ON <schema?.>table ( ... )
+  if (/^CREATE\s+(UNIQUE\s+)?INDEX\s+CONCURRENTLY\b/.test(up)) {
+    const m =
+      /CREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY\s+[A-Za-z0-9_"]+\s+ON\s+([A-Za-z0-9_".]+)/i.exec(clean);
+    let table: TableRef | undefined = undefined;
+    if (m?.[1]) {
+      const fq = m[1].replace(/"/g, "");
+      const parts = fq.split(".");
+      table = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
+    }
+    const isUnique = /^\s*CREATE\s+UNIQUE\s+INDEX\s+CONCURRENTLY\b/i.test(clean);
+    return { kind: isUnique ? "CREATE UNIQUE INDEX CONCURRENTLY" : "CREATE INDEX CONCURRENTLY", target: table };
+  }
+
+  // DROP INDEX CONCURRENTLY ...
+  if (/^DROP\s+INDEX\s+CONCURRENTLY\b/i.test(up)) {
+    return { kind: "DROP INDEX CONCURRENTLY" };
+  }
+
+  // REINDEX CONCURRENTLY ...
+  if (/^REINDEX\s+CONCURRENTLY\b/i.test(up)) {
+    return { kind: "REINDEX CONCURRENTLY" };
+  }
+
+  // REFRESH MATERIALIZED VIEW CONCURRENTLY <name>
+  if (/^REFRESH\s+MATERIALIZED\s+VIEW\s+CONCURRENTLY\b/i.test(up)) {
+    return { kind: "REFRESH MATERIALIZED VIEW CONCURRENTLY" };
+  }
+
+  return null;
+}
+
 // Parse: ALTER TABLE <tbl> ADD CONSTRAINT <name> CHECK (<col> IS NOT NULL) NOT VALID;
 function parseAddNotValidCheckOnColumn(
   sql: string
@@ -329,6 +386,8 @@ export function check(input: CheckInput): VerdictV1 {
   // Track if a lock_timeout was set earlier in this batch
   const priorLockTimeoutFlags: boolean[] = [];
   let seenLockTimeout = false;
+  // Track explicit transaction blocks (BEGIN/START TRANSACTION ... COMMIT/ROLLBACK/END)
+  let insideExplicitTxn = false;
 
   for (let stmtIdx = 0; stmtIdx < sqls.length; stmtIdx++) {
     const sql = sqls[stmtIdx];
@@ -344,6 +403,54 @@ export function check(input: CheckInput): VerdictV1 {
         blocks_reads: false,
         blocks_writes: false,
         rules_hit: []
+      });
+      continue;
+    }
+
+    // Transaction control statements
+    if (isTxnBegin(sql)) {
+      insideExplicitTxn = true;
+      statements.push({
+        sql,
+        lock_mode: "UNKNOWN",
+        blocks_reads: false,
+        blocks_writes: false,
+        rules_hit: []
+      });
+      continue;
+    }
+    if (isTxnEnd(sql)) {
+      insideExplicitTxn = false;
+      statements.push({
+        sql,
+        lock_mode: "UNKNOWN",
+        blocks_reads: false,
+        blocks_writes: false,
+        rules_hit: []
+      });
+      continue;
+    }
+
+    // R002: Concurrent DDL inside explicit transaction block
+    const conc = parseConcurrentDdl(sql);
+    if (conc) {
+      const hitRules: string[] = [];
+      if (insideExplicitTxn) {
+        hitRules.push("R002");
+        violations.push({
+          rule_id: "R002",
+          severity: "red",
+          message:
+            `${conc.kind} cannot run inside a transaction block in Postgres; run outside a transaction or disable the migration transaction`
+        });
+      }
+      statements.push({
+        sql,
+        lock_mode: "UNKNOWN",
+        blocks_reads: false,
+        blocks_writes: false,
+        target: conc.target,
+        rules_hit: hitRules
       });
       continue;
     }
