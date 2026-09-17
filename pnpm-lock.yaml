@@ -63,6 +63,9 @@ importers:
       picomatch:
         specifier: ^4.0.2
         version: 4.0.7
+      yaml:
+        specifier: ^2.5.1
+        version: 2.9.1
     devDependencies:
       typescript:
         specifier: ^5.5.4

@@ -231,9 +231,21 @@ PR CI runs on GitHub Actions with:
 
 No deploy in CI. Tests pass without R2/Cloudflare secrets; any online integrations are skipped if env is unset.
 
-## GitHub App (PR1 skeleton)
+## GitHub App
 
-The API Worker now exposes a GitHub App webhook at `/github/webhook` (Hono route), per design `docs/design/018-github-app.md`. PR1 only publishes an always‑Neutral check_run named “Nock: DDL gate” on relevant `pull_request` events.
+The API Worker exposes a GitHub App webhook at `/github/webhook` (Hono route), per design `docs/design/018-github-app.md`.
+
+PR1 shipped the skeleton that publishes an always‑Neutral check_run named “Nock: DDL gate” on relevant `pull_request` events.
+
+PR2 adds the real DDL verdict:
+- When a PR touches migration/estate paths, resolve estate and policy via the GitHub Contents API:
+  - Estate resolution order:
+    1) `.nock/estate.json` on the PR head (else base)
+    2) Optional `estate-path:` in `nock.yml` or `.github/nock.yml`
+    3) If no estate, publish a Neutral check with links to `docs/guides/quick-start-estate-file.md` and `docs/guides/sync-estate.md`
+- Fetch changed `.sql` files (per locked globs) from the PR head and invoke `@nockhq/core` `check(...)`.
+- Map verdict to Checks API conclusion: red → failure, yellow → neutral, green → success.
+- Always publish a `check_run` titled “Nock: DDL gate” when triggers match (never silent).
 
 - Required Worker secrets (set via `wrangler secret put ...`):
   - `GITHUB_WEBHOOK_SECRET`
@@ -246,7 +258,7 @@ The API Worker now exposes a GitHub App webhook at `/github/webhook` (Hono route
   - Checks: Read & Write
 - Local dev: `packages/api/src/server.ts` runs the Hono app with Node 20. Webhook signature verification uses HMAC SHA‑256. JWT/installation token flow uses `jose`.
 
-See `docs/design/019-github-app-pr1.md` for a brief status note on what’s included in PR1 and what’s deferred.
+See `docs/design/019-github-app-pr1.md` (PR1 status) and `docs/design/020-github-app-pr2.md` (this change).
 
 ## How to publish (npm)
 
