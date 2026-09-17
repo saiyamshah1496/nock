@@ -79,7 +79,7 @@ Dev plaintext mode:
 
 Implementation details:
 - Node `crypto` AES-GCM (`createCipheriv`/`createDecipheriv`), 12-byte IVs, 32-byte keys, base64 encoding for transport.
-- Separate small shared package `@nock/secure-estate` containing:
+- Separate small shared package `@nockhq/secure-estate` containing:
   - `envelopeEncrypt(snapshot, kekB64): EnvelopeV1`
   - `envelopeDecryptToSnapshot(envelope, kekB64): EstateSnapshot`
   - Types for `EnvelopeV1`
@@ -104,7 +104,7 @@ Extend `nock sync-estate`:
 - Behavior:
   - Always write local file first (`--out`).
   - If `NOCK_DEV_PLAINTEXT_ESTATE=1` (client side; legacy `NOCK_DEV_PLAINTEXT_STATS=1`) → POST plaintext JSON.
-  - Else if `NOCK_ESTATE_KEK` present (or legacy) → encrypt with `@nock/secure-estate`, POST envelope JSON.
+  - Else if `NOCK_ESTATE_KEK` present (or legacy) → encrypt with `@nockhq/secure-estate`, POST envelope JSON.
   - Else → error explaining to set dev plaintext or provide KEK when using `--push-url`.
 
 ---
@@ -122,7 +122,7 @@ Extend `nock sync-estate`:
 
 ### Local development
 - Install: `pnpm i`
-- Run API: `NOCK_ESTATE_API_TOKEN=dev NOCK_ESTATE_KEK=$(openssl rand -base64 32) pnpm -w --filter @nock/api dev`
+- Run API: `NOCK_ESTATE_API_TOKEN=dev NOCK_ESTATE_KEK=$(openssl rand -base64 32) pnpm -w --filter @nockhq/api dev`
 - Dev plaintext: add `NOCK_DEV_PLAINTEXT_ESTATE=1` and omit `NOCK_ESTATE_KEK`.
 - Test push: `nock sync-estate --database-url ... --out .nock/estate.json --push-url http://localhost:8787/v1/estate/my-repo --token dev`
 - Fetch in Action: set `estate-api-url` to the GET endpoint and `estate-api-token` if required.
@@ -138,8 +138,8 @@ Extend `nock sync-estate`:
 ---
 
 ### Decision
-- Implement local-first API (`@nock/api`) with Hono, file store, bearer auth.
-- Implement AES-GCM envelope in shared `@nock/secure-estate`; use `NOCK_ESTATE_KEK` (base64).
+- Implement local-first API (`@nockhq/api`) with Hono, file store, bearer auth.
+- Implement AES-GCM envelope in shared `@nockhq/secure-estate`; use `NOCK_ESTATE_KEK` (base64).
 - Support strict dev plaintext mode behind `NOCK_DEV_PLAINTEXT_ESTATE=1`.
 - Extend CLI to optionally push; extend Action to optionally fetch (with 24h staleness warning).
 

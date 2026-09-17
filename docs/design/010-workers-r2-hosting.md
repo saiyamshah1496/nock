@@ -15,7 +15,7 @@ Rationale:
 
 ## Architecture deltas
 
-- `@nock/api` gains:
+- `@nockhq/api` gains:
   - `R2StatsStore` implementing the same interface as `LocalFileStatsStore`, using S3‑compatible R2 over HTTPS.
   - A store factory selected by `NOCK_STATS_STORE` env var: `"file"` (default) or `"r2"`.
   - A Workers entrypoint that exports the Hono app for Wrangler (`export default app`).
@@ -79,6 +79,6 @@ Conclusion: For GTM speed and steady‑state cost, Workers + R2 is the default. 
 
 ## Backup: Fly
 
-- If needed, run the same `@nock/api` Node server on Fly. Keep storage on R2 via the same S3‑compatible adapter, or use the file store on an attached volume for non‑critical demos.
+- If needed, run the same `@nockhq/api` Node server on Fly. Keep storage on R2 via the same S3‑compatible adapter, or use the file store on an attached volume for non‑critical demos.
 - This path is documented here as a fallback and is not required for GTM.
 

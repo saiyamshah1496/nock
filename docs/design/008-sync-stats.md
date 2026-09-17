@@ -3,7 +3,7 @@
 Audience: engineering. Status: proposed → implemented in this PR. Scope: Path B only. Path C (hosted pull) and Stripe are explicitly out-of-scope.
 
 ### Goal
-Add a CLI command `nock sync-estate` that connects to a customer-provided Postgres (ideally a read replica) using a least‑privilege read-only role, executes the catalog query from architecture §9.2 / opportunity-1 §4.2, and writes an `estate.json` compatible with `@nock/core` and the existing fixtures. No table row data is read or written.
+Add a CLI command `nock sync-estate` that connects to a customer-provided Postgres (ideally a read replica) using a least‑privilege read-only role, executes the catalog query from architecture §9.2 / opportunity-1 §4.2, and writes an `estate.json` compatible with `@nockhq/core` and the existing fixtures. No table row data is read or written.
 
 ### Interface (CLI)
 
@@ -63,7 +63,7 @@ We surface only table‑level statistics (counts, sizes, last analyze) — no ta
   - Zero dependency, fast, good DX with TypeScript.
   - Simple URL‑based connection (works with `postgres://…` and `?sslmode=require`).
   - Lightweight for a CLI that runs and exits; no pool complexity needed.
-- Alternatives: `pg` (node-postgres) is mature and also fine; heavier surface, pooling defaults that we do not need for a single query. We can swap later with minimal surface impact since the collector is isolated in `@nock/cli`.
+- Alternatives: `pg` (node-postgres) is mature and also fine; heavier surface, pooling defaults that we do not need for a single query. We can swap later with minimal surface impact since the collector is isolated in `@nockhq/cli`.
 
 ### Testing strategy (Path B)
 - Unit test: pure mapping from query rows → `EstateSnapshot` (no DB required).
@@ -78,8 +78,8 @@ We surface only table‑level statistics (counts, sizes, last analyze) — no ta
 ### Options considered
 
 - Where to implement:
-  - Chosen: implement collector in `@nock/cli` only, using types from `@nock/core`. Keeps `@nock/core` free of DB drivers and side‑effects.
-  - Alternative: shared helper in `@nock/core`. Rejected for now to avoid shipping a DB client into surfaces that don’t need it (Action, MCP).
+  - Chosen: implement collector in `@nockhq/cli` only, using types from `@nockhq/core`. Keeps `@nockhq/core` free of DB drivers and side‑effects.
+  - Alternative: shared helper in `@nockhq/core`. Rejected for now to avoid shipping a DB client into surfaces that don’t need it (Action, MCP).
 
 - Driver: `postgres` vs `pg`
   - Chosen: `postgres` for simplicity and small footprint.
@@ -96,8 +96,8 @@ We surface only table‑level statistics (counts, sizes, last analyze) — no ta
 ### Cost / complexity estimate (eng)
 - Small, isolated CLI addition; one dependency (`postgres`).
 - Unit test only requires pure mapping; integration is opt‑in.
-- No impact on `@nock/core` or existing golden tests.
+- No impact on `@nockhq/core` or existing golden tests.
 
 ### Decision
-- Implement `nock sync-estate` in `@nock/cli` using `postgres` driver, default SQL from §9.2, write `estate.json` with schema_version=1, captured_at, pg_version, source=sync-estate, and tables[]. No row data. Unit + optional integration tests included. README/docs wired; GRANTs doc added.
+- Implement `nock sync-estate` in `@nockhq/cli` using `postgres` driver, default SQL from §9.2, write `estate.json` with schema_version=1, captured_at, pg_version, source=sync-estate, and tables[]. No row data. Unit + optional integration tests included. README/docs wired; GRANTs doc added.
 

@@ -23,7 +23,7 @@ The wire rename from “stats” → “estate” is complete in main:
 2) CLI: `--estate` replaces `--stats`; command renamed to `nock sync-estate`.
 3) API: `/v1/estate` replaces `/v1/stats`.
 4) File artifact: `estate.json` replaces `stats.json`.
-5) Packages: `@nock/secure-estate` replaces `@nock/secure-stats`.
+5) Packages: `@nockhq/secure-estate` replaces `@nock/secure-stats`.
 
 Temporary compatibility (infra identifiers only):
 - Environment secrets: prefer `NOCK_ESTATE_API_TOKEN` / `NOCK_ESTATE_KEK` with fallback to `NOCK_STATS_API_TOKEN` / `NOCK_STATS_KEK`.
