@@ -177,7 +177,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 | R004 — ADD COLUMN nullable/constant-default on hot table w/o lock_timeout | Implemented (partial) | Size-gated; requires `lock_timeout`; constant-default nuance later |
 | R005 — SET NOT NULL w/o validated CHECK | Implemented (partial) | Assumes unsafe on large tables (no catalog check yet) |
 | R006 — ADD CHECK w/o NOT VALID | Implemented | Red ≥50k rows |
-| R007 — ADD FK w/o NOT VALID | Stub | Will add matcher |
+| R007 — ADD FK w/o NOT VALID | Implemented | Red ≥100k rows; prefer NOT VALID + VALIDATE |
 | R008 — ALTER TYPE non-binary-coercible | Stub | Will add matcher |
 | R009 — DROP/RENAME | Stub | Will add matcher (yellow) |
 | R010 — DDL w/o lock_timeout on hot tables | Implemented (partial) | Applied to common DDL shapes |

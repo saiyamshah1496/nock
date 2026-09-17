@@ -251,6 +251,37 @@ function isAddCheckConstraintWithoutNotValid(sql: string): { table?: TableRef } 
   return { table };
 }
 
+// ALTER TABLE ... ADD [CONSTRAINT name] FOREIGN KEY (...) REFERENCES <parent>(...) [NOT VALID]
+function isAddForeignKeyWithoutNotValid(
+  sql: string
+): { child?: TableRef; parent?: TableRef } | null {
+  const clean = stripSqlComments(sql);
+  const norm = clean.trim();
+  if (!/ALTER\s+TABLE\s+/i.test(norm)) return null;
+  if (!/\bADD\s+(CONSTRAINT\s+[A-Za-z0-9_".]+\s+)?FOREIGN\s+KEY\b/i.test(norm)) return null;
+  // If NOT VALID is present, it's the safe path and should not trigger R007
+  if (/\bNOT\s+VALID\b/i.test(norm)) return null;
+  // Child table
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const childFq = tm?.[1]?.replace(/"/g, "");
+  const childParts = childFq ? childFq.split(".") : [];
+  const child: TableRef | undefined = childFq
+    ? childParts.length === 2
+      ? { schema: childParts[0], name: childParts[1] }
+      : { schema: "public", name: childParts[0] }
+    : undefined;
+  // Referenced parent table
+  const pm = /\bREFERENCES\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const parentFq = pm?.[1]?.replace(/"/g, "");
+  const parentParts = parentFq ? parentFq.split(".") : [];
+  const parent: TableRef | undefined = parentFq
+    ? parentParts.length === 2
+      ? { schema: parentParts[0], name: parentParts[1] }
+      : { schema: "public", name: parentParts[0] }
+    : undefined;
+  return { child, parent };
+}
+
 function isVacuumFullOrClusterOrNonConcurrentReindex(sql: string): { kind: "VACUUM FULL" | "CLUSTER" | "REINDEX" } | null {
   const up = stripSqlComments(sql).trim().toUpperCase();
   if (up.startsWith("VACUUM FULL")) return { kind: "VACUUM FULL" };
@@ -681,6 +712,57 @@ export function check(input: CheckInput): VerdictV1 {
         blocks_writes: true,
         target: addCheck.table,
         n_live_tup: nLive,
+        rules_hit: []
+      });
+      continue;
+    }
+
+    // R007: ADD FOREIGN KEY without NOT VALID (size-gated on referencing/child table)
+    const addFk = isAddForeignKeyWithoutNotValid(sql);
+    if (addFk) {
+      const childStats = findTableEstate(input.estate, addFk.child);
+      const parentStats = findTableEstate(input.estate, addFk.parent);
+      const nLiveChild = childStats?.n_live_tup;
+      const redRows = policy.rules?.R007?.red_rows ?? 100_000;
+      if (typeof nLiveChild === "number" && nLiveChild >= redRows) {
+        const childName = addFk.child ? addFk.child.name : "unknown";
+        const parentNote =
+          parentStats && typeof parentStats.n_live_tup === "number" && parentStats.n_live_tup >= redRows
+            ? ` Note: referenced parent ${addFk.parent?.name ?? "unknown"} is also large (${formatRows(
+                parentStats.n_live_tup
+              )} rows).`
+            : "";
+        violations.push({
+          rule_id: "R007",
+          severity: "red",
+          message: `ADD FOREIGN KEY without NOT VALID on ${childName} (${formatRows(
+            nLiveChild
+          )} rows) validates existing rows under a heavy lock.${parentNote} Prefer NOT VALID then VALIDATE CONSTRAINT (validation holds SHARE UPDATE EXCLUSIVE).`,
+          remediation_sql:
+            "ALTER TABLE <child> ADD CONSTRAINT <name> FOREIGN KEY (<col(s)>) REFERENCES <parent>(<col(s)>) NOT VALID; ALTER TABLE <child> VALIDATE CONSTRAINT <name>;"
+        });
+        // R010: generic hot DDL without prior lock_timeout
+        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+        if (
+          !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+          typeof nLiveChild === "number" &&
+          nLiveChild >= r010Rows
+        ) {
+          violations.push({
+            rule_id: "R010",
+            severity: "red",
+            message: `Missing lock_timeout for DDL on hot table ${childName} (${formatRows(nLiveChild)} rows)`,
+            remediation_sql: "SET lock_timeout = '3s';"
+          });
+        }
+      }
+      statements.push({
+        sql,
+        lock_mode: "SHARE ROW EXCLUSIVE",
+        blocks_reads: false,
+        blocks_writes: true,
+        target: addFk.child,
+        n_live_tup: nLiveChild,
         rules_hit: []
       });
       continue;
