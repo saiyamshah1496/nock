@@ -1,5 +1,5 @@
-## Example: Scheduled sync-stats + push to hosted API (Path B+)
-name: Nock — Sync stats and push
+## Example: Scheduled sync-estate + push to hosted API (Path B+)
+name: Nock — Sync estate and push
 on:
   schedule:
     - cron: "0 */6 * * *" # every 6 hours
@@ -15,24 +15,24 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
 
-      - name: Run sync-stats and push
+      - name: Run sync-estate and push
         env:
-          PG_STATS_URL: ${{ secrets.PG_STATS_URL }}                # read-only replica URL
-          NOCK_STATS_API_TOKEN: ${{ secrets.NOCK_STATS_API_TOKEN }}# bearer for hosted API (push + Action GET)
-          NOCK_STATS_KEK: ${{ secrets.NOCK_STATS_KEK }}            # base64 32 bytes (required for prod pushes)
-          # NOCK_DEV_PLAINTEXT_STATS: "1"                         # local dev only (omit in CI)
+          PG_ESTATE_URL: ${{ secrets.PG_ESTATE_URL }}                # read-only replica URL
+          NOCK_ESTATE_API_TOKEN: ${{ secrets.NOCK_ESTATE_API_TOKEN }}# bearer for hosted API (push + Action GET)
+          NOCK_ESTATE_KEK: ${{ secrets.NOCK_ESTATE_KEK }}            # base64 32 bytes (required for prod pushes)
+          # NOCK_DEV_PLAINTEXT_ESTATE: "1"                         # local dev only (omit in CI)
         run: |
           set -euo pipefail
           mkdir -p .nock
-          node packages/cli/dist/bin/nock.js sync-stats \
-            --database-url "$PG_STATS_URL" \
-            --out .nock/stats.json \
-            --push-url "https://nock.saiyamshah1496.workers.dev/v1/stats/my-repo" \
-            --token "$NOCK_STATS_API_TOKEN"
+          node packages/cli/dist/bin/nock.js sync-estate \
+            --database-url "$PG_ESTATE_URL" \
+            --out .nock/estate.json \
+            --push-url "https://nock.saiyamshah1496.workers.dev/v1/estate/my-repo" \
+            --token "$NOCK_ESTATE_API_TOKEN"
 
-      - name: Upload stats artifact (optional)
+      - name: Upload estate artifact (optional)
         uses: actions/upload-artifact@v4
         with:
-          name: nock-stats
-          path: .nock/stats.json
+          name: nock-estate
+          path: .nock/estate.json
           retention-days: 3

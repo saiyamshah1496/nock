@@ -1,7 +1,7 @@
 {
   "name": "@nock/api",
   "version": "0.1.0",
-  "description": "Nock hosted stats API (Path B+)",
+  "description": "Nock hosted estate API (Path B+)",
   "license": "MIT",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@nock/core": "workspace:*",
-    "@nock/secure-stats": "workspace:*",
+    "@nock/secure-estate": "workspace:*",
     "hono": "^4.5.10",
     "@hono/node-server": "^1.12.2",
     "aws4fetch": "^1.0.20"

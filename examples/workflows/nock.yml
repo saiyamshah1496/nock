@@ -22,23 +22,23 @@ jobs:
       - run: pnpm -r build
 
       # Optional: fetch hosted stats (Path B+) into file fallback before running CLI
-      # Provide NOCK_STATS_API_TOKEN in repo secrets if you enable this step.
-      - name: (Optional) Download hosted stats to .nock/stats.json
+      # Provide NOCK_ESTATE_API_TOKEN in repo secrets if you enable this step.
+      - name: (Optional) Download hosted estate to .nock/estate.json
         if: ${{ vars.NOCK_USE_HOSTED_STATS == '1' }}
         env:
-          NOCK_STATS_API_TOKEN: ${{ secrets.NOCK_STATS_API_TOKEN }}
+          NOCK_ESTATE_API_TOKEN: ${{ secrets.NOCK_ESTATE_API_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p .nock
-          curl -fsSL -H "Authorization: Bearer ${NOCK_STATS_API_TOKEN}" \
-            "https://nock.saiyamshah1496.workers.dev/v1/stats/my-repo" \
-            > .nock/stats.json
+          curl -fsSL -H "Authorization: Bearer ${NOCK_ESTATE_API_TOKEN}" \
+            "https://nock.saiyamshah1496.workers.dev/v1/estate/my-repo" \
+            > .nock/estate.json
 
       - name: Run Nock check (CLI)
         run: |
           node packages/cli/dist/bin/nock.js check \
             --sql "migrations/001.sql" \
-            --stats ".nock/stats.json" \
+            --estate ".nock/estate.json" \
             --policy "policy.default.yml" \
             --fail-on "red" \
             --format "json" | tee nock-verdict.json

@@ -16,8 +16,8 @@ const policy = {
 describe("R004/R010 — ADD COLUMN hot table without lock_timeout", () => {
   it("fails on Dec-shaped ADD COLUMN", () => {
     const sql = readFileSync(join(__dirname, "../../../fixtures/dec_add_column.sql"), "utf8");
-    const stats = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/stats_billion.json"), "utf8"));
-    const verdict = check({ sql, stats, policy });
+    const estate = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/estate_billion.json"), "utf8"));
+    const verdict = check({ sql, estate, policy });
     expect(verdict.verdict).toBe("fail");
     const ids = verdict.violations.map((v) => v.rule_id);
     expect(ids).toContain("R004");

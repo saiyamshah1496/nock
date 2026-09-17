@@ -1,7 +1,7 @@
 {
-  "name": "@nock/secure-stats",
+  "name": "@nock/secure-estate",
   "version": "0.1.0",
-  "description": "Nock secure stats envelope (AES-GCM) utils",
+  "description": "Nock secure estate envelope (AES-GCM) utils",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

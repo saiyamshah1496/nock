@@ -15,13 +15,13 @@ function runCli(args: string[]) {
 describe("MCP check_before_apply ≡ CLI JSON", () => {
   it("Railway-shaped fixture parity", () => {
     const sqlPath = join(__dirname, "../../../fixtures/railway_oct.sql");
-    const statsPath = join(__dirname, "../../../fixtures/stats_billion.json");
-    const cli = runCli(["check", "--sql", sqlPath, "--stats", statsPath, "--format", "json"]);
+    const estatePath = join(__dirname, "../../../fixtures/estate_billion.json");
+    const cli = runCli(["check", "--sql", sqlPath, "--estate", estatePath, "--format", "json"]);
     const cliJson = JSON.parse(cli.stdout);
 
     const verdict = checkBeforeApplyLocal({
       sql: readFileSync(sqlPath, "utf8"),
-      statsPath
+      estatePath
     });
     expect(cliJson.verdict).toEqual(verdict.verdict);
     expect(cliJson.violations.map((v: any) => v.rule_id).sort()).toEqual(

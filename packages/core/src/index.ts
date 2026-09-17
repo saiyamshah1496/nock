@@ -30,7 +30,7 @@ export interface Violation {
   docs_url?: string;
 }
 
-export interface StatsTable {
+export interface EstateTable {
   schema: string;
   name: string;
   n_live_tup: number;
@@ -41,12 +41,12 @@ export interface StatsTable {
   last_autoanalyze?: string | null;
 }
 
-export interface StatsSnapshot {
+export interface EstateSnapshot {
   schema_version?: string;
   captured_at?: string;
   pg_version?: string;
   source?: string;
-  tables: StatsTable[];
+  tables: EstateTable[];
 }
 
 export interface PolicyResolved {
@@ -65,8 +65,8 @@ export interface VerdictV1 {
   violations: Violation[];
   meta: {
     pg_version?: string;
-    stats_captured_at?: string;
-    stats_age_hours?: number;
+    estate_captured_at?: string;
+    estate_age_hours?: number;
     policy_id: string;
     engine: "postgres";
   };
@@ -74,7 +74,7 @@ export interface VerdictV1 {
 
 export interface CheckInput {
   sql: string | string[];
-  stats: StatsSnapshot;
+  estate: EstateSnapshot;
   policy: PolicyResolved;
   pgVersion?: string;
 }
@@ -96,7 +96,7 @@ export interface EngineAdapter {
 
 export interface RuleContext {
   statement: Statement;
-  stats: StatsSnapshot;
+  estate: EstateSnapshot;
   policy: PolicyResolved;
 }
 
@@ -192,13 +192,13 @@ function lockModeForCreateIndexNonConcurrent(): LockMode {
   return "SHARE";
 }
 
-function findTableStats(stats: StatsSnapshot, ref?: TableRef): StatsTable | undefined {
+function findTableEstate(snapshot: EstateSnapshot, ref?: TableRef): EstateTable | undefined {
   if (!ref) return undefined;
   const hit =
-    stats.tables.find(
+    snapshot.tables.find(
       (t) => t.schema.toLowerCase() === ref.schema.toLowerCase() && t.name.toLowerCase() === ref.name.toLowerCase()
     ) ||
-    stats.tables.find((t) => t.name.toLowerCase() === ref.name.toLowerCase()); // fallback if schema omitted
+    snapshot.tables.find((t) => t.name.toLowerCase() === ref.name.toLowerCase()); // fallback if schema omitted
   return hit;
 }
 
@@ -255,7 +255,7 @@ export function check(input: CheckInput): VerdictV1 {
     const m = isCreateIndexNonConcurrent(sql);
     if (m) {
       const lockMode = lockModeForCreateIndexNonConcurrent();
-      const tstats = findTableStats(input.stats, m.table);
+      const tstats = findTableEstate(input.estate, m.table);
       const nLive = tstats?.n_live_tup;
       const hitRules: string[] = [];
 
@@ -314,7 +314,7 @@ export function check(input: CheckInput): VerdictV1 {
     // R004: ADD COLUMN on hot table without lock_timeout (nullable or constant default)
     const addCol = isAlterTableAddColumn(sql);
     if (addCol) {
-      const tstats = findTableStats(input.stats, addCol.table);
+      const tstats = findTableEstate(input.estate, addCol.table);
       const nLive = tstats?.n_live_tup;
       const hotRows = policy.rules?.R004?.hot_rows ?? 1_000_000;
       if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= hotRows) {
@@ -354,7 +354,7 @@ export function check(input: CheckInput): VerdictV1 {
     // R006: ADD CHECK without NOT VALID
     const addCheck = isAddCheckConstraintWithoutNotValid(sql);
     if (addCheck) {
-      const tstats = findTableStats(input.stats, addCheck.table);
+      const tstats = findTableEstate(input.estate, addCheck.table);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R006?.red_rows ?? 50_000;
       if (typeof nLive === "number" && nLive >= redRows) {
@@ -395,7 +395,7 @@ export function check(input: CheckInput): VerdictV1 {
     // R005: SET NOT NULL without validated CHECK (simplified: treat as unsafe on large tables)
     const setNotNull = isAlterTableSetNotNull(sql);
     if (setNotNull) {
-      const tstats = findTableStats(input.stats, setNotNull.table);
+      const tstats = findTableEstate(input.estate, setNotNull.table);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R005?.red_rows ?? 100_000;
       if (typeof nLive === "number" && nLive >= redRows) {
@@ -466,8 +466,8 @@ export function check(input: CheckInput): VerdictV1 {
     statements,
     violations,
     meta: {
-      pg_version: input.pgVersion ?? input.stats.pg_version,
-      stats_captured_at: input.stats.captured_at,
+      pg_version: input.pgVersion ?? input.estate.pg_version,
+      estate_captured_at: input.estate.captured_at,
       policy_id: policy.id,
       engine: "postgres"
     }

@@ -1,4 +1,4 @@
-import { check, type PolicyResolved, type StatsSnapshot } from "@nock/core";
+import { check, type PolicyResolved, type EstateSnapshot } from "@nock/core";
 import * as fs from "fs";
 
 // Start an MCP server using dynamic imports to avoid ESM resolution friction at build time.
@@ -23,15 +23,15 @@ export async function startMcpServer() {
         properties: {
           sql: { type: "string" },
           pgVersion: { type: "string" },
-          statsPath: { type: "string" },
+          estatePath: { type: "string" },
           policyPath: { type: "string" }
         }
       }
     },
     async (args: any) => {
       const sql = String(args.sql);
-      const stats: StatsSnapshot = args.statsPath
-        ? JSON.parse(fs.readFileSync(String(args.statsPath), "utf8"))
+      const estate: EstateSnapshot = args.estatePath
+        ? JSON.parse(fs.readFileSync(String(args.estatePath), "utf8"))
         : { tables: [] };
       const policy: PolicyResolved = args.policyPath
         ? JSON.parse(fs.readFileSync(String(args.policyPath), "utf8"))
@@ -46,7 +46,7 @@ export async function startMcpServer() {
           };
       const verdict = check({
         sql,
-        stats,
+        estate,
         policy,
         pgVersion: args.pgVersion ? String(args.pgVersion) : undefined
       });
@@ -110,11 +110,11 @@ if (process.argv[1] && process.argv[1].endsWith("index.js")) {
 export function checkBeforeApplyLocal(args: {
   sql: string;
   pgVersion?: string;
-  statsPath?: string;
+  estatePath?: string;
   policyPath?: string;
 }) {
-  const stats: StatsSnapshot = args.statsPath
-    ? JSON.parse(fs.readFileSync(String(args.statsPath), "utf8"))
+  const estate: EstateSnapshot = args.estatePath
+    ? JSON.parse(fs.readFileSync(String(args.estatePath), "utf8"))
     : { tables: [] };
   const policy: PolicyResolved = args.policyPath
     ? JSON.parse(fs.readFileSync(String(args.policyPath), "utf8"))
@@ -127,7 +127,7 @@ export function checkBeforeApplyLocal(args: {
           R010: { always_require_lock_timeout_above_rows: 1000000 }
         }
       };
-  return check({ sql: args.sql, stats, policy, pgVersion: args.pgVersion });
+  return check({ sql: args.sql, estate, policy, pgVersion: args.pgVersion });
 }
 
 

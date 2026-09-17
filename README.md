@@ -5,12 +5,12 @@ Pattern linters catch shapes. Nock stops merges when staging lies — using your
 ## Phase 1 wedge (what works)
 
 - pnpm monorepo with `@nock/core`, `@nock/cli`, `@nock/mcp`, `@nock/action`
-- CLI: `nock check --sql fixtures/railway_oct.sql --stats fixtures/stats_billion.json --format json`
+- CLI: `nock check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json`
 - Rules: R001 (non-concurrent CREATE INDEX) + R010 (require lock_timeout on hot tables) implemented; unknown DDL → yellow
-- Fixtures: Railway-shaped SQL + stats with `sessions ≈ 1.04B`
+- Fixtures: Railway-shaped SQL + estate with `sessions ≈ 1.04B`
 - GitHub Action (file stats path) + PR comment scaffold
 - MCP: `check_before_apply` (local stats/policy path)
-- Path B sync (Phase 2): `nock sync-stats --database-url $PG_URL --out .nock/stats.json` now available; optional `--push-url` to hosted API (see Path B+).
+- Path B sync (Phase 2): `nock sync-estate --database-url $PG_URL --out .nock/estate.json` now available; optional `--push-url` to hosted API (see Path B+).
 
 Out of scope for Phase 1: hosted API, billing, dashboard, apply plane, MySQL, R011 live locks, libpg-query WASM.
 
@@ -37,34 +37,34 @@ Out of scope for Phase 1: hosted API, billing, dashboard, apply plane, MySQL, R0
 corepack enable
 pnpm install
 pnpm build
-node packages/cli/dist/bin/nock.js check --sql fixtures/railway_oct.sql --stats fixtures/stats_billion.json --format json
+node packages/cli/dist/bin/nock.js check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 
 Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
 ## Estate paths A / B / B+ / C
 
-- Path A — paste/file: commit or artifact `stats.json`; no DB required.
-- Path B — customer sync: run `nock sync-stats` on your own runner (prefer replica) to write `stats.json` locally; same schema as fixtures.
-- Path B+ — thin hosted stats: optionally push encrypted stats to a tiny API you run; the Action can fetch from it. Local-first; envelope encryption for production; plaintext dev mode for local only. See design `docs/design/009-hosted-stats-api.md` and `docs/design/010-workers-r2-hosting.md` (Cloudflare Workers + R2).
+- Path A — paste/file: commit or artifact `estate.json`; no DB required.
+- Path B — customer sync: run `nock sync-estate` on your own runner (prefer replica) to write `estate.json` locally; same schema as fixtures.
+- Path B+ — thin hosted estate: optionally push encrypted estate to a tiny API you run; the Action can fetch from it. Local-first; envelope encryption for production; plaintext dev mode for local only. See design `docs/design/009-hosted-stats-api.md` and `docs/design/010-workers-r2-hosting.md` (Cloudflare Workers + R2).
 - Path C — hosted pull: future opt‑in only (Team/Business); not built in this PR.
 
-### `nock sync-stats`
+### `nock sync-estate`
 
 ```
-nock sync-stats --database-url "$PG_STATS_URL" --out .nock/stats.json
+nock sync-estate --database-url "$PG_ESTATE_URL" --out .nock/estate.json
 # Optional Path B+ push after writing file:
-nock sync-stats --database-url "$PG_STATS_URL" --out .nock/stats.json \
-  --push-url "http://localhost:8787/v1/stats/my-repo" --token dev
+nock sync-estate --database-url "$PG_ESTATE_URL" --out .nock/estate.json \
+  --push-url "http://localhost:8787/v1/estate/my-repo" --token dev
 ```
 
 Notes:
-- Use a read‑only stats role; see `docs/grants-stats-role.md`.
+- Use a read‑only role; see `docs/grants-stats-role.md`.
 - Managed PG often needs `?sslmode=require` on the URL.
 - Optional `--sql-file` allows overriding the default catalogue query later.
 - For `--push-url`:
-  - In local plaintext dev mode set `NOCK_DEV_PLAINTEXT_STATS=1` (sends raw JSON).
-  - Otherwise set `NOCK_STATS_KEK` (base64 32 bytes) to encrypt with AES‑GCM envelope.
+  - In local plaintext dev mode set `NOCK_DEV_PLAINTEXT_ESTATE=1` (sends raw JSON; falls back to `NOCK_DEV_PLAINTEXT_STATS` if set).
+  - Otherwise set `NOCK_ESTATE_KEK` (base64 32 bytes) to encrypt with AES‑GCM envelope (falls back to `NOCK_STATS_KEK`).
   - The API requires `Authorization: Bearer <token>` (MVP).
 
 ## GitHub Action example
@@ -92,31 +92,31 @@ jobs:
         uses: ./.github/actions/nock  # example-only; replace with your published action or use CLI
         with:
           migration-path: migrations/
-          # Hosted stats (Path B+): GET last-good from Saiyam’s Worker
-          stats-api-url: https://nock.saiyamshah1496.workers.dev/v1/stats/my-repo
-          stats-api-token: ${{ secrets.NOCK_STATS_API_TOKEN }}
+          # Hosted estate (Path B+): GET last-good from Saiyam’s Worker
+          estate-api-url: https://nock.saiyamshah1496.workers.dev/v1/estate/my-repo
+          estate-api-token: ${{ secrets.NOCK_ESTATE_API_TOKEN }}
           # Fallback to file when hosted is unavailable (OSS/local)
-          stats-path: .nock/stats.json
+          estate-path: .nock/estate.json
           policy-path: policy.default.yml
           fail-on: red
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### Hosted stats (Path B+) — default API base and secrets
+### Hosted estate (Path B+) — default API base and secrets
 
 - Default API base (Saiyam’s current Worker): `https://nock.saiyamshah1496.workers.dev`
-- GET path used by the Action: `/v1/stats/<your-repo-id>` (returns plaintext JSON)
+- GET path used by the Action: `/v1/estate/<your-repo-id>` (returns plaintext JSON)
 - Required GitHub Actions secrets (names only; do NOT commit values):
-  - `NOCK_STATS_API_TOKEN` — bearer token for hosted API (GET in Action and POST in sync job)
-  - `NOCK_STATS_KEK` — base64 32‑byte key for encrypting pushes in production
+  - `NOCK_ESTATE_API_TOKEN` — bearer token for hosted API (GET in Action and POST in sync job) — accepts fallback `NOCK_STATS_API_TOKEN`
+  - `NOCK_ESTATE_KEK` — base64 32‑byte key for encrypting pushes in production — accepts fallback `NOCK_STATS_KEK`
 - This is the project’s hosted endpoint for now. A future multi‑tenant product would issue per‑customer URLs.
 
-### Scheduled stats sync (artifact) — example
+### Scheduled estate sync (artifact) — example
 
-This job runs every 6h to produce a fresh `stats.json` artifact without committing it. For demo, it uses a fake DSN variable; wire real secrets in your repo.
+This job runs every 6h to produce a fresh `estate.json` artifact without committing it. For demo, it uses a fake DSN variable; wire real secrets in your repo.
 
 ```yaml
-name: Nock stats sync
+name: Nock estate sync
 on:
   schedule:
     - cron: "0 */6 * * *"
@@ -129,18 +129,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: corepack enable && pnpm install && pnpm -r build
-      - name: Run sync-stats
+      - name: Run sync-estate
         env:
-          PG_STATS_URL: ${{ secrets.PG_STATS_URL }} # provide in repo secrets; use a read-only replica
+          PG_ESTATE_URL: ${{ secrets.PG_ESTATE_URL }} # provide in repo secrets; use a read-only replica
         run: |
-          node packages/cli/dist/bin/nock.js sync-stats \
-            --database-url "$PG_STATS_URL" \
-            --out .nock/stats.json
+          node packages/cli/dist/bin/nock.js sync-estate \
+            --database-url "$PG_ESTATE_URL" \
+            --out .nock/estate.json
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nock-stats
-          path: .nock/stats.json
+          name: nock-estate
+          path: .nock/estate.json
           retention-days: 3
 ```
 
@@ -150,10 +150,10 @@ Minimal local server with file-backed store and bearer auth.
 
 ```bash
 # One-time: key for envelope mode
-export NOCK_STATS_KEK="$(openssl rand -base64 32)"
-export NOCK_STATS_API_TOKEN=dev
+export NOCK_ESTATE_KEK="$(openssl rand -base64 32)"
+export NOCK_ESTATE_API_TOKEN=dev
 # Dev plaintext mode (local only). Omit this to require encryption:
-export NOCK_DEV_PLAINTEXT_STATS=1
+export NOCK_DEV_PLAINTEXT_ESTATE=1
 export NOCK_AUDIT_RETENTION_DAYS=30
 
 pnpm -r build
@@ -161,14 +161,14 @@ node packages/api/dist/server.js  # listens on :8787
 ```
 
 Endpoints:
-- `POST /v1/stats/:repoId` (bearer required) — plaintext JSON in dev mode; encrypted envelope otherwise
-- `GET /v1/stats/:repoId` — returns last-good plaintext JSON
+- `POST /v1/estate/:repoId` (bearer required) — plaintext JSON in dev mode; encrypted envelope otherwise
+- `GET /v1/estate/:repoId` — returns last-good plaintext JSON
 - `GET /v1/policy/:repoId` — latest repo policy, else falls back to org default (owner part of `owner/repo`). Note: URL‑encode `owner/repo` as `owner%2Frepo`.
 - `PUT /v1/policy/:repoId` (bearer) — version bump; to write an org default policy, set header `x-nock-policy-scope: org` and `x-nock-org-id: <owner>`
 - `POST /v1/audit` (bearer) — append event `{ org_id, repo_id, sql_hash, verdict, rule_ids[], policy_version?, actor?, ci_run_id? }`
 - `GET /v1/audit/:repoId?limit=N` — recent events (default 50, max 200). Note: URL‑encode `owner/repo`.
 
-Store location default: `data/stats/` (override with `NOCK_STATS_STORE_DIR`).
+Store location default: `data/estate/` (override with `NOCK_ESTATE_STORE_DIR`; falls back to `NOCK_STATS_STORE_DIR`).
 
 ## Deploying the thin API to Cloudflare Workers (primary)
 
@@ -238,7 +238,7 @@ See `docs/DEVELOPMENT.md` for setup, repo map, running the CLI, adding rules/fix
 
 ## Glossary: estate (naming)
 
-- Prefer “estate” / “estate snapshot” in product docs and UI copy. Existing wire names remain “stats” for now (file `stats.json`, command `nock sync-stats`, API `/v1/stats`).
+- Prefer “estate” / “estate snapshot” in product docs, UI copy, and wire names. Formerly called “stats” (file `stats.json`, command `nock sync-stats`, API `/v1/stats`).
 - One repo may target multiple databases. Snapshots are keyed by `org + repo + estate_id` (e.g., `prod-primary`). V1 runs one estate per check; two DBs ⇒ two syncs / two hosted blobs (no merging across DBs).
 - See design note `docs/design/016-estate-naming-and-multi-db.md`.
 

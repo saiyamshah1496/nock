@@ -45,7 +45,7 @@ importers:
       '@nock/core':
         specifier: workspace:*
         version: link:../core
-      '@nock/secure-stats':
+      '@nock/secure-estate':
         specifier: workspace:*
         version: link:../secure-stats
       aws4fetch:
@@ -64,7 +64,7 @@ importers:
       '@nock/core':
         specifier: workspace:*
         version: link:../core
-      '@nock/secure-stats':
+      '@nock/secure-estate':
         specifier: workspace:*
         version: link:../secure-stats
       commander:
