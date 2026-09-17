@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createApp } from "../src/server";
 import { envelopeEncrypt } from "@nockhq/secure-estate";
+import fs from "fs";
+import os from "os";
+import path from "path";
 
 const makeSnapshot = (capturedAtIso: string) => ({
   schema_version: "1",
@@ -15,6 +18,9 @@ describe("POST /v1/estate/:repoId skew validation", () => {
     process.env.NOCK_ESTATE_API_TOKEN = "t";
     process.env.NOCK_ESTATE_KEK = Buffer.alloc(32, 7).toString("base64");
     delete process.env.NOCK_DEV_PLAINTEXT_ESTATE;
+    // Isolate store to a temp dir to avoid polluting repo
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nock-api-test-"));
+    process.env.NOCK_ESTATE_STORE_DIR = dir;
   });
 
   it("accepts envelope when captured_at within 1 hour", async () => {
