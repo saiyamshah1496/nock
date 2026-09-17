@@ -157,3 +157,6 @@ These are product‑locked behaviors to be reflected in control‑plane surfaces
 - Implementation is sequenced after 022 and references it for all data-plane contracts.
 - This PR remains a draft and contains no API code.
 
+Update (PR1 landed):
+
+- Tokens + auth switch implemented in API: D1-backed hashed partner tokens (`tokens.token_hash`, honoring `revoked_at IS NULL`) with env-bearer fallback. Preferred env name: `NOCK_TEAM_API_TOKEN` (aliases `NOCK_ESTATE_API_TOKEN`/`NOCK_STATS_API_TOKEN` remain accepted). No route shape changes.

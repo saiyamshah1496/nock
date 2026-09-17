@@ -18,6 +18,31 @@ function requireToken(c: any): string | null {
   return m ? m[1] : null;
 }
 
+// Compute SHA-256 hex of the given ASCII/UTF-8 string.
+async function sha256Hex(input: string): Promise<string> {
+  // Prefer Web Crypto (Workers)
+  try {
+    // @ts-ignore
+    const subtle: SubtleCrypto | undefined = globalThis.crypto?.subtle;
+    if (subtle) {
+      const enc = new TextEncoder();
+      const digest = await subtle.digest("SHA-256", enc.encode(input));
+      const arr = new Uint8Array(digest);
+      let hex = "";
+      for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, "0");
+      return hex;
+    }
+  } catch {
+    // fall through to node
+  }
+  // Node fallback
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const nodeCrypto = require("crypto") as typeof import("crypto");
+  const h = nodeCrypto.createHash("sha256");
+  h.update(input, "utf8");
+  return h.digest("hex");
+}
+
 function okJson(c: any, body: any, status = 200) {
   return c.json(body, status);
 }
@@ -25,12 +50,75 @@ function errJson(c: any, message: string, status = 400) {
   return c.json({ error: message }, status);
 }
 
-function requireAuth(c: any): string | null {
-  const token = requireToken(c);
-  const expected = process.env.NOCK_ESTATE_API_TOKEN || process.env.NOCK_STATS_API_TOKEN || "";
-  if (!expected) return "__MISSING_CONFIG__";
-  if (!token || token !== expected) return null;
-  return token;
+/**
+ * Authentication (PR1):
+ * - Prefer D1-backed hashed token lookup (tokens.token_hash; revoked_at IS NULL). Attaches org_id to context.
+ * - Fallback to env bearer: NOCK_TEAM_API_TOKEN (preferred name), or NOCK_ESTATE_API_TOKEN / NOCK_STATS_API_TOKEN aliases.
+ * Returns:
+ *   - presented token string on success
+ *   - "__MISSING_CONFIG__" if neither D1 nor env bearer is configured at all
+ *   - null on unauthorized
+ */
+async function requireAuth(c: any): Promise<string | "__MISSING_CONFIG__" | null> {
+  const presented = requireToken(c);
+  // Quick reject if no header and we do have some auth configured
+  const envToken =
+    process.env.NOCK_TEAM_API_TOKEN ||
+    process.env.NOCK_ESTATE_API_TOKEN ||
+    process.env.NOCK_STATS_API_TOKEN ||
+    "";
+  const hasEnvConfigured = !!envToken;
+  const hasD1 = !!c?.env?.NOCK_D1 && typeof c.env.NOCK_D1.prepare === "function";
+  if (!presented) {
+    // If nothing configured at all, surface missing-config; else unauthorized
+    return hasD1 || hasEnvConfigured ? null : "__MISSING_CONFIG__";
+  }
+  // 1) Prefer D1 hashed-token path when NOCK_D1 binding is present
+  if (hasD1) {
+    try {
+      const hash = await sha256Hex(presented);
+      const row = await c.env.NOCK_D1.prepare(
+        `
+        SELECT org_id
+        FROM tokens
+        WHERE token_hash = ?1 AND revoked_at IS NULL
+        LIMIT 1
+        `
+      )
+        .bind(hash)
+        .first();
+      if (row && row.org_id) {
+        // Attach org to request context for downstream use
+        try {
+          c.set && c.set("orgId", String(row.org_id));
+        } catch {
+          // ignore context set failures in local tests
+        }
+        // Opportunistic last_used_at update (best-effort)
+        try {
+          await c.env.NOCK_D1.prepare(
+            `UPDATE tokens SET last_used_at = datetime('now') WHERE token_hash = ?1`
+          )
+            .bind(hash)
+            .run();
+        } catch {
+          // best-effort only
+        }
+        return presented;
+      }
+    } catch {
+      // Fall through to env fallback
+    }
+  }
+  // 2) Fallback to env bearer tokens (single-tenant; no org scoping)
+  if (hasEnvConfigured) {
+    if (presented === envToken) {
+      return presented;
+    }
+    return null; // configured but mismatch
+  }
+  // 3) Nothing configured at all
+  return "__MISSING_CONFIG__";
 }
 
 function parseOrgRepo(repoId: string, orgIdHeader?: string | null): { orgId?: string; repoId: string } {
@@ -57,7 +145,7 @@ export function createApp(
   // POST /v1/estate/:repoId
   app.post("/v1/estate/:repoId", async (c) => {
     const repoId = c.req.param("repoId");
-    const auth = requireAuth(c);
+    const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const isDevPlain = process.env.NOCK_DEV_PLAINTEXT_ESTATE === "1" || process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
@@ -122,7 +210,7 @@ export function createApp(
 
   // GET /v1/policy/:repoId
   app.get("/v1/policy/:repoId", async (c) => {
-    const auth = requireAuth(c);
+    const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
@@ -142,7 +230,7 @@ export function createApp(
 
   // PUT /v1/policy/:repoId
   app.put("/v1/policy/:repoId", async (c) => {
-    const auth = requireAuth(c);
+    const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
@@ -169,7 +257,7 @@ export function createApp(
 
   // POST /v1/audit
   app.post("/v1/audit", async (c) => {
-    const auth = requireAuth(c);
+    const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
@@ -215,7 +303,7 @@ export function createApp(
 
   // GET /v1/audit/:repoId
   app.get("/v1/audit/:repoId", async (c) => {
-    const auth = requireAuth(c);
+    const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
