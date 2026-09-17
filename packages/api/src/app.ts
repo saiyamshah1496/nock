@@ -117,8 +117,8 @@ async function requireAuth(c: any): Promise<string | "__MISSING_CONFIG__" | null
     }
     return null; // configured but mismatch
   }
-  // 3) Nothing configured at all
-  return "__MISSING_CONFIG__";
+  // 3) If D1 is present but hash didn't match, treat as unauthorized; else truly misconfigured
+  return hasD1 ? null : "__MISSING_CONFIG__";
 }
 
 function parseOrgRepo(repoId: string, orgIdHeader?: string | null): { orgId?: string; repoId: string } {

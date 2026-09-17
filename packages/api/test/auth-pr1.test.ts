@@ -85,8 +85,20 @@ describe("Auth PR1: hashed tokens + env fallback", () => {
     // Present in table but marked revoked -> SELECT should not return
     const env = { NOCK_D1: new FakeD1(new Map([[hash, { org_id: "acme", revoked: true }]])) };
     const app = createApp();
-    const req = new Request("http://localhost/v1/policy/acme/api", {
-      headers: { authorization: `Bearer ${token}` },
+    const req = new Request("http://localhost/v1/policy/acme", {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-nock-org-id": "acme",
+        "x-nock-policy-scope": "org",
+      },
+      body: JSON.stringify({
+        id: "nock.test",
+        version: "1.0.0",
+        fail_on: "red",
+        rules: { R001: { red_rows: 1000 } },
+      }),
     });
     const res = await (app as any).fetch(req, env);
     expect(res.status).toBe(401);
@@ -105,7 +117,21 @@ describe("Auth PR1: hashed tokens + env fallback", () => {
   it("returns 401 when token missing and auth is configured", async () => {
     process.env.NOCK_TEAM_API_TOKEN = "x";
     const app = createApp();
-    const res = await app.request("/v1/policy/acme/api");
+    const req = new Request("http://localhost/v1/policy/acme", {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-nock-org-id": "acme",
+        "x-nock-policy-scope": "org",
+      },
+      body: JSON.stringify({
+        id: "nock.test",
+        version: "1.0.0",
+        fail_on: "red",
+        rules: { R001: { red_rows: 1000 } },
+      }),
+    });
+    const res = await (app as any).fetch(req);
     expect(res.status).toBe(401);
   });
 });
