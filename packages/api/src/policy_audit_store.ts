@@ -48,6 +48,15 @@ export interface PolicyAuditStore {
   // Audit
   appendAudit(ev: AuditEventInput): Promise<void>;
   listAuditByRepo(repoId: string, limit: number): Promise<AuditEventRow[]>;
+  /**
+   * Export audit events for a repo within an optional time range.
+   * since/until are ISO 8601 timestamps (inclusive bounds). When omitted, the bound is open.
+   * Implementations should return rows ordered by created_at ascending for stable streaming.
+   */
+  exportAuditByRepo(
+    repoId: string,
+    opts?: { since?: string; until?: string }
+  ): Promise<AuditEventRow[]>;
   pruneOld(days: number): Promise<number>;
 }
 
@@ -97,6 +106,25 @@ export class InMemoryPolicyAuditStore implements PolicyAuditStore {
       .filter((a) => a.repo_id === repoId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
       .slice(0, Math.max(0, Math.min(limit, 200)));
+  }
+
+  async exportAuditByRepo(
+    repoId: string,
+    opts?: { since?: string; until?: string }
+  ): Promise<AuditEventRow[]> {
+    const sinceMs =
+      opts?.since && Number.isFinite(Date.parse(String(opts.since))) ? Date.parse(String(opts.since)) : undefined;
+    const untilMs =
+      opts?.until && Number.isFinite(Date.parse(String(opts.until))) ? Date.parse(String(opts.until)) : undefined;
+    return this.audits
+      .filter((a) => a.repo_id === repoId)
+      .filter((a) => {
+        const t = new Date(a.created_at).getTime();
+        if (sinceMs != null && t < sinceMs) return false;
+        if (untilMs != null && t > untilMs) return false;
+        return true;
+      })
+      .sort((a, b) => a.created_at.localeCompare(b.created_at)); // ascending for exports
   }
 
   async pruneOld(days: number): Promise<number> {

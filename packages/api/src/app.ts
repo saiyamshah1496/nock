@@ -130,6 +130,27 @@ function parseOrgRepo(repoId: string, orgIdHeader?: string | null): { orgId?: st
   return { orgId, repoId };
 }
 
+function getCtxOrgId(c: any): string | undefined {
+  try {
+    return c.get && typeof c.get === "function" ? (c.get("orgId") as string | undefined) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Resolve a repoId for scoped tokens, enforcing org boundaries when present.
+// - If token has org (set by requireAuth), allow either "owner/repo" when owner === org, or bare "repo" which is resolved to "org/repo".
+// - For env bearer (no org in context), pass through as-is.
+function resolveScopedRepoId(c: any, repoParam: string): string | null {
+  const ctxOrg = getCtxOrgId(c);
+  if (!ctxOrg) return repoParam;
+  if (repoParam.includes("/")) {
+    const [owner] = repoParam.split("/", 1);
+    return owner === ctxOrg ? repoParam : null;
+  }
+  return `${ctxOrg}/${repoParam}`;
+}
+
 export function createApp(
   statsStore: EstateStore,
   policyAuditFactory?: PolicyAuditStoreFactory
@@ -195,6 +216,88 @@ export function createApp(
       } catch (e: any) {
         return errJson(c, "decrypt failed", 500);
       }
+    }
+  });
+
+  // --- PR2: Export routes (estate + audit) ---
+  // GET /v1/export/estate/:repoId?format=envelope|plaintext
+  app.get("/v1/export/estate/:repoId", async (c) => {
+    const auth = await requireAuth(c);
+    if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
+    if (auth === null) return errJson(c, "unauthorized", 401);
+    const repoParam = c.req.param("repoId");
+    const repoId = resolveScopedRepoId(c, repoParam);
+    if (!repoId) return errJson(c, "not found", 404); // org-scoped token, wrong owner
+    const format = (c.req.query("format") || "envelope").toLowerCase();
+    if (format !== "envelope" && format !== "plaintext") {
+      return errJson(c, "invalid format", 400);
+    }
+    if (format === "envelope") {
+      const env = await statsStore.loadEnvelope(repoId);
+      if (!env) return errJson(c, "not found", 404);
+      return okJson(c, env, 200);
+    } else {
+      // plaintext: prefer decrypting envelope; fallback to dev plaintext when available
+      const env = await statsStore.loadEnvelope(repoId);
+      if (env) {
+        const kek = process.env.NOCK_ESTATE_KEK || process.env.NOCK_STATS_KEK;
+        if (!kek) return errJson(c, "server missing NOCK_ESTATE_KEK", 500);
+        try {
+          const snap = envelopeDecryptToSnapshot(env as EnvelopeV1, kek);
+          return okJson(c, snap, 200);
+        } catch {
+          return errJson(c, "decrypt failed", 500);
+        }
+      }
+      const pt = await statsStore.loadPlaintext(repoId);
+      if (!pt) return errJson(c, "not found", 404);
+      return okJson(c, pt, 200);
+    }
+  });
+
+  // GET /v1/export/audit/:repoId?since=&until=&format=jsonl|json
+  app.get("/v1/export/audit/:repoId", async (c) => {
+    const auth = await requireAuth(c);
+    if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
+    if (auth === null) return errJson(c, "unauthorized", 401);
+    const store = getPolicyAuditStore(c);
+    const repoParam = c.req.param("repoId");
+    const repoId = resolveScopedRepoId(c, repoParam);
+    if (!repoId) return errJson(c, "not found", 404); // org-scoped token, wrong owner
+    const format = (c.req.query("format") || "jsonl").toLowerCase();
+    if (format !== "jsonl" && format !== "json") {
+      return errJson(c, "invalid format", 400);
+    }
+    const since = c.req.query("since") || undefined;
+    const until = c.req.query("until") || undefined;
+    // Validate timestamps if provided
+    if (since && !Number.isFinite(Date.parse(String(since)))) return errJson(c, "invalid since", 400);
+    if (until && !Number.isFinite(Date.parse(String(until)))) return errJson(c, "invalid until", 400);
+    const rows = await store.exportAuditByRepo(repoId, { since, until });
+    // Map to export shape (include enrichment where present)
+    const out = rows.map((r) => ({
+      id: r.id,
+      org_id: r.org_id,
+      repo_id: r.repo_id,
+      sql_hash: r.sql_hash,
+      verdict: r.verdict,
+      rule_ids: r.rule_ids,
+      estate_captured_at: r.estate_captured_at,
+      freshness: r.freshness,
+      rule_hits: r.rule_hits,
+      policy_version: r.policy_version,
+      actor: r.actor,
+      ci_run_id: r.ci_run_id,
+      created_at: r.created_at,
+    }));
+    if (format === "json") {
+      return okJson(c, out, 200);
+    } else {
+      const ndjson = out.map((o) => JSON.stringify(o)).join("\n") + "\n";
+      return new Response(ndjson, {
+        status: 200,
+        headers: { "content-type": "application/x-ndjson; charset=utf-8" },
+      });
     }
   });
 
