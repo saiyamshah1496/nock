@@ -59,8 +59,8 @@ npx @nockhq/cli@0.1.5 check \
 Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
 Two ways to provide an estate:
-- Bring your own estate — paste/commit `.nock/estate.json`: see `docs/guides/quick-start-estate-file.md`
-- Sync estate yourself — run `nock sync-estate` on your runner: see `docs/guides/sync-estate.md`
+- Bring your own estate — paste/commit `.nock/estate.json`: see [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
+- Sync estate yourself — run `nock sync-estate` on your runner: see [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
 
 ### Example: input → output
 
@@ -134,11 +134,11 @@ Exit code: 2 (fail). 1 = warn when `fail_on=yellow`. 0 = pass.
 
 ## Keep estate fresh with sync-estate
 
-Generate `.nock/estate.json` with a read‑only role (prefer a replica) on your own GitHub runner and use it in PR checks. Guide: `docs/guides/sync-estate.md`
+Generate `.nock/estate.json` with a read‑only role (prefer a replica) on your own GitHub runner and use it in PR checks. Guide: [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
 
 ## Add Nock to GitHub Actions
 
-See `packages/action/action.yml` and copy into `.github/workflows/nock.yml`:
+See [`packages/action/action.yml`](packages/action/action.yml) and copy into [`.github/workflows/nock.yml`](.github/workflows/nock.yml):
 
 ```yaml
 name: Nock
@@ -167,7 +167,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Prefer the CLI workflow in `examples/workflows/nock.yml` if you’re not using a published Action yet — it runs `npx @nockhq/cli` directly on your runner. Or install the Nock DDL Gate GitHub App to enforce checks on pull requests: https://github.com/apps/nock-ddl-gate.
+Prefer the CLI workflow in [`examples/workflows/nock.yml`](examples/workflows/nock.yml) if you’re not using a published Action yet — it runs `npx @nockhq/cli` directly on your runner. Or install the Nock DDL Gate GitHub App to enforce checks on pull requests: https://github.com/apps/nock-ddl-gate.
 
 ## How to read results
 
@@ -178,11 +178,11 @@ Prefer the CLI workflow in `examples/workflows/nock.yml` if you’re not using a
 
 ## Grants for sync-estate
 
-Create a least‑privilege read‑only role that can run the catalogue query (no row data) and prefer connecting to a replica. Guide: `docs/guides/grants-sync-estate.md`
+Create a least‑privilege read‑only role that can run the catalogue query (no row data) and prefer connecting to a replica. Guide: [`docs/guides/grants-sync-estate.md`](docs/guides/grants-sync-estate.md)
 
 ## MCP: check before apply
 
-See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: `docs/guides/mcp-check-before-apply.md`. Use either `npx @nockhq/mcp` (bin `nock-mcp`) or the from‑source config in the guide.
+See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: [`docs/guides/mcp-check-before-apply.md`](docs/guides/mcp-check-before-apply.md). Use either `npx @nockhq/mcp` (bin `nock-mcp`) or the from‑source config in the guide.
 
 ## Rules
 
@@ -214,20 +214,20 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 
 ## Docs index
 
-- Quick start: check a migration with an estate file — `docs/guides/quick-start-estate-file.md`
-- Keep estate fresh with sync-estate — `docs/guides/sync-estate.md`
-- Grants for sync-estate — `docs/guides/grants-sync-estate.md`
-- Estate file path reference — `docs/guides/estate-path.md`
-- MCP: check before apply — `docs/guides/mcp-check-before-apply.md`
-- Security notes — `docs/SECURITY.md`
-- Development — `docs/DEVELOPMENT.md`
-- License — MIT (see `LICENSE`)
-- Nock Team (hosted estate + org policy + audit) — `docs/guides/nock-team.md`
-- Nock Team partner setup (design partners) — `docs/guides/nock-team-partner-setup.md`
+- Quick start: check a migration with an estate file — [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
+- Keep estate fresh with sync-estate — [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
+- Grants for sync-estate — [`docs/guides/grants-sync-estate.md`](docs/guides/grants-sync-estate.md)
+- Estate file path reference — [`docs/guides/estate-path.md`](docs/guides/estate-path.md)
+- MCP: check before apply — [`docs/guides/mcp-check-before-apply.md`](docs/guides/mcp-check-before-apply.md)
+- Security notes — [`docs/SECURITY.md`](docs/SECURITY.md)
+- Development — [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- License — MIT (see [`LICENSE`](LICENSE))
+- Nock Team (hosted estate + org policy + audit) — [`docs/guides/nock-team.md`](docs/guides/nock-team.md)
+- Nock Team partner setup (design partners) — [`docs/guides/nock-team-partner-setup.md`](docs/guides/nock-team-partner-setup.md)
 
 ## Nock Team (hosted estate + org policy + audit + export)
 
-Nock Team thin-slice is live for design partners (invite): hosted estate with envelope encryption, organization policy, audit trails, and export. No Stripe / no self-serve signup yet. For onboarding, see `docs/guides/nock-team-partner-setup.md`.
+Nock Team thin-slice is live for design partners (invite): hosted estate with envelope encryption, organization policy, audit trails, and export. No Stripe / no self-serve signup yet. For onboarding, see [`docs/guides/nock-team-partner-setup.md`](docs/guides/nock-team-partner-setup.md).
 
 ## License
 

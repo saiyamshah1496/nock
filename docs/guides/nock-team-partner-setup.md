@@ -3,8 +3,8 @@
 This guide helps a design partner connect Nock Team so PR checks run using your hosted estate and organization policy — without committing estate files.
 
 Keep the free modes separate:
-- Bring your own estate — `docs/guides/quick-start-estate-file.md`
-- Sync estate yourself — `docs/guides/sync-estate.md`
+- Bring your own estate — [`docs/guides/quick-start-estate-file.md`](./quick-start-estate-file.md)
+- Sync estate yourself — [`docs/guides/sync-estate.md`](./sync-estate.md)
 - Nock Team (hosted) — this guide
 
 ## What you’ll receive
@@ -157,6 +157,6 @@ curl -fsSL -H "Authorization: Bearer $NOCK_TEAM_API_TOKEN" \
 - Examples: `examples/workflows/nock-action.yml`, `examples/workflows/nock.yml`, `examples/workflows/nock-sync-push.yml`
 - Design: `docs/design/022-team-data-plane.md`, `docs/design/023-nock-team-control-plane.md`
 - Free paths:
-  - Bring your own estate — `docs/guides/quick-start-estate-file.md`
-  - Sync estate yourself — `docs/guides/sync-estate.md`
+  - Bring your own estate — [`docs/guides/quick-start-estate-file.md`](./quick-start-estate-file.md)
+  - Sync estate yourself — [`docs/guides/sync-estate.md`](./sync-estate.md)
 

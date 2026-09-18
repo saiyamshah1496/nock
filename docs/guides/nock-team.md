@@ -8,5 +8,5 @@ Design partners (invite) — thin-slice is live.
 - No Stripe / no self-serve signup yet
 - Docs live in this repo (`README.md` and `docs/`)
 
-Partner setup guide (design partners): `docs/guides/nock-team-partner-setup.md`
+Partner setup guide (design partners): [`docs/guides/nock-team-partner-setup.md`](./nock-team-partner-setup.md)
 
