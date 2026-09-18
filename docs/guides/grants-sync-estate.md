@@ -46,7 +46,7 @@ GRANT USAGE ON SCHEMA public TO nock_estate;
 ```
 
 Notes:
-- Managed providers may restrict `pg_stat_activity` and `pg_locks` to superusers. This PR does not require them.
+- Managed providers may restrict `pg_stat_activity` and `pg_locks` to superusers. Nock’s estate sync does not require them.
 - Avoid granting table `SELECT` on application data — `sync-estate` does not read row data.
 - Prefer replicas and network/IP allowlists when available.
 - Some providers block `GRANT` on `pg_catalog` relations; rely on defaults in that case.
