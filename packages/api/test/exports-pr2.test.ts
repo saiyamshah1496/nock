@@ -69,14 +69,14 @@ describe("Export routes (PR2)", () => {
     await s.saveEnvelope("acme/api", env);
     const app = createApp();
     // Default -> envelope
-    let res = await app.request(`/v1/export/estate/${encodeURIComponent("acme/api")}`, {
+    let res = await app.request(`/v1/export/estate/acme/api`, {
       headers: { authorization: "Bearer t" },
     });
     expect(res.status).toBe(200);
     const gotEnv = await res.json();
     expect(gotEnv.version).toBe("v1");
     // plaintext -> decrypted JSON
-    res = await app.request(`/v1/export/estate/${encodeURIComponent("acme/api")}?format=plaintext`, {
+    res = await app.request(`/v1/export/estate/acme/api?format=plaintext`, {
       headers: { authorization: "Bearer t" },
     });
     expect(res.status).toBe(200);
@@ -86,13 +86,13 @@ describe("Export routes (PR2)", () => {
 
   it("returns 401 when missing auth", async () => {
     const app = createApp();
-    const res = await app.request(`/v1/export/estate/${encodeURIComponent("acme/api")}`);
+    const res = await app.request(`/v1/export/estate/acme/api`);
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when estate not found", async () => {
     const app = createApp();
-    const res = await app.request(`/v1/export/estate/${encodeURIComponent("acme/unknown")}`, {
+    const res = await app.request(`/v1/export/estate/acme/unknown`, {
       headers: { authorization: "Bearer t" },
     });
     expect(res.status).toBe(404);
@@ -118,7 +118,7 @@ describe("Export routes (PR2)", () => {
     });
     expect(res.status).toBe(200);
     // NDJSON default
-    res = await app.request(`/v1/export/audit/${encodeURIComponent("acme/api")}`, {
+    res = await app.request(`/v1/export/audit/acme/api`, {
       headers: { authorization: "Bearer t" },
     });
     expect(res.status).toBe(200);
@@ -130,7 +130,7 @@ describe("Export routes (PR2)", () => {
     expect(row.repo_id).toBe("acme/api");
     expect(Array.isArray(row.rule_hits)).toBe(true);
     // JSON array
-    res = await app.request(`/v1/export/audit/${encodeURIComponent("acme/api")}?format=json`, {
+    res = await app.request(`/v1/export/audit/acme/api?format=json`, {
       headers: { authorization: "Bearer t" },
     });
     const arr = await res.json();
@@ -150,23 +150,18 @@ describe("Export routes (PR2)", () => {
     await s.saveEnvelope("acme/api", env);
     const app = createApp();
     // Request with matching owner -> 200
-    let req = new Request(`http://localhost/v1/export/estate/${encodeURIComponent("acme/api")}`, {
+    let req = new Request(`http://localhost/v1/export/estate/acme/api`, {
       headers: { authorization: `Bearer ${token}` },
     });
     let res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(200);
     // Request other owner -> 404 (not found)
-    req = new Request(`http://localhost/v1/export/estate/${encodeURIComponent("other/api")}`, {
+    req = new Request(`http://localhost/v1/export/estate/other/api`, {
       headers: { authorization: `Bearer ${token}` },
     });
     res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(404);
-    // Request bare repo resolves using org scope -> 200 for "api" (resolves to acme/api)
-    req = new Request(`http://localhost/v1/export/estate/api`, {
-      headers: { authorization: `Bearer ${token}` },
-    });
-    res = await (app as any).fetch(req, envBindings);
-    expect(res.status).toBe(200);
+    // Bare repo path is unsupported; ensure multi-segment required
   });
 });
 

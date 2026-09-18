@@ -22,7 +22,7 @@ describe("PR3 — App prefers hosted estate+policy via token when configured", (
   it("resolveEstate returns hosted snapshot when available", async () => {
     (global as any).fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const u = typeof input === "string" ? input : input.toString();
-      if (u.startsWith(`${apiBase}/v1/estate/${encodeURIComponent(`${owner}/${repo}`)}`)) {
+      if (u.startsWith(`${apiBase}/v1/estate/${owner}/${repo}`)) {
         if (!init?.headers || !(init.headers as any)["Authorization"]) {
           return new Response("unauthorized", { status: 401 });
         }
@@ -45,7 +45,7 @@ describe("PR3 — App prefers hosted estate+policy via token when configured", (
   it("resolvePolicy returns hosted policy when available", async () => {
     (global as any).fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const u = typeof input === "string" ? input : input.toString();
-      if (u.startsWith(`${apiBase}/v1/policy/${encodeURIComponent(`${owner}/${repo}`)}`)) {
+      if (u.startsWith(`${apiBase}/v1/policy/${owner}/${repo}`)) {
         if (!init?.headers || !(init.headers as any)["Authorization"]) {
           return new Response("unauthorized", { status: 401 });
         }

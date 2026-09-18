@@ -49,9 +49,9 @@ describe("API GET last-good", () => {
     process.env.NOCK_ESTATE_KEK = kek;
     const s = new LocalFileStatsStore(dir);
     const env = envelopeEncrypt(sample as any, kek);
-    await s.saveEnvelope("repoX", env);
+    await s.saveEnvelope("acme/repoX", env);
     const app = createApp();
-    const res = await app.request("/v1/estate/repoX");
+    const res = await app.request("/v1/estate/acme/repoX");
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual(sample);

@@ -33,7 +33,7 @@ describe("Policy + Audit API (in-memory store, local server)", () => {
     const putJson = await res.json();
     expect(putJson.version).toBe(1);
     // GET for repo without repo-level policy → falls back to org default
-    res = await app.request(`/v1/policy/${encodeURIComponent("acme/api")}`, { headers: { authorization: "Bearer t" } });
+    res = await app.request(`/v1/policy/acme/api`, { headers: { authorization: "Bearer t" } });
     expect(res.status).toBe(200);
     const got = await res.json();
     expect(got.id).toBe(pack.id);
@@ -58,7 +58,7 @@ describe("Policy + Audit API (in-memory store, local server)", () => {
       body: JSON.stringify(body),
     });
     expect(res.status).toBe(200);
-    res = await app.request(`/v1/audit/${encodeURIComponent("acme/api")}?limit=10`, {
+    res = await app.request(`/v1/audit/acme/api?limit=10`, {
       headers: { authorization: "Bearer t" },
     });
     expect(res.status).toBe(200);
