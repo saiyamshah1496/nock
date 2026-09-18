@@ -396,6 +396,32 @@ function findTableEstate(snapshot: EstateSnapshot, ref?: TableRef): EstateTable 
   return hit;
 }
 
+// Check if an index exists on the given table whose column list begins with (prefix/equal) the wanted columns.
+// Requires indexes catalogue section to be present to avoid inventing matches.
+function hasSupportingIndexPrefix(
+  snapshot: EstateSnapshot,
+  table: TableRef | undefined,
+  wantColumns: string[] | undefined
+): boolean {
+  if (!table || !wantColumns || wantColumns.length === 0) return false;
+  if (!hasCatalogueSection(snapshot, "indexes")) return false; // fail-closed when catalogue omitted
+  const schemaLc = table.schema.toLowerCase();
+  const nameLc = table.name.toLowerCase();
+  const want = wantColumns.map((c) => c.toLowerCase());
+  return (snapshot.indexes ?? []).some((idx) => {
+    if (!idx) return false;
+    if (idx.schema.toLowerCase() !== schemaLc || idx.table.toLowerCase() !== nameLc) return false;
+    // Supporting index must be valid/ready to be useful during enforcement
+    if (!(idx.valid && idx.ready)) return false;
+    const cols = (idx.columns ?? []).map((c) => c.toLowerCase());
+    if (cols.length < want.length || cols.length === 0) return false;
+    for (let i = 0; i < want.length; i++) {
+      if (cols[i] !== want[i]) return false;
+    }
+    return true;
+  });
+}
+
 function formatRows(n?: number): string {
   if (!n && n !== 0) return "?";
   if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + "B";
@@ -521,7 +547,7 @@ function parseValidateConstraint(sql: string): { table?: TableRef; constraint?: 
 }
 
 // R007 — ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... without NOT VALID
-function parseAddForeignKeyWithoutNotValid(sql: string): { table?: TableRef } | null {
+function parseAddForeignKeyWithoutNotValid(sql: string): { table?: TableRef; columns?: string[] } | null {
   const clean = stripSqlComments(sql);
   if (!/ALTER\s+TABLE/i.test(clean)) return null;
   if (!/\bADD\s+CONSTRAINT\b/i.test(clean)) return null;
@@ -529,10 +555,19 @@ function parseAddForeignKeyWithoutNotValid(sql: string): { table?: TableRef } | 
   if (/\bNOT\s+VALID\b/i.test(clean)) return null; // safe path
   const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
   const fq = tm?.[1]?.replace(/"/g, "");
-  if (!fq) return { table: undefined };
+  if (!fq) return { table: undefined, columns: undefined };
   const parts = fq.split(".");
   const table: TableRef = parts.length === 2 ? { schema: parts[0], name: parts[1] } : { schema: "public", name: parts[0] };
-  return { table };
+  // Extract child columns inside FOREIGN KEY(...)
+  let columns: string[] | undefined = undefined;
+  const cm = /\bFOREIGN\s+KEY\s*\(([^)]+)\)/i.exec(clean);
+  if (cm?.[1]) {
+    columns = cm[1]
+      .split(",")
+      .map((s) => s.replace(/"/g, "").trim())
+      .filter((s) => s.length > 0);
+  }
+  return { table, columns };
 }
 
 // R008 — ALTER TABLE ... ALTER COLUMN ... TYPE ...
@@ -802,6 +837,56 @@ export function check(input: CheckInput): VerdictV1 {
       continue;
     }
 
+    // R022 — VALIDATE CONSTRAINT on hot table (size-gated; catalogue-aware suppression when already validated)
+    const vc = parseValidateConstraint(sql);
+    if (vc) {
+      // Resolve target table: prefer catalogue constraint match when present; else rely on SQL parse
+      let target: TableRef | undefined = vc.table;
+      let alreadyValidated = false;
+      if (hasCatalogueSection(input.estate, "constraints") && vc.constraint) {
+        const k = (input.estate.constraints ?? []).find(
+          (c) => c && c.name.toLowerCase() === String(vc.constraint).toLowerCase()
+        );
+        if (k) {
+          target = { schema: k.schema, name: k.table };
+          alreadyValidated = k.validated === true;
+        }
+      }
+      const tstats = findTableEstate(input.estate, target);
+      const nLive = tstats?.n_live_tup;
+      const yellowRows = policy.rules?.R022?.yellow_rows ?? 10_000;
+      const redRows = policy.rules?.R022?.red_rows ?? 100_000;
+      if (isRuleEnabled("R022") && !alreadyValidated) {
+        let sev: "red" | "yellow" | undefined = undefined;
+        if (typeof nLive === "number") {
+          if (nLive >= redRows) sev = "red";
+          else if (nLive >= yellowRows) sev = "yellow";
+        } else {
+          // Unknown size — warn by default
+          sev = "yellow";
+        }
+        if (sev) {
+          violations.push({
+            rule_id: "R022",
+            severity: sev,
+            message: `VALIDATE CONSTRAINT on ${target ? target.name : "unknown"} (${formatRows(
+              nLive
+            )} rows) may scan table; prefer off-peak or split`
+          });
+        }
+      }
+      statements.push({
+        sql,
+        lock_mode: "SHARE UPDATE EXCLUSIVE",
+        blocks_reads: false,
+        blocks_writes: true,
+        target,
+        n_live_tup: nLive,
+        rules_hit: []
+      });
+      continue;
+    }
+
     // R007: ADD FOREIGN KEY without NOT VALID (size-gated)
     const addFk = parseAddForeignKeyWithoutNotValid(sql);
     if (addFk) {
@@ -819,6 +904,24 @@ export function check(input: CheckInput): VerdictV1 {
             remediation_sql:
               "ALTER TABLE <child> ADD CONSTRAINT <name> FOREIGN KEY (<col>) REFERENCES <parent>(<col>) NOT VALID; ALTER TABLE <child> VALIDATE CONSTRAINT <name>;"
           });
+        }
+        // Extra catalogue arm: warn when no supporting index covers the FK columns on the child table
+        const catPresent =
+          hasCatalogueSection(input.estate, "constraints") && hasCatalogueSection(input.estate, "indexes");
+        if (catPresent && addFk.table && addFk.columns && addFk.columns.length > 0) {
+          const hasSupport = hasSupportingIndexPrefix(input.estate, addFk.table, addFk.columns);
+          if (!hasSupport) {
+            violations.push({
+              rule_id: "R007",
+              severity: "yellow",
+              message: `ADD FOREIGN KEY without supporting index on ${addFk.table.name}(${addFk.columns.join(
+                ", "
+              )}) — add covering index`,
+              remediation_sql: `CREATE INDEX CONCURRENTLY ON ${addFk.table.schema}.${addFk.table.name}(${addFk.columns.join(
+                ", "
+              )});`
+            });
+          }
         }
       }
       // R010: generic hot DDL without prior lock_timeout
@@ -1640,6 +1743,29 @@ export function check(input: CheckInput): VerdictV1 {
     });
   }
 
+  // R023 — Invalid or not-ready index exists on a touched table (catalogue-aware; default yellow)
+  if (isRuleEnabled("R023") && hasCatalogueSection(input.estate, "indexes")) {
+    const touchedKeys = new Set<string>();
+    for (const st of statements) {
+      if (st.target?.schema && st.target?.name) {
+        touchedKeys.add(`${st.target.schema.toLowerCase()}.${st.target.name.toLowerCase()}`);
+      }
+    }
+    for (const tkey of touchedKeys) {
+      const [schemaLc, nameLc] = tkey.split(".");
+      const hasBadIndex = (input.estate.indexes ?? []).some(
+        (idx) => idx.schema.toLowerCase() === schemaLc && idx.table.toLowerCase() === nameLc && (!idx.valid || !idx.ready)
+      );
+      if (hasBadIndex) {
+        violations.push({
+          rule_id: "R023",
+          severity: "yellow",
+          message: `Invalid or not-ready index present on touched table ${nameLc} — clean up before/after this migration`
+        });
+      }
+    }
+  }
+
   // R016: Multiple ACCESS EXCLUSIVE statements on the same hot table without lock_timeout — yellow
   for (const [tkey, indices] of Object.entries(aeOpsByTable)) {
     if (indices.length >= 2) {
@@ -1685,6 +1811,7 @@ export function check(input: CheckInput): VerdictV1 {
       "R016",
       "R017",
       "R018",
+      "R022",
     ]);
     for (const v of violations) {
       if (v.severity === "red" && sizeGated.has(v.rule_id)) {
