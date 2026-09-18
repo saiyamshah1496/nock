@@ -37,7 +37,7 @@ Notes
 Run with the published CLI (recommended for strangers):
 
 ```bash
-## Example using this repo’s fixtures:
+# Example using this repo’s fixtures:
 npx @nockhq/cli@0.1.5 check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
