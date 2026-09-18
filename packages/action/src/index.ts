@@ -14,7 +14,14 @@ async function run() {
     const migrationPath = core.getInput("migration-path") || "migrations/";
     const estatePath = core.getInput("estate-path") || ".nock/estate.json";
     const estateApiUrl = core.getInput("estate-api-url") || "";
-    const estateApiToken = core.getInput("estate-api-token") || "";
+    // Token: prefer input; else env fallbacks (NOCK_TEAM_API_TOKEN, NOCK_ESTATE_API_TOKEN, NOCK_STATS_API_TOKEN)
+    const estateApiTokenInput = core.getInput("estate-api-token") || "";
+    const estateApiTokenEnv =
+      process.env.NOCK_TEAM_API_TOKEN ||
+      process.env.NOCK_ESTATE_API_TOKEN ||
+      process.env.NOCK_STATS_API_TOKEN ||
+      "";
+    const estateApiToken = estateApiTokenInput || estateApiTokenEnv;
     const apiBaseUrlInput = core.getInput("api-base-url") || ""; // optional explicit base
     const policyPath = core.getInput("policy-path") || "policy.default.yml";
     const failOn = (core.getInput("fail-on") || "red") as "red" | "yellow";
@@ -37,7 +44,7 @@ async function run() {
     const sql = sqlFiles.map((p) => fs.readFileSync(p, "utf8")).join("\n;\n");
 
     let estate: EstateSnapshot | null = null;
-    if (estateApiUrl) {
+    if (estateApiUrl && estateApiToken) {
       try {
         const res = await getJson(estateApiUrl, estateApiToken);
         estate = res as EstateSnapshot;

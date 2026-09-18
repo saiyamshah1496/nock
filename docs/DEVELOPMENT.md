@@ -131,6 +131,12 @@ Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip
   - `nock-action.yml` — Action with optional hosted estate
   - `nock.yml` — CLI workflow (works without a packaged Action)
   - `nock-sync-push.yml` — scheduled `sync-estate` + push to hosted API
+  
+PR3 wiring (thin-slice):
+- Action reads token from input or env fallback in this order: `NOCK_TEAM_API_TOKEN`, `NOCK_ESTATE_API_TOKEN`, `NOCK_STATS_API_TOKEN`.
+- CLI gained flags `--estate-api-url`, `--estate-api-token`, `--api-base-url`; when URL+token are present it prefers hosted estate and `GET /v1/policy/:repoId` (repoId parsed from `--estate-api-url`) and falls back to local `--estate`/`--policy` otherwise.
+- MCP mirrors CLI behavior: accepts `estateApiUrl`, `estateApiToken`, `apiBaseUrl` tool args with the same env fallbacks as CLI.
+- GitHub App prefers hosted estate+policy when a partner token is present. In local/dev, set `NOCK_APP_BASE_URL` to the API origin (e.g., `http://127.0.0.1:8787`) so the App can call `GET /v1/estate/:repoId` and `GET /v1/policy/:repoId` internally. In Workers, the request origin is used automatically if `NOCK_APP_BASE_URL` is unset.
 
 ## How to add a rule
 

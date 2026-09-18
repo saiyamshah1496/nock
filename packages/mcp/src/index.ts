@@ -1,4 +1,4 @@
-import { check, type PolicyResolved, type EstateSnapshot } from "@nockhq/core";
+import { check, type PolicyResolved, type EstateSnapshot, computeFreshness } from "@nockhq/core";
 import * as fs from "fs";
 import { z } from "zod";
 
@@ -19,7 +19,7 @@ export async function startMcpServer() {
     {
       title: "Check migration before apply",
       description:
-        "Returns Nock verdict JSON for a migration SQL against a local estate snapshot (no DB connection).",
+        "Returns Nock verdict JSON for a migration SQL against a hosted (token) or local estate snapshot (no DB connection).",
       // Zod input schema for validation
       inputSchema: z
         .object({
@@ -27,30 +27,88 @@ export async function startMcpServer() {
           pgVersion: z.string().optional(),
           estatePath: z.string().optional(),
           policyPath: z.string().optional(),
+          estateApiUrl: z.string().optional(),
+          estateApiToken: z.string().optional(),
+          apiBaseUrl: z.string().optional(),
         })
         .strip(),
     },
     async (args: any) => {
       const sql = String(args?.sql ?? "");
-      const estate: EstateSnapshot = args?.estatePath
-        ? JSON.parse(fs.readFileSync(String(args.estatePath), "utf8"))
-        : { tables: [] };
-      const policy: PolicyResolved = args?.policyPath
-        ? JSON.parse(fs.readFileSync(String(args.policyPath), "utf8"))
-        : {
-            id: "nock.postgres.ddl.default",
-            version: "1.0.0",
-            fail_on: "red",
-            rules: {
-              R001: { red_rows: 10000 },
-              R010: { always_require_lock_timeout_above_rows: 1000000 },
-            },
-          };
+      const estateApiUrl: string = String(args?.estateApiUrl || "");
+      const tokenInput: string = String(args?.estateApiToken || "");
+      const tokenEnv =
+        process.env.NOCK_TEAM_API_TOKEN ||
+        process.env.NOCK_ESTATE_API_TOKEN ||
+        process.env.NOCK_STATS_API_TOKEN ||
+        "";
+      const estateApiToken = tokenInput || tokenEnv;
+      const apiBaseUrl: string = String(args?.apiBaseUrl || "");
+      const apiBase = apiBaseUrl
+        ? apiBaseUrl.replace(/\/+$/, "")
+        : estateApiUrl
+        ? new URL(estateApiUrl).origin
+        : "";
+      // Fetch hosted or fallback to local
+      let estate: EstateSnapshot | null = null;
+      if (estateApiUrl && estateApiToken) {
+        try {
+          const res = await fetch(estateApiUrl, {
+            headers: { Accept: "application/json", Authorization: `Bearer ${estateApiToken}` },
+          });
+          if (res.ok) {
+            estate = (await res.json()) as EstateSnapshot;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (!estate) {
+        estate = args?.estatePath
+          ? (JSON.parse(fs.readFileSync(String(args.estatePath), "utf8")) as EstateSnapshot)
+          : ({ tables: [] } as EstateSnapshot);
+      }
+      let hostedPolicy: PolicyResolved | null = null;
+      if (apiBase && estateApiToken) {
+        try {
+          let repoId: string | null = null;
+          try {
+            const u = new URL(estateApiUrl);
+            const m = /\/v1\/estate\/(.+)$/.exec(u.pathname);
+            if (m && m[1]) repoId = decodeURIComponent(m[1]);
+          } catch {
+            // ignore
+          }
+          if (repoId) {
+            const res = await fetch(`${apiBase}/v1/policy/${encodeURIComponent(repoId)}`, {
+              headers: { Accept: "application/json", Authorization: `Bearer ${estateApiToken}` },
+            });
+            if (res.ok) hostedPolicy = (await res.json()) as PolicyResolved;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      const policy: PolicyResolved =
+        hostedPolicy ||
+        (args?.policyPath
+          ? (JSON.parse(fs.readFileSync(String(args.policyPath), "utf8")) as PolicyResolved)
+          : {
+              id: "nock.postgres.ddl.default",
+              version: "1.0.0",
+              fail_on: "red",
+              rules: {
+                R001: { red_rows: 10000 },
+                R010: { always_require_lock_timeout_above_rows: 1000000 },
+              },
+            });
+      const band = computeFreshness(estate.captured_at);
       const verdict = check({
         sql,
         estate,
         policy,
         pgVersion: args?.pgVersion ? String(args.pgVersion) : undefined,
+        noStatsBehavior: band === "stale" ? "warn" : undefined,
       });
       return { content: [{ type: "json", json: verdict }] };
     }
@@ -137,6 +195,88 @@ export function checkBeforeApplyLocal(args: {
         }
       };
   return check({ sql: args.sql, estate, policy, pgVersion: args.pgVersion });
+}
+
+// Test helper: mirrors tool logic (hosted preference with env fallbacks)
+export async function checkBeforeApplyHostedOrLocal(args: {
+  sql: string;
+  pgVersion?: string;
+  estatePath?: string;
+  policyPath?: string;
+  estateApiUrl?: string;
+  estateApiToken?: string;
+  apiBaseUrl?: string;
+}) {
+  const estateApiUrl: string = String(args?.estateApiUrl || "");
+  const tokenInput: string = String(args?.estateApiToken || "");
+  const tokenEnv =
+    process.env.NOCK_TEAM_API_TOKEN ||
+    process.env.NOCK_ESTATE_API_TOKEN ||
+    process.env.NOCK_STATS_API_TOKEN ||
+    "";
+  const estateApiToken = tokenInput || tokenEnv;
+  const apiBaseUrl: string = String(args?.apiBaseUrl || "");
+  const apiBase = apiBaseUrl
+    ? apiBaseUrl.replace(/\/+$/, "")
+    : estateApiUrl
+    ? new URL(estateApiUrl).origin
+    : "";
+  let estate: EstateSnapshot | null = null;
+  if (estateApiUrl && estateApiToken) {
+    try {
+      const res = await fetch(estateApiUrl, {
+        headers: { Accept: "application/json", Authorization: `Bearer ${estateApiToken}` },
+      });
+      if (res.ok) estate = (await res.json()) as EstateSnapshot;
+    } catch {
+      // ignore
+    }
+  }
+  if (!estate) {
+    estate = args.estatePath ? (JSON.parse(fs.readFileSync(String(args.estatePath), "utf8")) as EstateSnapshot) : { tables: [] };
+  }
+  let hostedPolicy: PolicyResolved | null = null;
+  if (apiBase && estateApiToken) {
+    try {
+      let repoId: string | null = null;
+      try {
+        const u = new URL(estateApiUrl);
+        const m = /\/v1\/estate\/(.+)$/.exec(u.pathname);
+        if (m && m[1]) repoId = decodeURIComponent(m[1]);
+      } catch {
+        // ignore
+      }
+      if (repoId) {
+        const res = await fetch(`${apiBase}/v1/policy/${encodeURIComponent(repoId)}`, {
+          headers: { Accept: "application/json", Authorization: `Bearer ${estateApiToken}` },
+        });
+        if (res.ok) hostedPolicy = (await res.json()) as PolicyResolved;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const policy: PolicyResolved =
+    hostedPolicy ||
+    (args.policyPath
+      ? (JSON.parse(fs.readFileSync(String(args.policyPath), "utf8")) as PolicyResolved)
+      : {
+          id: "nock.postgres.ddl.default",
+          version: "1.0.0",
+          fail_on: "red",
+          rules: {
+            R001: { red_rows: 10000 },
+            R010: { always_require_lock_timeout_above_rows: 1000000 },
+          },
+        });
+  const band = computeFreshness(estate.captured_at);
+  return check({
+    sql: args.sql,
+    estate,
+    policy,
+    pgVersion: args.pgVersion,
+    noStatsBehavior: band === "stale" ? "warn" : undefined,
+  });
 }
 
 
