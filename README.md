@@ -32,7 +32,7 @@ pnpm build
 
 ## What is an estate?
 
-An estate is a small JSON snapshot of your Postgres tables’ sizes that Nock uses to reason about locks and risk on your actual data. It is not a dump — no row contents, no passwords.
+An estate is a small JSON snapshot of your Postgres tables’ sizes and governance facts (columns, constraints, indexes) that Nock uses to reason about locks and risk on your actual data. It is not a dump — no row contents, no passwords, and no stored SQL/expressions.
 
 Minimal shape:
 

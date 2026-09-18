@@ -28,7 +28,7 @@ Option B — start tiny and edit by hand
 ```
 
 Notes
-- “Estate” is just table sizes plus Postgres version — no row data and no secrets.
+- “Estate” is table sizes + Postgres version and may include a governance catalogue (columns, constraints, indexes). It never contains row data, default expression text, or CHECK/index expressions.
 - You can keep `.nock/estate.json` in the repo (commit) or publish it as a build artifact.
 
 ## 2) Run a check locally (CLI)

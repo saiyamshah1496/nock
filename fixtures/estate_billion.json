@@ -16,5 +16,8 @@
       "last_analyze": "2026-09-15T12:00:00Z",
       "last_autoanalyze": null
     }
-  ]
+  ],
+  "columns": [],
+  "constraints": [],
+  "indexes": []
 }

@@ -102,6 +102,20 @@ jobs:
             --out .nock/estate.json
           echo "Captured estate:"
           head -n 50 .nock/estate.json || true
+      - name: Assert governance catalogue present (columns/constraints/indexes)
+        run: |
+          set -euo pipefail
+          test -f .nock/estate.json
+          # Sections present
+          jq -e 'has("columns") and has("constraints") and has("indexes")' .nock/estate.json >/dev/null
+          # Columns: widgets.name is nullable text (no NOT NULL)
+          jq -e '.columns[] | select(.schema=="public" and .table=="widgets" and .column=="name" and (.not_null|not) and (.type_name|ascii_downcase)=="text")' .nock/estate.json >/dev/null
+          # Constraints: NOT VALID FK widgets_session_fk to public.sessions(id)
+          jq -e '.constraints[] | select(.schema=="public" and .table=="widgets" and .name=="widgets_session_fk" and .kind=="fk" and (.validated==false) and .foreign_table=="public.sessions" and (.foreign_columns|length==1) and (.foreign_columns|first)=="id")' .nock/estate.json >/dev/null
+          # Indexes: unique index on name with columns including "name"
+          jq -e '.indexes[] | select(.schema=="public" and .table=="widgets" and .name=="idx_widgets_name_unique" and .unique==true and .primary==false and .valid==true and .ready==true and .live==true and .immediate==true and (.columns|index("name")!=null))' .nock/estate.json >/dev/null
+          # Indexes: expression index has empty columns []
+          jq -e '.indexes[] | select(.schema=="public" and .table=="widgets" and .name=="idx_widgets_name_lower" and (.columns|length==0))' .nock/estate.json >/dev/null
 
       - name: Check expected RED on hot table (sessions)
         env:
