@@ -21,6 +21,11 @@ describe("R007 — ADD FOREIGN KEY without NOT VALID", () => {
   it("passes on tiny child table", () => {
     const sql = readFileSync(join(__dirname, "../../../fixtures/add_fk_without_not_valid.sql"), "utf8");
     const estate = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/estate_tiny.json"), "utf8"));
+    // Omit catalogue sections to exercise the pre-catalogue arm only
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (estate as any).constraints;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (estate as any).indexes;
     const policy = { id: "nock.postgres.ddl.default", version: "1.0.0", fail_on: "red", rules: { R007: { red_rows: 100000 } } };
     const verdict = check({ sql, estate, policy });
     expect(verdict.violations.some((v) => v.rule_id === "R007")).toBe(false);
