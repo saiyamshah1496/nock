@@ -77,7 +77,7 @@ MCP mirrors the CLI flags: `estateApiUrl`, `estateApiToken`, `apiBaseUrl` with t
 
 Freshness behavior (locked):
 - Warn when the hosted snapshot’s `captured_at` is older than 7 days.
-- If older than 30 days, size‑dependent gates are neutralized (“no_stats” behavior); non‑size rules can still fail.
+- If older than 30 days, size‑dependent gates are neutralized; non‑size rules can still fail.
 
 ## 3) (Optional) Sync and push your estate on a schedule
 
