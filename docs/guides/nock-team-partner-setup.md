@@ -2,7 +2,7 @@
 
 This guide helps a design partner connect Nock Team so PR checks run using your hosted estate and organization policy — without committing estate files.
 
-Keep the other paths intact and separate:
+Keep the free modes separate:
 - Bring your own estate — `docs/guides/quick-start-estate-file.md`
 - Sync estate yourself — `docs/guides/sync-estate.md`
 - Nock Team (hosted) — this guide
@@ -34,6 +34,7 @@ export NOCK_ESTATE_KEK="...base64-32-bytes..."
 
 Use either the packaged Action or the CLI workflow. Both prefer hosted by token and fall back to a file when not configured.
 
+- Current design‑partner API base: `https://nock.saiyamshah1496.workers.dev`
 - Default API base for examples: `https://nock.saiyamshah1496.workers.dev`
 - Repo identifier pattern: `/v1/estate/:owner/:repo`
 
@@ -95,10 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
+        with: { node-version: 20 }
       - name: Run sync-estate and push
         env:
           PG_ESTATE_URL: ${{ secrets.PG_ESTATE_URL }}          # read-only replica
@@ -107,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .nock
-          node packages/cli/dist/bin/nock.js sync-estate \
+          npx @nockhq/cli@0.1.2 sync-estate \
             --database-url "$PG_ESTATE_URL" \
             --out .nock/estate.json \
             --push-url "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo" \

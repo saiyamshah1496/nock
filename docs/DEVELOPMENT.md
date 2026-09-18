@@ -3,8 +3,8 @@
 Senior-staff quickstart for contributing to Nock Phase 1.
 
 For product usage, see:
-- `docs/guides/quick-start-estate-file.md` (bring your own estate)
-- `docs/guides/sync-estate.md` (sync estate yourself)
+- `docs/guides/quick-start-estate-file.md` (Bring Your Own Estate)
+- `docs/guides/sync-estate.md` (Sync Estate Yourself)
 - `docs/guides/nock-team-partner-setup.md` (Nock Team — design partner setup)
 
 ## Repo map
