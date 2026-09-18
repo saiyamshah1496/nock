@@ -600,6 +600,79 @@ function isLikelyBinaryCoercibleWiden(newType?: string, hasUsing?: boolean): boo
   return false;
 }
 
+// Parse DROP CONSTRAINT name for R009 deepen
+function parseDropConstraint(sql: string): { table?: TableRef; constraint?: string } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean) || !/\bDROP\s+CONSTRAINT\b/i.test(clean)) return null;
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const cm = /\bDROP\s+CONSTRAINT\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  const parts = fq ? fq.split(".") : [];
+  const table: TableRef | undefined = fq
+    ? parts.length === 2
+      ? { schema: parts[0], name: parts[1] }
+      : { schema: "public", name: parts[0] }
+    : undefined;
+  const constraint = cm?.[1]?.replace(/"/g, "");
+  return { table, constraint };
+}
+
+// Parse DROP COLUMN details for R009 deepen
+function parseDropColumn(sql: string): { table?: TableRef; column?: string } | null {
+  const clean = stripSqlComments(sql);
+  if (!/ALTER\s+TABLE/i.test(clean) || !/\bDROP\s+COLUMN\b/i.test(clean)) return null;
+  const tm = /ALTER\s+TABLE\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const cm = /\bDROP\s+COLUMN\s+([A-Za-z0-9_".]+)/i.exec(clean);
+  const fq = tm?.[1]?.replace(/"/g, "");
+  const parts = fq ? fq.split(".") : [];
+  const table: TableRef | undefined = fq
+    ? parts.length === 2
+      ? { schema: parts[0], name: parts[1] }
+      : { schema: "public", name: parts[0] }
+    : undefined;
+  const column = cm?.[1]?.replace(/"/g, "");
+  return { table, column };
+}
+
+// Normalize type strings to canonical forms (helpers for R008 deepen)
+function normalizeTypeName(t?: string): { base: string; length?: number } {
+  const raw = (t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  // varchar / character varying
+  const vm = /^(character varying|varchar)\s*(?:\(\s*(\d+)\s*\))?$/.exec(raw);
+  if (vm) {
+    const len = vm[2] ? Number(vm[2]) : undefined;
+    return { base: "varchar", length: Number.isFinite(len) ? (len as number) : undefined };
+  }
+  if (raw === "text") return { base: "text" };
+  if (raw === "integer" || raw === "int4") return { base: "int4" };
+  if (raw === "bigint" || raw === "int8") return { base: "int8" };
+  if (raw === "smallint" || raw === "int2") return { base: "int2" };
+  if (raw === "real" || raw === "float4") return { base: "float4" };
+  if (raw === "double precision" || raw === "float8") return { base: "float8" };
+  // numeric/decimal typmods are rewrite-prone — keep base distinct to avoid false softens
+  if (raw.startsWith("numeric") || raw.startsWith("decimal")) return { base: "numeric" };
+  return { base: raw };
+}
+
+function isCatalogueSafeWiden(sourceType?: string, targetType?: string): boolean {
+  if (!sourceType || !targetType) return false;
+  const src = normalizeTypeName(sourceType);
+  const dst = normalizeTypeName(targetType);
+  // int -> bigint
+  if (src.base === "int4" && dst.base === "int8") return true;
+  // float4 -> float8
+  if (src.base === "float4" && dst.base === "float8") return true;
+  // varchar(n) -> varchar(m>=n) or -> text or -> varchar (unbounded)
+  if (src.base === "varchar" && dst.base === "text") return true;
+  if (src.base === "varchar" && dst.base === "varchar") {
+    const srcLen = src.length;
+    const dstLen = dst.length;
+    // if target unspecified length, treat as unbounded → safe widen
+    if (dstLen === undefined) return true;
+    if (typeof srcLen === "number" && dstLen >= srcLen) return true;
+  }
+  return false;
+}
 // R013 — REFRESH MATERIALIZED VIEW without CONCURRENTLY
 function parseRefreshMatviewNonConcurrent(sql: string): { view?: TableRef } | null {
   const clean = stripSqlComments(sql);
@@ -969,6 +1042,26 @@ export function check(input: CheckInput): VerdictV1 {
       const newTypeUp = (alterType.newType ?? "").toUpperCase();
       const binaryWiden = isLikelyBinaryCoercibleWiden(alterType.newType, alterType.hasUsing);
       if (!binaryWiden && isRuleEnabled("R008")) {
+        // Catalogue-aware soften for known-safe widens relative to estate type_name
+        let softenedByCatalogue = false;
+        const softenKnob =
+          (policy.rules?.R008 && Object.prototype.hasOwnProperty.call(policy.rules.R008, "soften_with_catalogue"))
+            ? Boolean((policy.rules.R008 as any).soften_with_catalogue)
+            : true;
+        if (softenKnob && hasCatalogueSection(input.estate, "columns") && alterType.table && alterType.column) {
+          const schemaLc = alterType.table.schema.toLowerCase();
+          const nameLc = alterType.table.name.toLowerCase();
+          const colLc = alterType.column.toLowerCase();
+          const colEnt = (input.estate.columns ?? []).find(
+            (c) =>
+              c.schema.toLowerCase() === schemaLc &&
+              c.table.toLowerCase() === nameLc &&
+              c.column.toLowerCase() === colLc
+          );
+          if (colEnt && isCatalogueSafeWiden(colEnt.type_name, alterType.newType)) {
+            softenedByCatalogue = true;
+          }
+        }
         // Clear rewrite cases: explicit USING, integer-width changes, JSONB, numeric/decimal typmod changes
         const clearlyRewrite =
           alterType.hasUsing ||
@@ -978,13 +1071,15 @@ export function check(input: CheckInput): VerdictV1 {
           /\bDECIMAL\s*\(/.test(newTypeUp);
         const severity: "red" | "yellow" =
           clearlyRewrite && typeof nLive === "number" && nLive >= redRows ? "red" : "yellow";
-        violations.push({
-          rule_id: "R008",
-          severity,
-          message: `ALTER COLUMN TYPE on ${alterType.table ? alterType.table.name : "unknown"} (${formatRows(
-            nLive
-          )} rows) may rewrite; prefer online patterns`
-        });
+        if (!softenedByCatalogue) {
+          violations.push({
+            rule_id: "R008",
+            severity,
+            message: `ALTER COLUMN TYPE on ${alterType.table ? alterType.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows) may rewrite; prefer online patterns`
+          });
+        }
       }
       // R010: generic hot DDL without prior lock_timeout
       {
@@ -1337,17 +1432,110 @@ export function check(input: CheckInput): VerdictV1 {
       continue;
     }
 
-    // R009: DROP COLUMN / RENAME COLUMN|TABLE / DROP CONSTRAINT — advisory yellow
+    // R009: DROP COLUMN / RENAME COLUMN|TABLE / DROP CONSTRAINT — advisory yellow (+ catalogue-aware escalations)
     const dr = parseDropRename(sql);
     if (dr) {
       const tstats = findTableEstate(input.estate, dr.table);
       const nLive = tstats?.n_live_tup;
       if (isRuleEnabled("R009")) {
-        violations.push({
-          rule_id: "R009",
-          severity: "yellow",
-          message: `${dr.kind} on ${dr.table ? dr.table.name : "unknown"} (${formatRows(nLive)} rows) — review for application impact`
-        });
+        let escalated = false;
+        // Arm 1: dropping PK/UNIQUE used as replica identity path (tables[].replica_identity = 'd' or 'i')
+        // Default: escalate to stronger yellow; optional knob to make it red
+        if (dr.kind === "DROP CONSTRAINT") {
+          const dc = parseDropConstraint(sql);
+          if (dc?.constraint && dc.table && hasCatalogueSection(input.estate, "constraints")) {
+            const schemaLc = dc.table.schema.toLowerCase();
+            const nameLc = dc.table.name.toLowerCase();
+            const con = (input.estate.constraints ?? []).find(
+              (c) => c.schema.toLowerCase() === schemaLc && c.table.toLowerCase() === nameLc && c.name.toLowerCase() === dc.constraint!.toLowerCase()
+            );
+            const repId = tstats?.replica_identity;
+            let hitsReplicaIdentity = false;
+            if (con && (String(con.kind).toLowerCase() === "pk" || String(con.kind).toLowerCase() === "unique")) {
+              if (repId === "d" && String(con.kind).toLowerCase() === "pk") {
+                hitsReplicaIdentity = true;
+              } else if (repId === "i" && con.supporting_index && hasCatalogueSection(input.estate, "indexes")) {
+                const idx = (input.estate.indexes ?? []).find(
+                  (ix) =>
+                    ix.schema.toLowerCase() === schemaLc &&
+                    ix.table.toLowerCase() === nameLc &&
+                    ix.name.toLowerCase() === String(con.supporting_index).toLowerCase()
+                );
+                if (idx?.replica_identity) hitsReplicaIdentity = true;
+              }
+            }
+            if (hitsReplicaIdentity) {
+              const redKnob =
+                (policy.rules?.R009 &&
+                  Object.prototype.hasOwnProperty.call(policy.rules.R009, "red_on_drop_replica_identity")) ?
+                  Boolean((policy.rules.R009 as any).red_on_drop_replica_identity) : false;
+              const sev: "yellow" | "red" = redKnob ? "red" : "yellow";
+              violations.push({
+                rule_id: "R009",
+                severity: sev,
+                message: `DROP CONSTRAINT ${dc.constraint} removes replication identity path on ${dr.table ? dr.table.name : "unknown"} (replica_identity=${repId ?? "?"}) — confirm logical decoding/replication impact`
+              });
+              escalated = true;
+            }
+          }
+        }
+        // Arm 2: dropping a column still referenced by constraints/indexes in catalogue
+        if (!escalated && dr.kind === "DROP COLUMN") {
+          const dd = parseDropColumn(sql);
+          const haveCons = hasCatalogueSection(input.estate, "constraints");
+          const haveIdx = hasCatalogueSection(input.estate, "indexes");
+          if (dd?.column && dd.table && (haveCons || haveIdx)) {
+            const schemaLc = dd.table.schema.toLowerCase();
+            const nameLc = dd.table.name.toLowerCase();
+            const colLc = dd.column.toLowerCase();
+            const consHit = haveCons
+              ? (input.estate.constraints ?? []).some(
+                  (k) =>
+                    k.schema.toLowerCase() === schemaLc &&
+                    k.table.toLowerCase() === nameLc &&
+                    (k.columns ?? []).some((c) => c.toLowerCase() === colLc)
+                )
+              : false;
+            const idxHit = haveIdx
+              ? (input.estate.indexes ?? []).some(
+                  (ix) =>
+                    ix.schema.toLowerCase() === schemaLc &&
+                    ix.table.toLowerCase() === nameLc &&
+                    (ix.columns ?? []).some((c) => c.toLowerCase() === colLc)
+                )
+              : false;
+            if (consHit || idxHit) {
+              const enableArm =
+                (policy.rules?.R009 &&
+                  Object.prototype.hasOwnProperty.call(policy.rules.R009, "escalate_drop_column_dependencies"))
+                  ? Boolean((policy.rules.R009 as any).escalate_drop_column_dependencies)
+                  : true;
+              if (enableArm) {
+                const pieces: string[] = [];
+                if (consHit) pieces.push("constraints");
+                if (idxHit) pieces.push("indexes");
+                violations.push({
+                  rule_id: "R009",
+                  severity: "yellow",
+                  message: `DROP COLUMN ${dd.column} on ${dd.table.name} affects dependent ${pieces.join(
+                    " and "
+                  )} — drop/adjust dependencies first or stage with CASCADE carefully`,
+                  remediation_sql:
+                    "/* Example: ALTER TABLE <table> DROP CONSTRAINT <name>; DROP INDEX CONCURRENTLY <idx>; then DROP COLUMN <col>; */"
+                });
+                escalated = true;
+              }
+            }
+          }
+        }
+        // Generic advisory (fallback)
+        if (!escalated) {
+          violations.push({
+            rule_id: "R009",
+            severity: "yellow",
+            message: `${dr.kind} on ${dr.table ? dr.table.name : "unknown"} (${formatRows(nLive)} rows) — review for application impact`
+          });
+        }
       }
       statements.push({
         sql,
