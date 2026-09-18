@@ -3,7 +3,7 @@ export interface PolicyPack {
   version?: string;
   fail_on: "red" | "yellow";
   require_lock_timeout?: "always" | "size_gated";
-  rules: Record<string, any>;
+  rules: Record<string, RuleConfig>;
   no_stats?: "warn" | "fail_closed";
 }
 
@@ -16,7 +16,7 @@ export interface PolicyRecord {
 }
 
 // Canonical Team data-plane types from @nockhq/core
-export type { FreshnessBand as Freshness } from "@nockhq/core"; // re-export alias to preserve API surface
+export type { FreshnessBand as Freshness, RuleConfig } from "@nockhq/core"; // re-export alias to preserve API surface
 export type { RuleHit as RuleHitDetail } from "@nockhq/core"; // re-export alias
 export { computeFreshness } from "@nockhq/core";
 import type { FreshnessBand, RuleHit } from "@nockhq/core";
