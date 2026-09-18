@@ -6,6 +6,7 @@ import { check, type EstateSnapshot } from "../src/index";
 describe("R009 — catalogue-aware escalations for DROP operations", () => {
   const dropPkSql = readFileSync(join(__dirname, "../../../fixtures/drop_pk.sql"), "utf8");
   const dropColSql = readFileSync(join(__dirname, "../../../fixtures/drop_column_archived_at.sql"), "utf8");
+  const dropUniqueSql = readFileSync(join(__dirname, "../../../fixtures/drop_unique_constraint.sql"), "utf8");
   const bigEstate: EstateSnapshot = JSON.parse(
     readFileSync(join(__dirname, "../../../fixtures/estate_billion.json"), "utf8")
   );
@@ -74,6 +75,26 @@ describe("R009 — catalogue-aware escalations for DROP operations", () => {
       const v = check({ sql: dropPkSql, estate, policy });
       const msgs = v.violations.filter((x) => x.rule_id === "R009").map((x) => x.message);
       expect(msgs.some((m) => /replica[_ ]identity/i.test(m))).toBe(false);
+    });
+
+    it("escalates when dropping UNIQUE used as replica identity index (replica_identity=i)", () => {
+      const estate: EstateSnapshot = {
+        ...bigEstate,
+        tables: bigEstate.tables.map((t) =>
+          t.name === "sessions" ? { ...t, replica_identity: "i" as const } : t
+        ),
+        constraints: [
+          { schema: "public", table: "sessions", name: "sessions_email_unique", kind: "unique", validated: true, columns: ["email"], supporting_index: "uniq_sessions_email" }
+        ],
+        indexes: [
+          { schema: "public", table: "sessions", name: "uniq_sessions_email", unique: true, primary: false, valid: true, ready: true, live: true, immediate: true, columns: ["email"], replica_identity: true }
+        ]
+      };
+      const policy = { id: "p", version: "1.0.0", fail_on: "red", rules: { R009: { } } };
+      const v = check({ sql: dropUniqueSql, estate, policy: policy as any });
+      const msg = v.violations.find((x) => x.rule_id === "R009" && /replica[_ ]identity/i.test(x.message));
+      expect(msg).toBeTruthy();
+      expect(msg?.severity).toBe("yellow");
     });
 
     it("knob-off: red_on_drop_replica_identity=false keeps yellow (default), true makes red", () => {

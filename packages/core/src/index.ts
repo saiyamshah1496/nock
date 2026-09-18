@@ -594,9 +594,9 @@ function isLikelyBinaryCoercibleWiden(newType?: string, hasUsing?: boolean): boo
   const up = newType.toUpperCase().replace(/\s+/g, " ").trim();
   // TEXT is binary-coercible with (unlimited) VARCHAR in Postgres
   if (up === "TEXT") return true;
-  // CHARACTER VARYING / VARCHAR (with or without length) — likely widen within text family
-  if (/^CHARACTER\s+VARYING(\s*\(\s*\d+\s*\))?$/.test(up)) return true;
-  if (/^VARCHAR(\s*\(\s*\d+\s*\))?$/.test(up)) return true;
+  // CHARACTER VARYING / VARCHAR WITHOUT LENGTH ONLY — cannot assume safety for lengthed targets without catalogue
+  if (/^CHARACTER\s+VARYING$/.test(up)) return true;
+  if (/^VARCHAR$/.test(up)) return true;
   return false;
 }
 
@@ -658,10 +658,6 @@ function isCatalogueSafeWiden(sourceType?: string, targetType?: string): boolean
   if (!sourceType || !targetType) return false;
   const src = normalizeTypeName(sourceType);
   const dst = normalizeTypeName(targetType);
-  // int -> bigint
-  if (src.base === "int4" && dst.base === "int8") return true;
-  // float4 -> float8
-  if (src.base === "float4" && dst.base === "float8") return true;
   // varchar(n) -> varchar(m>=n) or -> text or -> varchar (unbounded)
   if (src.base === "varchar" && dst.base === "text") return true;
   if (src.base === "varchar" && dst.base === "varchar") {

@@ -21,12 +21,12 @@ describe("R008 — ALTER COLUMN TYPE rewrite/unknown coercibility", () => {
     expect(verdict.violations.some((v) => v.rule_id === "R008")).toBe(false);
   });
 
-  it("does not warn for likely varchar length widen (no USING)", () => {
+  it("warns for varchar(n) target without catalogue (could narrow or rewrite)", () => {
     const sql = readFileSync(join(__dirname, "../../../fixtures/alter_type_varchar_widen.sql"), "utf8");
     const estate = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/estate_billion.json"), "utf8"));
     const policy = { id: "nock.postgres.ddl.default", version: "1.0.0", fail_on: "red", rules: { R008: { red_rows: 10000 } } };
     const verdict = check({ sql, estate, policy });
-    expect(verdict.violations.some((v) => v.rule_id === "R008")).toBe(false);
+    expect(verdict.violations.some((v) => v.rule_id === "R008")).toBe(true);
   });
 
   it("reds on clear rewrite to integer on hot table", () => {

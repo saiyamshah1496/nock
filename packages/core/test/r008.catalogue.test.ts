@@ -4,17 +4,17 @@ import { join } from "path";
 import { check, type EstateSnapshot } from "../src/index";
 
 describe("R008 — catalogue-aware soften for ALTER TYPE", () => {
-  const sql = readFileSync(join(__dirname, "../../../fixtures/alter_type_int_to_bigint.sql"), "utf8");
+  const sql = readFileSync(join(__dirname, "../../../fixtures/alter_type_varchar_widen.sql"), "utf8");
   const bigEstate: EstateSnapshot = JSON.parse(
     readFileSync(join(__dirname, "../../../fixtures/estate_billion.json"), "utf8")
   );
 
-  it("softens when columns[] shows known-safe widen int->bigint (catalogue present)", () => {
+  it("softens when columns[] shows known-safe widen varchar(n)->varchar(m≥n) (catalogue present)", () => {
     const estate: EstateSnapshot = {
       ...bigEstate,
       columns: [
         ...(bigEstate.columns ?? []),
-        { schema: "public", table: "sessions", column: "archived_at", not_null: false, type_name: "integer" }
+        { schema: "public", table: "sessions", column: "archived_at", not_null: false, type_name: "character varying(10)" }
       ],
       constraints: bigEstate.constraints ?? [],
       indexes: bigEstate.indexes ?? []
@@ -78,7 +78,7 @@ describe("R008 — catalogue-aware soften for ALTER TYPE", () => {
     const estate: EstateSnapshot = {
       ...bigEstate,
       columns: [
-        { schema: "public", table: "sessions", column: "archived_at", not_null: false, type_name: "integer" }
+        { schema: "public", table: "sessions", column: "archived_at", not_null: false, type_name: "varchar(10)" }
       ],
       constraints: [],
       indexes: []
