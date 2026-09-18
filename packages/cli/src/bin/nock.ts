@@ -10,10 +10,21 @@ import http from "http";
 import { URL } from "url";
 
 const program = new Command();
+// Prefer reading version from package.json; fallback to current release tag
+let cliVersion = "0.1.5";
+try {
+  const pkgPath = path.resolve(__dirname, "../../package.json");
+  const pkgJson = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+  if (pkgJson?.version && typeof pkgJson.version === "string") {
+    cliVersion = pkgJson.version;
+  }
+} catch {
+  // ignore; keep fallback
+}
 program
   .name("nock")
   .description("Nock — Postgres migration safety gate (sizes × lock modes × policy)")
-  .version("0.1.0");
+  .version(cliVersion);
 
 program
   .command("check")
