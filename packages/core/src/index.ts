@@ -37,8 +37,81 @@ export interface EstateTable {
   n_dead_tup?: number;
   relation_bytes?: number;
   total_bytes?: number;
+  /**
+   * relkind from pg_class.relkind.
+   * Common values:
+   * - 'r' = ordinary table
+   * - 'p' = partitioned table
+   * - 'm' = materialized view
+   */
+  relkind?: string;
+  /**
+   * Replica identity from pg_class.relreplident:
+   * - 'd' = DEFAULT (primary key)
+   * - 'n' = NOTHING
+   * - 'f' = FULL
+   * - 'i' = INDEX
+   */
+  replica_identity?: "d" | "n" | "f" | "i";
   last_analyze?: string | null;
   last_autoanalyze?: string | null;
+}
+
+export interface EstateColumn {
+  schema: string;
+  table: string;
+  column: string;
+  not_null: boolean;
+  type_name: string;
+  /**
+   * Presence-only signal; NEVER store default expression text.
+   */
+  has_default?: boolean;
+}
+
+export interface EstateConstraint {
+  schema: string;
+  table: string;
+  name: string;
+  /**
+   * Mapped from pg_constraint.contype:
+   * check|fk|pk|unique|exclude|...
+   */
+  kind: string;
+  validated: boolean;
+  columns: string[];
+  /**
+   * For FKs only. Qualified as "schema.table" to avoid extra fields.
+   */
+  foreign_table?: string;
+  /**
+   * For FKs only. Order matches columns[].
+   */
+  foreign_columns?: string[];
+  /**
+   * Optional: supporting index name (via conindid) when present.
+   */
+  supporting_index?: string;
+}
+
+export interface EstateIndex {
+  schema: string;
+  table: string;
+  name: string;
+  unique: boolean;
+  primary: boolean;
+  valid: boolean;
+  ready: boolean;
+  live: boolean;
+  immediate: boolean;
+  /**
+   * Column names in order. For expression indexes, emit [] and DO NOT store expressions.
+   */
+  columns: string[];
+  /**
+   * True when this index is the replica identity (pg_index.indisreplident).
+   */
+  replica_identity?: boolean;
 }
 
 export interface EstateSnapshot {
@@ -47,6 +120,14 @@ export interface EstateSnapshot {
   pg_version?: string;
   source?: string;
   tables: EstateTable[];
+  /**
+   * Governance catalogue sections (additive). Omitted key means "catalogue absent"
+   * (fail-closed semantics for future catalogue-aware rules). Present-but-empty []
+   * means "synced; none found".
+   */
+  columns?: EstateColumn[];
+  constraints?: EstateConstraint[];
+  indexes?: EstateIndex[];
 }
 
 export interface PolicyResolved {
@@ -144,6 +225,16 @@ export interface PolicyPack {
 
 // Team thin-slice data-plane shared types/consts/helpers
 export * from "./team/data-plane";
+
+/**
+ * Testable helper to distinguish omit vs empty semantics on catalogue sections.
+ * Returns true only when the section key exists (even if []), and false when
+ * the key is absent.
+ */
+export type EstateCatalogueSection = "columns" | "constraints" | "indexes";
+export function hasCatalogueSection(snapshot: EstateSnapshot, section: EstateCatalogueSection): boolean {
+  return Object.prototype.hasOwnProperty.call(snapshot, section);
+}
 
 // Minimal shape matcher: CREATE INDEX (non-concurrent), including UNIQUE and IF NOT EXISTS variants
 function isCreateIndexNonConcurrent(sql: string): {
