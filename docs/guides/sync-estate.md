@@ -66,7 +66,7 @@ jobs:
 
 Tips
 - Keep `.nock/estate.json` in the repo (commit) or publish it as an artifact.
-- Estate contains sizes and version only; no row data or secrets.
+- Estate contains Postgres sizes/version and a governance catalogue (columns, constraints, indexes) — no row data and no SQL/expressions. We never store default expressions, CHECK/index predicates, or generated expressions.
 
 ## 4) PR check that uses `.nock/estate.json`
 

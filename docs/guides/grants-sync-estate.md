@@ -21,7 +21,8 @@ GRANT USAGE ON SCHEMA public TO nock_estate;
 -- Grant SELECT on required catalogue / stats sources
 -- UNVERIFIED: exact object-level GRANTs depend on provider defaults.
 -- Many managed PGs allow these by default to all users:
---   pg_catalog.pg_class, pg_namespace, pg_stat_user_tables
+--   pg_catalog.pg_class, pg_namespace, pg_stat_user_tables,
+--   pg_attribute, pg_constraint, pg_index
 -- Size functions (pg_relation_size/pg_total_relation_size) are callable without extra GRANTs.
 ```
 
