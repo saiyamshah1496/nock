@@ -127,7 +127,7 @@ Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip
 
 - Default API base (Saiyam’s Worker): `https://nock.saiyamshah1496.workers.dev`
 - Action inputs on `main`: `estate-api-url`, `estate-api-token`, with `estate-path` as fallback
-- Required secrets (names only): prefer `NOCK_TEAM_API_TOKEN` (partner bearer) and `NOCK_ESTATE_KEK`. For backward compatibility, `NOCK_ESTATE_API_TOKEN`/`NOCK_STATS_API_TOKEN` (and `NOCK_STATS_KEK`) remain accepted.
+- Required secrets (names only): partners should set `NOCK_TEAM_API_TOKEN` (their org‑scoped token string) and `NOCK_ESTATE_KEK` in their repo or CI. For backward compatibility on the client side, `NOCK_ESTATE_API_TOKEN`/`NOCK_STATS_API_TOKEN` (and `NOCK_STATS_KEK`) remain accepted as input aliases.
 - Partner onboarding: see `docs/guides/nock-team-partner-setup.md`.
 - See runnable examples under `examples/workflows/`:
   - `nock-action.yml` — Action with optional hosted estate
@@ -194,7 +194,6 @@ pnpm -r build
 cd packages/api
 cp wrangler.toml.example wrangler.toml
 # Put secrets
-npx wrangler secret put NOCK_STATS_API_TOKEN
 npx wrangler secret put NOCK_STATS_KEK
 npx wrangler secret put R2_ACCOUNT_ID
 npx wrangler secret put R2_ACCESS_KEY_ID
@@ -226,7 +225,8 @@ npx wrangler d1 migrations apply NOCK_D1
 ```
 
 - Vars/secrets:
-  - Reuse `NOCK_STATS_API_TOKEN` bearer for policy/audit v1.
+  - Auth: production uses org‑scoped tokens hashed in D1 (`tokens.token_hash`). Partners present the token string via `Authorization: Bearer ...` and the Worker hashes and validates it. The legacy global env bearer is disabled by default.
+  - Staff/dev only: set `NOCK_ALLOW_ENV_BEARER=1` to accept a single env bearer override (`NOCK_TEAM_API_TOKEN` or aliases) for local testing.
   - Optional: `NOCK_AUDIT_RETENTION_DAYS` (default 30).
 
 ## CI
