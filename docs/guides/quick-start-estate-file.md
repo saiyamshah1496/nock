@@ -30,6 +30,7 @@ Option B — start tiny and edit by hand
 Notes
 - “Estate” is table sizes + Postgres version and may include a governance catalogue (columns, constraints, indexes). It never contains row data, default expression text, or CHECK/index expressions.
 - You can keep `.nock/estate.json` in the repo (commit) or publish it as a build artifact.
+- If you hand‑author an estate: you may omit catalogue sections entirely (fail‑closed for catalogue‑aware rules), or include present‑but‑empty arrays. Prefer pasting real catalogue output from `sync-estate` — don’t invent fake `columns[]`/`constraints[]`/`indexes[]`.
 
 ## 2) Run a check locally (CLI)
 
