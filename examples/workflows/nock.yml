@@ -22,7 +22,7 @@ jobs:
       - run: pnpm -r build
 
       # Optional: fetch hosted estate (Nock Team) into file fallback before running CLI
-      # Provide NOCK_ESTATE_API_TOKEN in repo secrets if you enable this step.
+      # Provide NOCK_TEAM_API_TOKEN in repo secrets if you enable this step.
       - name: (Optional) Download hosted estate to .nock/estate.json
         if: ${{ vars.NOCK_USE_HOSTED_ESTATE == '1' }}
         env:
