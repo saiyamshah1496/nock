@@ -638,7 +638,9 @@ function parseCreateIndexConcurrently(sql: string): { table?: TableRef; indexNam
 }
 
 // R017 — ADD UNIQUE/PRIMARY KEY without USING INDEX
-function parseAddUniqueOrPrimaryKeyWithoutUsingIndex(sql: string): { table?: TableRef; kind: "UNIQUE" | "PRIMARY KEY" } | null {
+function parseAddUniqueOrPrimaryKeyWithoutUsingIndex(
+  sql: string
+): { table?: TableRef; kind: "UNIQUE" | "PRIMARY KEY"; columns?: string[] } | null {
   const clean = stripSqlComments(sql);
   if (!/ALTER\s+TABLE/i.test(clean)) return null;
   if (!/\bADD\s+CONSTRAINT\b/i.test(clean)) return null;
@@ -654,7 +656,18 @@ function parseAddUniqueOrPrimaryKeyWithoutUsingIndex(sql: string): { table?: Tab
       ? { schema: parts[0], name: parts[1] }
       : { schema: "public", name: parts[0] }
     : undefined;
-  return isPk ? { table, kind: "PRIMARY KEY" } : { table, kind: "UNIQUE" };
+  // Try to extract the constrained columns: handle either PRIMARY KEY (...) or UNIQUE (...)
+  let cols: string[] | undefined = undefined;
+  const cm =
+    /\bPRIMARY\s+KEY\s*\(([^)]+)\)/i.exec(clean) ||
+    /\bUNIQUE\s*\(([^)]+)\)/i.exec(clean);
+  if (cm?.[1]) {
+    cols = cm[1]
+      .split(",")
+      .map((s) => s.replace(/"/g, "").trim())
+      .filter((s) => s.length > 0);
+  }
+  return isPk ? { table, kind: "PRIMARY KEY", columns: cols } : { table, kind: "UNIQUE", columns: cols };
 }
 
 // R018 — ADD EXCLUDE constraint
@@ -1060,22 +1073,45 @@ export function check(input: CheckInput): VerdictV1 {
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R017?.red_rows ?? 10_000;
       if (isRuleEnabled("R017")) {
-        if (typeof nLive === "number" && nLive >= redRows) {
-          violations.push({
-            rule_id: "R017",
-            severity: "red",
-            message: `ADD ${uniq.kind} without USING INDEX on ${uniq.table ? uniq.table.name : "unknown"} (${formatRows(
-              nLive
-            )} rows) builds unique index under strong lock`,
-            remediation_sql:
-              "CREATE UNIQUE INDEX CONCURRENTLY <idx> ON <table>(<col(s)>); ALTER TABLE <table> ADD CONSTRAINT <name> UNIQUE USING INDEX <idx>;"
+        const wouldBeRed = typeof nLive === "number" && nLive >= redRows;
+        let suppressedByCatalogue = false;
+        // Catalogue-aware suppression: only for would-be red hits, never for yellow
+        if (wouldBeRed && hasCatalogueSection(input.estate, "indexes") && uniq.table && uniq.columns && uniq.columns.length > 0) {
+          const tkeySchema = uniq.table.schema.toLowerCase();
+          const tkeyName = uniq.table.name.toLowerCase();
+          const want = uniq.columns.map((c) => c.toLowerCase());
+          // Match: same table, unique or primary, valid, ready, immediate; columns equal and order-sensitive
+          suppressedByCatalogue = (input.estate.indexes ?? []).some((idx) => {
+            if (!idx) return false;
+            if (idx.schema.toLowerCase() !== tkeySchema || idx.table.toLowerCase() !== tkeyName) return false;
+            if (!(idx.unique || idx.primary)) return false;
+            if (!(idx.valid && idx.ready && idx.immediate)) return false;
+            const cols = (idx.columns ?? []).map((c) => c.toLowerCase());
+            if (cols.length !== want.length) return false;
+            for (let i = 0; i < want.length; i++) {
+              if (cols[i] !== want[i]) return false;
+            }
+            return true;
           });
-        } else {
-          violations.push({
-            rule_id: "R017",
-            severity: "yellow",
-            message: `ADD ${uniq.kind} without USING INDEX — consider online build with CIC then USING INDEX`
-          });
+        }
+        if (!suppressedByCatalogue) {
+          if (wouldBeRed) {
+            violations.push({
+              rule_id: "R017",
+              severity: "red",
+              message: `ADD ${uniq.kind} without USING INDEX on ${uniq.table ? uniq.table.name : "unknown"} (${formatRows(
+                nLive
+              )} rows) builds unique index under strong lock`,
+              remediation_sql:
+                "CREATE UNIQUE INDEX CONCURRENTLY <idx> ON <table>(<col(s)>); ALTER TABLE <table> ADD CONSTRAINT <name> UNIQUE USING INDEX <idx>;"
+            });
+          } else {
+            violations.push({
+              rule_id: "R017",
+              severity: "yellow",
+              message: `ADD ${uniq.kind} without USING INDEX — consider online build with CIC then USING INDEX`
+            });
+          }
         }
       }
       // R010: generic hot DDL without prior lock_timeout
@@ -1484,9 +1520,48 @@ export function check(input: CheckInput): VerdictV1 {
         hasExpandContractForNotNull(sqls, setNotNull.table, setNotNull.column, stmtIdx) === true;
       if (isRuleEnabled("R005")) {
         if (typeof nLive === "number" && nLive >= redRows && !expandContractOk) {
+          // Catalogue-aware soften: default ON, can be disabled via policy knob soften_with_catalogue=false
+          const softenKnob =
+            (policy.rules?.R005 && Object.prototype.hasOwnProperty.call(policy.rules.R005, "soften_with_catalogue"))
+              ? Boolean((policy.rules.R005 as any).soften_with_catalogue)
+              : true;
+          let hasCatalogueMatch = false;
+          const table = setNotNull.table;
+          const col = setNotNull.column;
+          if (softenKnob && table && col) {
+            const schemaLc = table.schema.toLowerCase();
+            const nameLc = table.name.toLowerCase();
+            // Match 1: columns[] entry with not_null: true
+            if (hasCatalogueSection(input.estate, "columns")) {
+              hasCatalogueMatch =
+                (input.estate.columns ?? []).some(
+                  (c) =>
+                    c.schema.toLowerCase() === schemaLc &&
+                    c.table.toLowerCase() === nameLc &&
+                    c.column.toLowerCase() === col.toLowerCase() &&
+                    c.not_null === true
+                ) || hasCatalogueMatch;
+            }
+            // Match 2: constraints[] entry kind=check, validated=true, columns covering the target column
+            if (!hasCatalogueMatch && hasCatalogueSection(input.estate, "constraints")) {
+              hasCatalogueMatch = (input.estate.constraints ?? []).some((k) => {
+                if (
+                  k.schema.toLowerCase() !== schemaLc ||
+                  k.table.toLowerCase() !== nameLc ||
+                  String(k.kind).toLowerCase() !== "check" ||
+                  k.validated !== true
+                ) {
+                  return false;
+                }
+                const cols = (k.columns ?? []).map((x) => x.toLowerCase());
+                return cols.includes(col.toLowerCase());
+              });
+            }
+          }
+          const sev: "red" | "yellow" = hasCatalogueMatch ? "yellow" : "red";
           violations.push({
             rule_id: "R005",
-            severity: "red",
+            severity: sev,
             message: `SET NOT NULL may scan/rewrite on ${setNotNull.table ? setNotNull.table.name : "unknown"} (${formatRows(
               nLive
             )} rows); remediate with NOT VALID CHECK → VALIDATE → SET NOT NULL`,
