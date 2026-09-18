@@ -46,10 +46,10 @@ importers:
         specifier: ^1.12.2
         version: 1.19.17(hono@4.13.8)
       '@nockhq/core':
-        specifier: workspace:*
+        specifier: workspace:^0.1.3
         version: link:../core
       '@nockhq/secure-estate':
-        specifier: workspace:*
+        specifier: workspace:^0.1.3
         version: link:../secure-stats
       aws4fetch:
         specifier: ^1.0.20
@@ -74,10 +74,10 @@ importers:
   packages/cli:
     dependencies:
       '@nockhq/core':
-        specifier: workspace:*
+        specifier: workspace:^0.1.3
         version: link:../core
       '@nockhq/secure-estate':
-        specifier: workspace:*
+        specifier: workspace:^0.1.3
         version: link:../secure-stats
       commander:
         specifier: ^12.1.0
@@ -105,7 +105,7 @@ importers:
         specifier: ^1.6.0
         version: 1.30.0(zod@4.6.5)
       '@nockhq/core':
-        specifier: workspace:*
+        specifier: workspace:^0.1.3
         version: link:../core
       zod:
         specifier: ^4.6.5
@@ -118,7 +118,7 @@ importers:
   packages/secure-stats:
     dependencies:
       '@nockhq/core':
-        specifier: workspace:*
+        specifier: workspace:^0.1.3
         version: link:../core
     devDependencies:
       typescript:
