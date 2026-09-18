@@ -1,6 +1,6 @@
 {
   "name": "@nockhq/mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Estate-aware approve/block for Postgres DDL. Never applies migrations. CLI ≡ Action ≡ MCP.",
   "license": "MIT",
   "type": "module",
@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.0",
-    "@nockhq/core": "workspace:^0.1.3",
+    "@nockhq/core": "workspace:^0.1.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {
