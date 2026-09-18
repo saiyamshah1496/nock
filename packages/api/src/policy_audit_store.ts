@@ -19,7 +19,7 @@ export interface PolicyRecord {
 export type { FreshnessBand as Freshness, RuleConfig } from "@nockhq/core"; // re-export alias to preserve API surface
 export type { RuleHit as RuleHitDetail } from "@nockhq/core"; // re-export alias
 export { computeFreshness } from "@nockhq/core";
-import type { FreshnessBand, RuleHit } from "@nockhq/core";
+import type { FreshnessBand, RuleHit, RuleConfig } from "@nockhq/core";
 
 export interface AuditEventInput {
   org_id: string;
