@@ -129,7 +129,8 @@ describe("Auth PR5: hashed org tokens preferred; env-bearer gated", () => {
   });
 
   it("returns 401 when token missing and auth is configured", async () => {
-    process.env.NOCK_TEAM_API_TOKEN = "x";
+    // Configure D1 (no header presented) -> unauthorized
+    const env = { NOCK_D1: new FakeD1(new Map()) };
     const app = createApp();
     const req = new Request("http://localhost/v1/policy/acme", {
       method: "PUT",
@@ -145,7 +146,7 @@ describe("Auth PR5: hashed org tokens preferred; env-bearer gated", () => {
         rules: { R001: { red_rows: 1000 } },
       }),
     });
-    const res = await (app as any).fetch(req);
+    const res = await (app as any).fetch(req, env);
     expect(res.status).toBe(401);
   });
 });
