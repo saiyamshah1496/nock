@@ -11,6 +11,15 @@ You’ll do this once and schedule it:
 
 CLI ≡ Action ≡ MCP — same verdict surface; this guide uses CLI in workflows for simplicity.
 
+What sync-estate captures (catalogue overview):
+- Table sizes and version metadata
+- Table shape signals on each entry: relkind and replica_identity
+- Additive catalogue sections:
+  - columns[]: not_null, type_name, presence-only has_default (never default SQL text)
+  - constraints[]: kind (check|fk|pk|unique|exclude|...), validated, columns[], supporting_index?
+  - indexes[]: unique, primary, valid, ready, immediate, columns[], replica_identity?
+Omit vs empty: an omitted section key means “catalogue absent” (fail‑closed for catalogue‑aware rules); a present‑but‑empty [] means “synced; none found”.
+
 ### In this repo’s CI
 
 This repository runs a self‑contained integration that proves the “sync‑estate → check” loop against a real Postgres service container. See `/.github/workflows/ci.yml` job `estate-sync-integration` for a complete example:
