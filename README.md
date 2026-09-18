@@ -192,7 +192,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 | R002 — CIC inside transaction | Implemented | Concurrent DDL cannot run inside explicit txn |
 | R003 — ADD COLUMN … DEFAULT <volatile> (rewrite) | Implemented | Size-gated rewrite on volatile DEFAULT; do not red now() |
 | R004 — ADD COLUMN nullable/constant-default on hot table w/o lock_timeout | Implemented (partial) | Size-gated; requires `lock_timeout`; constant-default nuance later |
-| R005 — SET NOT NULL w/o validated CHECK | Implemented (partial) | Assumes unsafe on large tables (no catalog check yet) |
+| R005 — SET NOT NULL w/o validated CHECK | Implemented (catalogue-aware) | Red ≥100k; soften to yellow when fresh catalogue shows column already NOT NULL or a validated CHECK covering it. Fail‑closed when catalogue sections are omitted; present‑but‑empty arrays don’t match. |
 | R006 — ADD CHECK w/o NOT VALID | Implemented | Red ≥50k rows |
 | R007 — ADD FK w/o NOT VALID | Implemented | Red ≥100k rows; remediate NOT VALID → VALIDATE |
 | R008 — ALTER TYPE non-binary-coercible | Implemented | Yellow unknown; red when clearly rewriting (USING); widen to text/varchar passes |
@@ -204,7 +204,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 | R014 — ATTACH/DETACH PARTITION | Implemented | Yellow/red by size; notes on lock/scan |
 | R015 — CIC w/o prior lock_timeout on hot table | Implemented | Yellow/red per size thresholds |
 | R016 — Multiple AE DDLs on same hot table w/o lock_timeout | Implemented | Yellow advisory |
-| R017 — ADD UNIQUE/PRIMARY KEY w/o USING INDEX | Implemented | Red ≥10k; remediate CIC + USING INDEX |
+| R017 — ADD UNIQUE/PRIMARY KEY w/o USING INDEX | Implemented (catalogue-aware) | Red ≥10k; remediate CIC + USING INDEX. Suppress the red hit when a matching unique/primary, valid/ready/immediate index exists in the fresh catalogue with equal, order‑sensitive `columns[]`. Fail‑closed on omitted catalogue; empty/mismatch/invalid do not suppress. |
 | R018 — ADD EXCLUDE constraint | Implemented | Size-gated red/yellow; no NOT VALID path |
 | R019 — TRUNCATE on estate table | Implemented | Always red in CI policy |
 | R020 — CLUSTER | Implemented | Always red in CI (R012 family) |
