@@ -12,7 +12,7 @@ You’ll do this once and schedule it:
 CLI ≡ Action ≡ MCP — same verdict surface; this guide uses CLI in workflows for simplicity.
 
 On your side — checklist (to get catalogue into PR checks)
-- Create/verify a least‑privilege read‑only role with catalogue grants. See `docs/guides/grants-sync-estate.md`. Phase‑1 catalogue reads `pg_attribute`, `pg_constraint`, `pg_index` in addition to sizes — not just stats.
+- Create/verify a least‑privilege read‑only role with catalogue grants. See [`docs/guides/grants-sync-estate.md`](./grants-sync-estate.md). Phase‑1 catalogue reads `pg_attribute`, `pg_constraint`, `pg_index` in addition to sizes — not just stats.
 - Prefer a read‑replica; store its DSN in a repo secret `PG_ESTATE_URL`.
 - Upgrade to CLI 0.1.5+ (older CLI won’t emit `columns[]`/`constraints[]`/`indexes[]`).
 - Re‑run `sync-estate` so `.nock/estate.json` contains the new catalogue sections (or present‑but‑empty `[]` when none).
@@ -39,7 +39,7 @@ This repository runs a self‑contained integration that proves the “sync‑es
 ## 1) Grants for a read‑only role
 
 Use a dedicated role that can read catalog/statistics only — not table rows.
-- See `docs/guides/grants-sync-estate.md` for SQL you can adapt
+- See [`docs/guides/grants-sync-estate.md`](./grants-sync-estate.md) for SQL you can adapt
 - Prefer connecting to a read replica
 - Managed PGs often require `?sslmode=require` on the connection URL
 
@@ -122,5 +122,5 @@ That’s it — no hosted service required.
 
 See also
 - `examples/workflows/nock-sync-push.yml` shows an optional “push to hosted estate API (Nock Team)” job.
-- `docs/guides/quick-start-estate-file.md` for a zero‑DB, paste/file quickstart.
+- [`docs/guides/quick-start-estate-file.md`](./quick-start-estate-file.md) for a zero‑DB, paste/file quickstart.
 

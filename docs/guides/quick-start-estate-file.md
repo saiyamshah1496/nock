@@ -109,5 +109,5 @@ node packages/cli/dist/bin/nock.js check \
 - Red: unsafe; fix or defer until off-peak or with stronger mitigations
 
 Next steps
-- To generate `.nock/estate.json` from a database on your runner (no hosted service required), see: `docs/guides/sync-estate.md`.
+- To generate `.nock/estate.json` from a database on your runner (no hosted service required), see: [`docs/guides/sync-estate.md`](./sync-estate.md).
 

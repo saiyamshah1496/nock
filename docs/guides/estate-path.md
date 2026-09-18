@@ -15,7 +15,7 @@ estate-path: config/estate.json
 ```
 
 Then commit the referenced file:
-- `config/estate.json` — the `EstateSnapshot` JSON (see `docs/guides/quick-start-estate-file.md`)
+- `config/estate.json` — the `EstateSnapshot` JSON (see [`docs/guides/quick-start-estate-file.md`](./quick-start-estate-file.md))
 
 This keeps your default `.nock/estate.json` location flexible while enabling monorepos to store estates under a shared `config/` directory.
 
