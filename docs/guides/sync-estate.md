@@ -11,6 +11,14 @@ You’ll do this once and schedule it:
 
 CLI ≡ Action ≡ MCP — same verdict surface; this guide uses CLI in workflows for simplicity.
 
+On your side — checklist (to get catalogue into PR checks)
+- Create/verify a least‑privilege read‑only role with catalogue grants. See `docs/guides/grants-sync-estate.md`. Phase‑1 catalogue reads `pg_attribute`, `pg_constraint`, `pg_index` in addition to sizes — not just stats.
+- Prefer a read‑replica; store its DSN in a repo secret `PG_ESTATE_URL`.
+- Upgrade to CLI 0.1.4+ (older CLI won’t emit `columns[]`/`constraints[]`/`indexes[]`).
+- Re‑run `sync-estate` so `.nock/estate.json` contains the new catalogue sections (or present‑but‑empty `[]` when none).
+- Make the estate available to PR checks: commit `.nock/estate.json`, download a recent artifact at job start, or (Team) use `--push-url` after sync.
+- Keep it fresh: re‑run/schedule sync. When catalogue sections are omitted, catalogue‑aware rules fail‑closed (e.g. R005/R017 softens/suppresses only when catalogue is present).
+
 What sync-estate captures (catalogue overview):
 - Table sizes and version metadata
 - Table shape signals on each entry: relkind and replica_identity
@@ -55,14 +63,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - run: corepack enable && pnpm install --frozen-lockfile && pnpm -r build
+        with: { node-version: 20, cache: 'npm' }
       - name: Run sync-estate
         env:
           PG_ESTATE_URL: ${{ secrets.PG_ESTATE_URL }}
         run: |
           mkdir -p .nock
-          node packages/cli/dist/bin/nock.js sync-estate \
+          npx @nockhq/cli@0.1.4 sync-estate \
             --database-url "$PG_ESTATE_URL" \
             --out .nock/estate.json
       - name: Upload estate artifact (optional)
@@ -72,6 +79,8 @@ jobs:
           path: .nock/estate.json
           retention-days: 3
 ```
+
+Note for monorepo contributors: you can continue to use the workspace binary (e.g. `node packages/cli/dist/bin/nock.js`) when developing inside this repo.
 
 Tips
 - Keep `.nock/estate.json` in the repo (commit) or publish it as an artifact.
@@ -98,11 +107,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - run: corepack enable && pnpm install --frozen-lockfile && pnpm -r build
+        with: { node-version: 20, cache: 'npm' }
       - name: Run Nock check (CLI)
         run: |
-          node packages/cli/dist/bin/nock.js check \
+          npx @nockhq/cli@0.1.4 check \
             --sql "migrations/001.sql" \
             --estate ".nock/estate.json" \
             --policy "policy.default.yml" \
