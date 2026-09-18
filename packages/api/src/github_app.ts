@@ -282,7 +282,32 @@ type RepoLocator = {
   apiBase?: string;
 };
 
-export async function resolveEstate(opts: RepoLocator): Promise<EstateSnapshot | null> {
+export async function resolveEstate(
+  opts: RepoLocator,
+  hostedApiBase?: string,
+  hostedToken?: string
+): Promise<EstateSnapshot | null> {
+  // PR3: Prefer hosted estate via internal token when configured
+  const base = (hostedApiBase || process.env.NOCK_APP_BASE_URL || "").replace(/\/+$/, "");
+  const token =
+    hostedToken ||
+    process.env.NOCK_TEAM_API_TOKEN ||
+    process.env.NOCK_ESTATE_API_TOKEN ||
+    process.env.NOCK_STATS_API_TOKEN ||
+    "";
+  if (base && token) {
+    try {
+      const url = `${base}/v1/estate/${encodeURIComponent(`${opts.owner}/${opts.repo}`)}`;
+      const res = await fetch(url, {
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        return (await res.json()) as EstateSnapshot;
+      }
+    } catch {
+      // fall through to repo contents
+    }
+  }
   // 1) .nock/estate.json on head, else base
   const tryPaths = [".nock/estate.json"];
   for (const p of tryPaths) {
@@ -350,7 +375,32 @@ export async function resolveEstate(opts: RepoLocator): Promise<EstateSnapshot |
   return null;
 }
 
-export async function resolvePolicy(opts: RepoLocator): Promise<PolicyResolved> {
+export async function resolvePolicy(
+  opts: RepoLocator,
+  hostedApiBase?: string,
+  hostedToken?: string
+): Promise<PolicyResolved> {
+  // PR3: Prefer hosted policy via internal token when configured
+  const base = (hostedApiBase || process.env.NOCK_APP_BASE_URL || "").replace(/\/+$/, "");
+  const token =
+    hostedToken ||
+    process.env.NOCK_TEAM_API_TOKEN ||
+    process.env.NOCK_ESTATE_API_TOKEN ||
+    process.env.NOCK_STATS_API_TOKEN ||
+    "";
+  if (base && token) {
+    try {
+      const url = `${base}/v1/policy/${encodeURIComponent(`${opts.owner}/${opts.repo}`)}`;
+      const res = await fetch(url, {
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        return (await res.json()) as PolicyResolved;
+      }
+    } catch {
+      // fall through to repo contents
+    }
+  }
   // Prefer local .nock policy, else repo root policy.default.yml, else minimal fallback
   const policyCandidates = [
     ".nock/policy.yml",
@@ -668,7 +718,7 @@ export async function handleWebhook(c: Context, rawBody: ArrayBuffer): Promise<R
       });
       shouldRun = prTouchesTriggerPaths(files);
       if (!shouldRun) return c.json({ skipped: true, reason: "no trigger paths" });
-      // Resolve estate + policy + changed SQL contents
+      // Resolve estate + policy + changed SQL contents (PR3: prefer hosted by token)
       const repoLoc: RepoLocator = {
         installationToken: token,
         owner,
@@ -676,12 +726,18 @@ export async function handleWebhook(c: Context, rawBody: ArrayBuffer): Promise<R
         headRef: headSha,
         baseRef,
       };
-      const estate = await resolveEstate(repoLoc);
+      const selfBase = (process.env.NOCK_APP_BASE_URL || new URL(c.req.url).origin || "").replace(/\/+$/, "");
+      const teamToken =
+        process.env.NOCK_TEAM_API_TOKEN ||
+        process.env.NOCK_ESTATE_API_TOKEN ||
+        process.env.NOCK_STATS_API_TOKEN ||
+        "";
+      const estate = await resolveEstate(repoLoc, selfBase, teamToken);
       if (!estate) {
         await postNoEstateNeutralCheckRun({ owner, repo, headSha, installationToken: token });
         return c.json({ ok: true, estate: "missing", posted: "neutral" });
       }
-      const policy = await resolvePolicy(repoLoc);
+      const policy = await resolvePolicy(repoLoc, selfBase, teamToken);
       const sqls = await fetchChangedSqlContents({ ...repoLoc, changedFiles: files });
       // Run engine
       const band = computeFreshness(estate.captured_at);

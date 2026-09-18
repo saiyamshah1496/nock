@@ -18,30 +18,92 @@ program
 program
   .command("check")
   .requiredOption("--sql <path>", "Path to a SQL file to check")
-  .requiredOption("--estate <path>", "Path to an estate.json file")
-  .option("--policy <path>", "Path to a policy YAML or JSON (JSON in Phase 1)")
+  .option("--estate <path>", "Path to an estate.json file (fallback when hosted not configured)")
+  .option("--policy <path>", "Path to a policy YAML or JSON")
+  .option("--estate-api-url <url>", "Optional: GET URL for hosted estate API (Nock Team)")
+  .option(
+    "--estate-api-token <token>",
+    "Optional: bearer token for hosted API (env fallback: NOCK_TEAM_API_TOKEN, NOCK_ESTATE_API_TOKEN, NOCK_STATS_API_TOKEN)"
+  )
+  .option("--api-base-url <url>", "Optional: Override API base (defaults to origin from --estate-api-url)")
   .option("--pg-version <ver>", "Override Postgres version string")
   .option("--format <fmt>", "Output format: json|text", "json")
   .option("--fail-on <level>", "Fail on red|yellow", "red")
-  .action((opts) => {
+  .action(async (opts) => {
     const sqlPath = path.resolve(String(opts.sql));
-    const estatePath = path.resolve(String(opts.estate));
+    const estatePath = opts.estate ? path.resolve(String(opts.estate)) : null;
     const policyPath = opts.policy ? path.resolve(String(opts.policy)) : null;
     const sql = fs.readFileSync(sqlPath, "utf8");
-    const estate: EstateSnapshot = JSON.parse(fs.readFileSync(estatePath, "utf8"));
+    // Hosted preference: when both URL and token available, fetch hosted estate/policy; else fallback to local files
+    const estateApiUrl: string = String(opts.estateApiUrl || "");
+    const estateApiTokenInput: string = String(opts.estateApiToken || "");
+    const estateApiTokenEnv: string =
+      process.env.NOCK_TEAM_API_TOKEN ||
+      process.env.NOCK_ESTATE_API_TOKEN ||
+      process.env.NOCK_STATS_API_TOKEN ||
+      "";
+    const estateApiToken = estateApiTokenInput || estateApiTokenEnv;
+    const apiBaseUrlInput: string = String(opts.apiBaseUrl || "");
+    const apiBase =
+      apiBaseUrlInput?.trim()
+        ? apiBaseUrlInput.replace(/\/+$/, "")
+        : estateApiUrl?.trim()
+        ? new URL(estateApiUrl).origin
+        : "";
+
+    // Try hosted estate first
+    let estateMaybe: EstateSnapshot | null = null;
+    if (estateApiUrl && estateApiToken) {
+      try {
+        estateMaybe = await getJsonAsync<EstateSnapshot>(estateApiUrl, estateApiToken);
+      } catch {
+        // swallow; fallback below
+      }
+    }
+    if (!estateMaybe) {
+      if (!estatePath) {
+        throw new Error("Either --estate must be provided, or configure --estate-api-url with a valid token.");
+      }
+      estateMaybe = JSON.parse(fs.readFileSync(estatePath, "utf8"));
+    }
+    const estate: EstateSnapshot = estateMaybe as EstateSnapshot;
 
     // Minimal default policy if none provided
-    let policy: PolicyResolved = policyPath
-      ? JSON.parse(fs.readFileSync(policyPath, "utf8"))
-      : {
-          id: "nock.postgres.ddl.default",
-          version: "1.0.0",
-          fail_on: (String(opts.failOn) as "red" | "yellow") ?? "red",
-          rules: {
-            R001: { red_rows: 10000 },
-            R010: { always_require_lock_timeout_above_rows: 1000000 }
-          }
-        };
+    let hostedPolicy: PolicyResolved | null = null;
+    if (apiBase && estateApiToken) {
+      try {
+        // Derive repoId from /v1/estate/:repoId pattern in estateApiUrl when available
+        let repoId: string | null = null;
+        try {
+          const u = new URL(estateApiUrl);
+          const m = /\/v1\/estate\/(.+)$/.exec(u.pathname);
+          if (m && m[1]) repoId = decodeURIComponent(m[1]);
+        } catch {
+          // ignore
+        }
+        if (repoId) {
+          hostedPolicy = await getJsonAsync<PolicyResolved>(
+            `${apiBase}/v1/policy/${encodeURIComponent(repoId)}`,
+            estateApiToken
+          );
+        }
+      } catch {
+        // ignore; use file/default below
+      }
+    }
+    let policy: PolicyResolved =
+      hostedPolicy ||
+      (policyPath
+        ? JSON.parse(fs.readFileSync(policyPath, "utf8"))
+        : {
+            id: "nock.postgres.ddl.default",
+            version: "1.0.0",
+            fail_on: (String(opts.failOn) as "red" | "yellow") ?? "red",
+            rules: {
+              R001: { red_rows: 10000 },
+              R010: { always_require_lock_timeout_above_rows: 1000000 }
+            }
+          });
     // Allow override of fail-on via CLI even if policy file present (lowest friction)
     if (opts.failOn) {
       policy = { ...policy, fail_on: String(opts.failOn) as any };
@@ -128,6 +190,17 @@ program.parseAsync(process.argv).catch((err) => {
   console.error(err?.stack || String(err));
   process.exit(2);
 });
+
+async function getJsonAsync<T = any>(urlStr: string, token?: string): Promise<T> {
+  const res = await fetch(urlStr, {
+    headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  } as any);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return (await res.json()) as T;
+}
 
 function postJson(urlStr: string, obj: any, token?: string): Promise<void> {
   return new Promise((resolve, reject) => {
