@@ -24,7 +24,7 @@ Non-goals (remain out of scope): Stripe/billing, Path C (customer DSN pull), nat
 ### 2) Live constraints (landed on main)
 
 - API routes:
-  - Estate routes use `/v1/estate/:repoId` where `:repoId` is `owner/repo`. The R2 layout today is effectively `estate/{id}/last.envelope.json` (sanitized from `owner/repo`).
+  - Estate routes use `/v1/estate/:owner/:repo`. The R2 layout today is effectively `estate/{id}/last.envelope.json` (sanitized from `owner/repo`).
   - Policy/audit routes exist per 015: `GET/PUT /v1/policy/:repoId`, `POST /v1/audit`, `GET /v1/audit/:repoId`.
 - D1 schema:
   - v0001 (015) shipped `policies` and baseline `audit_events`.

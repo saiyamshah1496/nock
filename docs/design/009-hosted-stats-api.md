@@ -30,13 +30,13 @@ Decision: build local-first service (Node + Hono), file-based store behind an `E
 
 ### API design
 Paths:
-- `POST /v1/estate/:repoId`
+- `POST /v1/estate/:owner/:repo`
   - Auth: `Authorization: Bearer <token>` (env: `NOCK_ESTATE_API_TOKEN`, falls back to `NOCK_STATS_API_TOKEN`).
   - Content:
     - Production (default): JSON envelope (see Encryption) with fields: `version`, `dek_{ct,iv,tag}`, `payload_{ct,iv,tag}`, plus metadata like `captured_at`, `schema_version`.
     - Dev plaintext mode: raw `EstateSnapshot` JSON when `NOCK_DEV_PLAINTEXT_ESTATE=1` (or legacy `NOCK_DEV_PLAINTEXT_STATS=1`) is set on the server (document: local-only).
   - Behavior: Store the last-good artifact atomically (envelope file or plaintext file). Optionally verify envelope by decrypting on receipt; on failure 400.
-- `GET /v1/estate/:repoId`
+- `GET /v1/estate/:owner/:repo`
   - In dev plaintext mode: return stored plaintext JSON.
   - Otherwise: read the envelope and decrypt with `NOCK_ESTATE_KEK` (falls back to `NOCK_STATS_KEK`), return plaintext JSON.
   - 404 if not present; 500 if decryption fails (misconfig).
@@ -98,7 +98,7 @@ Implementation details:
 ### CLI push
 Extend `nock sync-estate`:
 - Flags:
-  - `--push-url <url>` (e.g., `http://localhost:8787/v1/estate/my-repo`)
+  - `--push-url <url>` (e.g., `http://localhost:8787/v1/estate/acme/my-repo`)
   - `--token <bearer>` (Authorization header)
   - Optional `--repo <repoId>` only if we prefer base URL; decision: keep `--push-url` as full URL to reduce ambiguity.
 - Behavior:
@@ -124,7 +124,7 @@ Extend `nock sync-estate`:
 - Install: `pnpm i`
 - Run API: `NOCK_ESTATE_API_TOKEN=dev NOCK_ESTATE_KEK=$(openssl rand -base64 32) pnpm -w --filter @nockhq/api dev`
 - Dev plaintext: add `NOCK_DEV_PLAINTEXT_ESTATE=1` and omit `NOCK_ESTATE_KEK`.
-- Test push: `nock sync-estate --database-url ... --out .nock/estate.json --push-url http://localhost:8787/v1/estate/my-repo --token dev`
+  - Test push: `nock sync-estate --database-url ... --out .nock/estate.json --push-url http://localhost:8787/v1/estate/acme/my-repo --token dev`
 - Fetch in Action: set `estate-api-url` to the GET endpoint and `estate-api-token` if required.
 
 ---
