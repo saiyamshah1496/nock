@@ -8,3 +8,5 @@ Design partners / coming soon.
 - No Stripe or signup UI yet
 - Docs live in this repo (`README.md` and `docs/`)
 
+Partner setup guide (design partners): `docs/guides/nock-team-partner-setup.md`
+

@@ -159,7 +159,7 @@ jobs:
           migration-path: migrations/
           # Optional: download hosted estate to file (Team)
           # estate-api-url: https://example.workers.dev/v1/estate/my-repo
-          # estate-api-token: ${{ secrets.NOCK_ESTATE_API_TOKEN }}
+          # estate-api-token: ${{ secrets.NOCK_TEAM_API_TOKEN }}
           # File fallback (OSS/local)
           estate-path: .nock/estate.json
           policy-path: policy.default.yml
@@ -219,11 +219,12 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 - Security notes — `docs/SECURITY.md`
 - Development — `docs/DEVELOPMENT.md`
 - License — MIT (see `LICENSE`)
- - Nock Team (hosted estate + org policy + audit) — `docs/guides/nock-team.md`
+- Nock Team (hosted estate + org policy + audit) — `docs/guides/nock-team.md`
+- Nock Team partner setup (design partners) — `docs/guides/nock-team-partner-setup.md`
 
 ## Stub only: Nock Team (hosted estate + org policy + audit)
 
-Hosted estate distribution (Nock Team) with envelope encryption, organization policy storage, and audit trails — design partners / coming soon. Hosted customers will be able to export estate snapshots and audit logs at any time. No Stripe or signup UI yet. Docs live in this repo (`README.md` and `docs/`).
+Hosted estate distribution (Nock Team) with envelope encryption, organization policy storage, and audit trails — design partners / coming soon. Hosted customers will be able to export estate snapshots and audit logs at any time. No Stripe or signup UI yet. Docs live in this repo (`README.md` and `docs/`). For hands‑on onboarding, see `docs/guides/nock-team-partner-setup.md`.
 
 ## License
 
