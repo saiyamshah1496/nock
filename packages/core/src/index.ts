@@ -54,7 +54,13 @@ export interface PolicyResolved {
   version?: string;
   fail_on: "red" | "yellow";
   require_lock_timeout?: "always" | "size_gated";
-  rules: Record<string, any>;
+  /**
+   * Per-rule configuration. Each rule entry may include arbitrary knobs
+   * (thresholds, severities, etc.) and an optional enabled flag.
+   * When enabled is explicitly set to false, the rule must be skipped.
+   * When enabled is omitted, the rule remains enabled by default.
+   */
+  rules: Record<string, RuleConfig>;
   no_stats?: "warn" | "fail_closed";
 }
 
@@ -116,6 +122,16 @@ export interface Rule {
   id: string;
   evaluate(ctx: RuleContext): Violation[];
 }
+
+/**
+ * Rule configuration object. Keys are specific to each rule. The common
+ * additive flag "enabled" disables the rule when set to false. Omitted
+ * means enabled by default for backwards-compatibility.
+ */
+export type RuleConfig = {
+  enabled?: boolean;
+  [key: string]: any;
+};
 
 export interface PolicyPack {
   id: string;
@@ -647,6 +663,15 @@ export function check(input: CheckInput): VerdictV1 {
   const violations: Violation[] = [];
   const policy = input.policy;
 
+  // Helper: rule enabled check. Omitted => enabled.
+  const isRuleEnabled = (ruleId: string): boolean => {
+    const cfg = policy?.rules?.[ruleId] as RuleConfig | undefined;
+    if (cfg && Object.prototype.hasOwnProperty.call(cfg, "enabled")) {
+      return cfg.enabled !== false;
+    }
+    return true;
+  };
+
   // Track if a lock_timeout was set earlier in this batch
   const priorLockTimeoutFlags: boolean[] = [];
   let seenLockTimeout = false;
@@ -679,21 +704,28 @@ export function check(input: CheckInput): VerdictV1 {
       const tstats = findTableEstate(input.estate, addFk.table);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R007?.red_rows ?? 100_000;
-      if (typeof nLive === "number" && nLive >= redRows) {
-        violations.push({
-          rule_id: "R007",
-          severity: "red",
-          message: `ADD FOREIGN KEY without NOT VALID on ${addFk.table ? addFk.table.name : "unknown"} (${formatRows(
-            nLive
-          )} rows)`,
-          remediation_sql:
-            "ALTER TABLE <child> ADD CONSTRAINT <name> FOREIGN KEY (<col>) REFERENCES <parent>(<col>) NOT VALID; ALTER TABLE <child> VALIDATE CONSTRAINT <name>;"
-        });
+      if (isRuleEnabled("R007")) {
+        if (typeof nLive === "number" && nLive >= redRows) {
+          violations.push({
+            rule_id: "R007",
+            severity: "red",
+            message: `ADD FOREIGN KEY without NOT VALID on ${addFk.table ? addFk.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows)`,
+            remediation_sql:
+              "ALTER TABLE <child> ADD CONSTRAINT <name> FOREIGN KEY (<col>) REFERENCES <parent>(<col>) NOT VALID; ALTER TABLE <child> VALIDATE CONSTRAINT <name>;"
+          });
+        }
       }
       // R010: generic hot DDL without prior lock_timeout
       {
         const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
-        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+        if (
+          isRuleEnabled("R010") &&
+          !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+          typeof nLive === "number" &&
+          nLive >= r010Rows
+        ) {
           violations.push({
             rule_id: "R010",
             severity: "red",
@@ -729,7 +761,7 @@ export function check(input: CheckInput): VerdictV1 {
       const redRows = policy.rules?.R008?.red_rows ?? 10_000;
       const newTypeUp = (alterType.newType ?? "").toUpperCase();
       const binaryWiden = isLikelyBinaryCoercibleWiden(alterType.newType, alterType.hasUsing);
-      if (!binaryWiden) {
+      if (!binaryWiden && isRuleEnabled("R008")) {
         // Clear rewrite cases: explicit USING, integer-width changes, JSONB, numeric/decimal typmod changes
         const clearlyRewrite =
           alterType.hasUsing ||
@@ -750,7 +782,12 @@ export function check(input: CheckInput): VerdictV1 {
       // R010: generic hot DDL without prior lock_timeout
       {
         const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
-        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+        if (
+          isRuleEnabled("R010") &&
+          !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+          typeof nLive === "number" &&
+          nLive >= r010Rows
+        ) {
           violations.push({
             rule_id: "R010",
             severity: "red",
@@ -784,30 +821,32 @@ export function check(input: CheckInput): VerdictV1 {
       const tstats = findTableEstate(input.estate, refresh.view);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R013?.red_rows ?? 10_000;
-      if (typeof nLive === "number") {
-        if (nLive >= redRows) {
-          violations.push({
-            rule_id: "R013",
-            severity: "red",
-            message: `REFRESH MATERIALIZED VIEW without CONCURRENTLY on ${refresh.view ? refresh.view.name : "unknown"} (${formatRows(
-              nLive
-            )} rows) blocks reads/writes`
-          });
+      if (isRuleEnabled("R013")) {
+        if (typeof nLive === "number") {
+          if (nLive >= redRows) {
+            violations.push({
+              rule_id: "R013",
+              severity: "red",
+              message: `REFRESH MATERIALIZED VIEW without CONCURRENTLY on ${refresh.view ? refresh.view.name : "unknown"} (${formatRows(
+                nLive
+              )} rows) blocks reads/writes`
+            });
+          } else {
+            violations.push({
+              rule_id: "R013",
+              severity: "yellow",
+              message: `REFRESH MATERIALIZED VIEW without CONCURRENTLY on small view ${refresh.view ? refresh.view.name : "unknown"} (${formatRows(
+                nLive
+              )} rows)`
+            });
+          }
         } else {
           violations.push({
             rule_id: "R013",
             severity: "yellow",
-            message: `REFRESH MATERIALIZED VIEW without CONCURRENTLY on small view ${refresh.view ? refresh.view.name : "unknown"} (${formatRows(
-              nLive
-            )} rows)`
+            message: "REFRESH MATERIALIZED VIEW without CONCURRENTLY (size unknown)"
           });
         }
-      } else {
-        violations.push({
-          rule_id: "R013",
-          severity: "yellow",
-          message: "REFRESH MATERIALIZED VIEW without CONCURRENTLY (size unknown)"
-        });
       }
       statements.push({
         sql,
@@ -831,29 +870,31 @@ export function check(input: CheckInput): VerdictV1 {
       const nLive = Math.max(nLiveParent ?? 0, nLiveChild ?? 0) || undefined;
       const redRows = policy.rules?.R014?.red_rows ?? 100_000;
       let sev: "red" | "yellow" = "yellow";
-      if (part.action === "DETACH") {
-        // DETACH without CONCURRENTLY on a hot parent is riskier (blocks scans)
-        if (!part.concurrently && typeof nLiveParent === "number" && nLiveParent >= redRows) {
-          sev = "red";
+      if (isRuleEnabled("R014")) {
+        if (part.action === "DETACH") {
+          // DETACH without CONCURRENTLY on a hot parent is riskier (blocks scans)
+          if (!part.concurrently && typeof nLiveParent === "number" && nLiveParent >= redRows) {
+            sev = "red";
+          } else {
+            sev = "yellow";
+          }
         } else {
+          // ATTACH is usually routine when constraints match; keep yellow even on large estates
           sev = "yellow";
         }
-      } else {
-        // ATTACH is usually routine when constraints match; keep yellow even on large estates
-        sev = "yellow";
+        violations.push({
+          rule_id: "R014",
+          severity: sev,
+          message:
+            part.action === "DETACH" && part.concurrently
+              ? `DETACH PARTITION CONCURRENTLY reduces blocking on ${part.parent ? part.parent.name : "unknown"} (${formatRows(
+                  nLiveParent
+                )} rows)`
+              : `${part.action} PARTITION may lock/scan parent/child ${part.parent ? part.parent.name : "unknown"} (${formatRows(
+                  nLive
+                )} rows)`
+        });
       }
-      violations.push({
-        rule_id: "R014",
-        severity: sev,
-        message:
-          part.action === "DETACH" && part.concurrently
-            ? `DETACH PARTITION CONCURRENTLY reduces blocking on ${part.parent ? part.parent.name : "unknown"} (${formatRows(
-                nLiveParent
-              )} rows)`
-            : `${part.action} PARTITION may lock/scan parent/child ${part.parent ? part.parent.name : "unknown"} (${formatRows(
-                nLive
-              )} rows)`
-      });
       statements.push({
         sql,
         lock_mode: "ACCESS EXCLUSIVE",
@@ -880,26 +921,28 @@ export function check(input: CheckInput): VerdictV1 {
       const hotRows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
       const yellowRows = policy.rules?.R015?.yellow_rows ?? 100_000;
       if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1]) {
-        if (typeof nLive === "number" && nLive >= hotRows) {
-          violations.push({
-            rule_id: "R015",
-            severity: "red",
-            message: `CREATE INDEX CONCURRENTLY without lock_timeout on hot table ${cic.table ? cic.table.name : "unknown"} (${formatRows(
-              nLive
-            )} rows)`,
-            remediation_sql: "SET lock_timeout = '3s'; -- before CIC"
-          });
-        } else if (typeof nLive === "number" && nLive >= yellowRows) {
-          violations.push({
-            rule_id: "R015",
-            severity: "yellow",
-            message: `CREATE INDEX CONCURRENTLY without lock_timeout on ${cic.table ? cic.table.name : "unknown"} (${formatRows(
-              nLive
-            )} rows)`
-          });
+        if (isRuleEnabled("R015")) {
+          if (typeof nLive === "number" && nLive >= hotRows) {
+            violations.push({
+              rule_id: "R015",
+              severity: "red",
+              message: `CREATE INDEX CONCURRENTLY without lock_timeout on hot table ${cic.table ? cic.table.name : "unknown"} (${formatRows(
+                nLive
+              )} rows)`,
+              remediation_sql: "SET lock_timeout = '3s'; -- before CIC"
+            });
+          } else if (typeof nLive === "number" && nLive >= yellowRows) {
+            violations.push({
+              rule_id: "R015",
+              severity: "yellow",
+              message: `CREATE INDEX CONCURRENTLY without lock_timeout on ${cic.table ? cic.table.name : "unknown"} (${formatRows(
+                nLive
+              )} rows)`
+            });
+          }
         }
       }
-      if (!cic.indexName || cic.indexName.length === 0) {
+      if (isRuleEnabled("R021") && (!cic.indexName || cic.indexName.length === 0)) {
         violations.push({
           rule_id: "R021",
           severity: "yellow",
@@ -925,27 +968,34 @@ export function check(input: CheckInput): VerdictV1 {
       const tstats = findTableEstate(input.estate, uniq.table);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R017?.red_rows ?? 10_000;
-      if (typeof nLive === "number" && nLive >= redRows) {
-        violations.push({
-          rule_id: "R017",
-          severity: "red",
-          message: `ADD ${uniq.kind} without USING INDEX on ${uniq.table ? uniq.table.name : "unknown"} (${formatRows(
-            nLive
-          )} rows) builds unique index under strong lock`,
-          remediation_sql:
-            "CREATE UNIQUE INDEX CONCURRENTLY <idx> ON <table>(<col(s)>); ALTER TABLE <table> ADD CONSTRAINT <name> UNIQUE USING INDEX <idx>;"
-        });
-      } else {
-        violations.push({
-          rule_id: "R017",
-          severity: "yellow",
-          message: `ADD ${uniq.kind} without USING INDEX — consider online build with CIC then USING INDEX`
-        });
+      if (isRuleEnabled("R017")) {
+        if (typeof nLive === "number" && nLive >= redRows) {
+          violations.push({
+            rule_id: "R017",
+            severity: "red",
+            message: `ADD ${uniq.kind} without USING INDEX on ${uniq.table ? uniq.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows) builds unique index under strong lock`,
+            remediation_sql:
+              "CREATE UNIQUE INDEX CONCURRENTLY <idx> ON <table>(<col(s)>); ALTER TABLE <table> ADD CONSTRAINT <name> UNIQUE USING INDEX <idx>;"
+          });
+        } else {
+          violations.push({
+            rule_id: "R017",
+            severity: "yellow",
+            message: `ADD ${uniq.kind} without USING INDEX — consider online build with CIC then USING INDEX`
+          });
+        }
       }
       // R010: generic hot DDL without prior lock_timeout
       {
         const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
-        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+        if (
+          isRuleEnabled("R010") &&
+          !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+          typeof nLive === "number" &&
+          nLive >= r010Rows
+        ) {
           violations.push({
             rule_id: "R010",
             severity: "red",
@@ -981,19 +1031,26 @@ export function check(input: CheckInput): VerdictV1 {
       const redRows = policy.rules?.R018?.red_rows ?? 100_000;
       const yellowRows = policy.rules?.R018?.yellow_rows ?? 10_000;
       let sev: "red" | "yellow" = "yellow";
-      if (typeof nLive === "number" && nLive >= redRows) sev = "red";
-      else if (typeof nLive === "number" && nLive >= yellowRows) sev = "yellow";
-      violations.push({
-        rule_id: "R018",
-        severity: sev,
-        message: `ADD EXCLUDE constraint on ${ex.table ? ex.table.name : "unknown"} (${formatRows(
-          nLive
-        )} rows) cannot use NOT VALID; ensure off-peak`
-      });
+      if (isRuleEnabled("R018")) {
+        if (typeof nLive === "number" && nLive >= redRows) sev = "red";
+        else if (typeof nLive === "number" && nLive >= yellowRows) sev = "yellow";
+        violations.push({
+          rule_id: "R018",
+          severity: sev,
+          message: `ADD EXCLUDE constraint on ${ex.table ? ex.table.name : "unknown"} (${formatRows(
+            nLive
+          )} rows) cannot use NOT VALID; ensure off-peak`
+        });
+      }
       // R010: generic hot DDL without prior lock_timeout
       {
         const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
-        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+        if (
+          isRuleEnabled("R010") &&
+          !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+          typeof nLive === "number" &&
+          nLive >= r010Rows
+        ) {
           violations.push({
             rule_id: "R010",
             severity: "red",
@@ -1026,7 +1083,7 @@ export function check(input: CheckInput): VerdictV1 {
     if (trunc) {
       const tstats = findTableEstate(input.estate, trunc.table);
       const inEstate = !!tstats;
-      if (inEstate) {
+      if (inEstate && isRuleEnabled("R019")) {
         violations.push({
           rule_id: "R019",
           severity: "red",
@@ -1040,7 +1097,7 @@ export function check(input: CheckInput): VerdictV1 {
         blocks_writes: true,
         target: trunc.table,
         n_live_tup: tstats?.n_live_tup,
-        rules_hit: inEstate ? ["R019"] : []
+        rules_hit: inEstate && isRuleEnabled("R019") ? ["R019"] : []
       });
       if (trunc.table) {
         const key = `${trunc.table.schema.toLowerCase()}.${trunc.table.name.toLowerCase()}`;
@@ -1055,11 +1112,13 @@ export function check(input: CheckInput): VerdictV1 {
     if (dr) {
       const tstats = findTableEstate(input.estate, dr.table);
       const nLive = tstats?.n_live_tup;
-      violations.push({
-        rule_id: "R009",
-        severity: "yellow",
-        message: `${dr.kind} on ${dr.table ? dr.table.name : "unknown"} (${formatRows(nLive)} rows) — review for application impact`
-      });
+      if (isRuleEnabled("R009")) {
+        violations.push({
+          rule_id: "R009",
+          severity: "yellow",
+          message: `${dr.kind} on ${dr.table ? dr.table.name : "unknown"} (${formatRows(nLive)} rows) — review for application impact`
+        });
+      }
       statements.push({
         sql,
         lock_mode: "ACCESS EXCLUSIVE",
@@ -1106,13 +1165,15 @@ export function check(input: CheckInput): VerdictV1 {
     if (conc) {
       const hitRules: string[] = [];
       if (insideExplicitTxn) {
-        hitRules.push("R002");
-        violations.push({
-          rule_id: "R002",
-          severity: "red",
-          message:
-            `${conc.kind} cannot run inside a transaction block in Postgres; run outside a transaction or disable the migration transaction`
-        });
+        if (isRuleEnabled("R002")) {
+          hitRules.push("R002");
+          violations.push({
+            rule_id: "R002",
+            severity: "red",
+            message:
+              `${conc.kind} cannot run inside a transaction block in Postgres; run outside a transaction or disable the migration transaction`
+          });
+        }
       }
       statements.push({
         sql,
@@ -1135,26 +1196,33 @@ export function check(input: CheckInput): VerdictV1 {
 
       // Threshold from policy or default 10000
       const redRows = policy.rules?.R001?.red_rows ?? 10_000;
-      if (typeof nLive === "number" && nLive >= redRows) {
-        hitRules.push("R001");
-        violations.push({
-          rule_id: "R001",
-          severity: "red",
-          message: `CREATE INDEX without CONCURRENTLY on ${m.table ? m.table.name : "unknown"} (${formatRows(
-            nLive
-          )} rows) takes SHARE lock and may block writes`,
-          remediation_sql: m.isUnique
-            ? "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>); -- note: cannot run inside a transaction block"
-            : "CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>); -- note: cannot run inside a transaction block",
-          docs_url: "https://www.postgresql.org/docs/current/sql-createindex.html"
-        });
-      } else {
-        // Even below threshold, still note lock mode in statement verdict
+      if (isRuleEnabled("R001")) {
+        if (typeof nLive === "number" && nLive >= redRows) {
+          hitRules.push("R001");
+          violations.push({
+            rule_id: "R001",
+            severity: "red",
+            message: `CREATE INDEX without CONCURRENTLY on ${m.table ? m.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows) takes SHARE lock and may block writes`,
+            remediation_sql: m.isUnique
+              ? "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>); -- note: cannot run inside a transaction block"
+              : "CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>); -- note: cannot run inside a transaction block",
+            docs_url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+          });
+        } else {
+          // Even below threshold, still note lock mode in statement verdict
+        }
       }
 
       // R010: require lock_timeout for hot tables (size_gated)
       const hotRows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
-      if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= hotRows) {
+      if (
+        isRuleEnabled("R010") &&
+        !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+        typeof nLive === "number" &&
+        nLive >= hotRows
+      ) {
         hitRules.push("R010");
         violations.push({
           rule_id: "R010",
@@ -1203,21 +1271,28 @@ export function check(input: CheckInput): VerdictV1 {
           volatileDefault = isVolatileDefault(defExpr);
         }
       }
-      if (typeof nLive === "number" && nLive >= redRowsR003 && (generatedStored || volatileDefault)) {
-        hitRules.push("R003");
-        violations.push({
-          rule_id: "R003",
-          severity: "red",
-          message: `ADD COLUMN with volatile DEFAULT rewrites table ${addCol.table ? addCol.table.name : "unknown"} (${formatRows(
-            nLive
-          )}) under ACCESS EXCLUSIVE lock`,
-          remediation_sql:
-            "ALTER TABLE <table> ADD COLUMN <col> <type> NULL; /* backfill in batches */ UPDATE <table> SET <col>=<value>; ALTER TABLE <table> ALTER COLUMN <col> SET DEFAULT <value>;",
-          docs_url: "https://www.postgresql.org/docs/11/ddl-alter.html"
-        });
+      if (isRuleEnabled("R003")) {
+        if (typeof nLive === "number" && nLive >= redRowsR003 && (generatedStored || volatileDefault)) {
+          hitRules.push("R003");
+          violations.push({
+            rule_id: "R003",
+            severity: "red",
+            message: `ADD COLUMN with volatile DEFAULT rewrites table ${addCol.table ? addCol.table.name : "unknown"} (${formatRows(
+              nLive
+            )}) under ACCESS EXCLUSIVE lock`,
+            remediation_sql:
+              "ALTER TABLE <table> ADD COLUMN <col> <type> NULL; /* backfill in batches */ UPDATE <table> SET <col>=<value>; ALTER TABLE <table> ALTER COLUMN <col> SET DEFAULT <value>;",
+            docs_url: "https://www.postgresql.org/docs/11/ddl-alter.html"
+          });
+        }
       }
       const hotRows = policy.rules?.R004?.hot_rows ?? 1_000_000;
-      if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= hotRows) {
+      if (
+        isRuleEnabled("R004") &&
+        !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+        typeof nLive === "number" &&
+        nLive >= hotRows
+      ) {
         violations.push({
           rule_id: "R004",
           // Default: red floor at 1M rows for hot/lock_timeout rules
@@ -1229,7 +1304,7 @@ export function check(input: CheckInput): VerdictV1 {
         });
         // Also emit R010 if policy wants generic lock_timeout on hot tables
         const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? hotRows;
-        if (typeof nLive === "number" && nLive >= r010Rows) {
+        if (isRuleEnabled("R010") && typeof nLive === "number" && nLive >= r010Rows) {
           violations.push({
             rule_id: "R010",
             severity: "red",
@@ -1263,27 +1338,34 @@ export function check(input: CheckInput): VerdictV1 {
       const tstats = findTableEstate(input.estate, addCheck.table);
       const nLive = tstats?.n_live_tup;
       const redRows = policy.rules?.R006?.red_rows ?? 50_000;
-      if (typeof nLive === "number" && nLive >= redRows) {
-        violations.push({
-          rule_id: "R006",
-          severity: "red",
-          message: `ADD CHECK without NOT VALID on ${addCheck.table ? addCheck.table.name : "unknown"} (${formatRows(
-            nLive
-          )} rows)`,
-          remediation_sql:
-            "ALTER TABLE <table> ADD CONSTRAINT <name> CHECK (<expr>) NOT VALID; ALTER TABLE <table> VALIDATE CONSTRAINT <name>;"
-        });
-        // Also R010 for hot tables without lock_timeout
-        const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
-        if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+      if (isRuleEnabled("R006")) {
+        if (typeof nLive === "number" && nLive >= redRows) {
           violations.push({
-            rule_id: "R010",
+            rule_id: "R006",
             severity: "red",
-            message: `Missing lock_timeout for DDL on hot table ${addCheck.table ? addCheck.table.name : "unknown"} (${formatRows(
+            message: `ADD CHECK without NOT VALID on ${addCheck.table ? addCheck.table.name : "unknown"} (${formatRows(
               nLive
             )} rows)`,
-            remediation_sql: "SET lock_timeout = '3s';"
+            remediation_sql:
+              "ALTER TABLE <table> ADD CONSTRAINT <name> CHECK (<expr>) NOT VALID; ALTER TABLE <table> VALIDATE CONSTRAINT <name>;"
           });
+          // Also R010 for hot tables without lock_timeout
+          const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
+          if (
+            isRuleEnabled("R010") &&
+            !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+            typeof nLive === "number" &&
+            nLive >= r010Rows
+          ) {
+            violations.push({
+              rule_id: "R010",
+              severity: "red",
+              message: `Missing lock_timeout for DDL on hot table ${addCheck.table ? addCheck.table.name : "unknown"} (${formatRows(
+                nLive
+              )} rows)`,
+              remediation_sql: "SET lock_timeout = '3s';"
+            });
+          }
         }
       }
       statements.push({
@@ -1309,20 +1391,27 @@ export function check(input: CheckInput): VerdictV1 {
       // Estate-only limitation: without a live DB we cannot see already-validated catalog CHECKs.
       const expandContractOk =
         hasExpandContractForNotNull(sqls, setNotNull.table, setNotNull.column, stmtIdx) === true;
-      if (typeof nLive === "number" && nLive >= redRows && !expandContractOk) {
-        violations.push({
-          rule_id: "R005",
-          severity: "red",
-          message: `SET NOT NULL may scan/rewrite on ${setNotNull.table ? setNotNull.table.name : "unknown"} (${formatRows(
-            nLive
-          )} rows); remediate with NOT VALID CHECK → VALIDATE → SET NOT NULL`,
-          remediation_sql:
-            "ALTER TABLE <table> ADD CONSTRAINT <col>_nn CHECK (<col> IS NOT NULL) NOT VALID; ALTER TABLE <table> VALIDATE CONSTRAINT <col>_nn; ALTER TABLE <table> ALTER COLUMN <col> SET NOT NULL;"
-        });
+      if (isRuleEnabled("R005")) {
+        if (typeof nLive === "number" && nLive >= redRows && !expandContractOk) {
+          violations.push({
+            rule_id: "R005",
+            severity: "red",
+            message: `SET NOT NULL may scan/rewrite on ${setNotNull.table ? setNotNull.table.name : "unknown"} (${formatRows(
+              nLive
+            )} rows); remediate with NOT VALID CHECK → VALIDATE → SET NOT NULL`,
+            remediation_sql:
+              "ALTER TABLE <table> ADD CONSTRAINT <col>_nn CHECK (<col> IS NOT NULL) NOT VALID; ALTER TABLE <table> VALIDATE CONSTRAINT <col>_nn; ALTER TABLE <table> ALTER COLUMN <col> SET NOT NULL;"
+          });
+        }
       }
       // R010: generic hot DDL without prior lock_timeout
       const r010Rows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
-      if (!priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] && typeof nLive === "number" && nLive >= r010Rows) {
+      if (
+        isRuleEnabled("R010") &&
+        !priorLockTimeoutFlags[priorLockTimeoutFlags.length - 1] &&
+        typeof nLive === "number" &&
+        nLive >= r010Rows
+      ) {
         violations.push({
           rule_id: "R010",
           severity: "red",
@@ -1353,17 +1442,19 @@ export function check(input: CheckInput): VerdictV1 {
     const heavy = isVacuumFullOrClusterOrNonConcurrentReindex(sql);
     if (heavy) {
       const rid = heavy.kind === "CLUSTER" ? "R020" : "R012";
-      violations.push({
-        rule_id: rid,
-        severity: "red",
-        message: `${heavy.kind} is not allowed in CI`
-      });
+      if (isRuleEnabled(rid)) {
+        violations.push({
+          rule_id: rid,
+          severity: "red",
+          message: `${heavy.kind} is not allowed in CI`
+        });
+      }
       statements.push({
         sql,
         lock_mode: "ACCESS EXCLUSIVE",
         blocks_reads: true,
         blocks_writes: true,
-        rules_hit: [rid]
+        rules_hit: isRuleEnabled(rid) ? [rid] : []
       });
       continue;
     }
@@ -1393,7 +1484,7 @@ export function check(input: CheckInput): VerdictV1 {
       const nLive = tstats?.n_live_tup;
       const hotRows = policy.rules?.R010?.always_require_lock_timeout_above_rows ?? 1_000_000;
       const anyHadPriorLockTimeout = indices.some((idx) => priorLockTimeoutFlags[idx] === true);
-      if (!anyHadPriorLockTimeout && typeof nLive === "number" && nLive >= hotRows) {
+      if (isRuleEnabled("R016") && !anyHadPriorLockTimeout && typeof nLive === "number" && nLive >= hotRows) {
         violations.push({
           rule_id: "R016",
           severity: "yellow",
