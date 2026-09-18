@@ -1,7 +1,7 @@
 # Nock
 
 Nock gates risky Postgres migrations before they merge.
-It checks your DDL against an estate snapshot (table sizes) and policy — lock class, `lock_timeout`, hot‑table risk — and returns approve or block.
+It checks your DDL against an estate snapshot (table sizes and governance facts — columns, constraints, indexes) and policy — lock class, `lock_timeout`, hot‑table risk — and returns approve or block.
 Pattern linters catch shapes. Nock catches “this is unsafe on your data.”
 Nock never applies migrations. CLI ≡ Action ≡ MCP — the same verdict JSON for the same inputs.
 
@@ -10,9 +10,9 @@ Nock never applies migrations. CLI ≡ Action ≡ MCP — the same verdict JSON 
 Use directly with npx (recommended):
 
 ```bash
-npx @nockhq/cli@0.1.5 --help
+npx @nockhq/cli@0.1.4 --help
 # or run a check
-npx @nockhq/cli@0.1.5 check --sql migrations/001.sql --estate .nock/estate.json --format json
+npx @nockhq/cli@0.1.4 check --sql migrations/001.sql --estate .nock/estate.json --format json
 ```
 
 Or install globally:
@@ -50,7 +50,7 @@ Minimal shape:
 ## Quick start: check a migration with an estate file
 
 ```bash
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@0.1.4 check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --format json
@@ -84,7 +84,7 @@ Input B — estate excerpt (`fixtures/estate_billion.json`)
 Command
 
 ```bash
-npx @nockhq/cli@0.1.5 check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
+npx @nockhq/cli@0.1.4 check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 
 Output (real CLI JSON)
@@ -167,7 +167,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Prefer the CLI workflow in `examples/workflows/nock.yml` if you’re not using a published Action yet — it runs `npx @nockhq/cli` directly on your runner. GitHub App later.
+Prefer the CLI workflow in `examples/workflows/nock.yml` if you’re not using a published Action yet — it runs `npx @nockhq/cli` directly on your runner. Or install the Nock DDL Gate GitHub App to enforce checks on pull requests: https://github.com/apps/nock-ddl-gate.
 
 ## How to read results
 
@@ -217,6 +217,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 - Quick start: check a migration with an estate file — `docs/guides/quick-start-estate-file.md`
 - Keep estate fresh with sync-estate — `docs/guides/sync-estate.md`
 - Grants for sync-estate — `docs/guides/grants-sync-estate.md`
+- Estate file path reference — `docs/guides/estate-path.md`
 - MCP: check before apply — `docs/guides/mcp-check-before-apply.md`
 - Security notes — `docs/SECURITY.md`
 - Development — `docs/DEVELOPMENT.md`
@@ -224,9 +225,9 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 - Nock Team (hosted estate + org policy + audit) — `docs/guides/nock-team.md`
 - Nock Team partner setup (design partners) — `docs/guides/nock-team-partner-setup.md`
 
-## Stub only: Nock Team (hosted estate + org policy + audit)
+## Nock Team (hosted estate + org policy + audit + export)
 
-Hosted estate distribution (Nock Team) with envelope encryption, organization policy storage, and audit trails — design partners / coming soon. Hosted customers will be able to export estate snapshots and audit logs at any time. No Stripe or signup UI yet. Docs live in this repo (`README.md` and `docs/`). For hands‑on onboarding, see `docs/guides/nock-team-partner-setup.md`.
+Nock Team thin-slice is live for design partners (invite): hosted estate with envelope encryption, organization policy, audit trails, and export. No Stripe / no self-serve signup yet. For onboarding, see `docs/guides/nock-team-partner-setup.md`.
 
 ## License
 
