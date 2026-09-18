@@ -7,7 +7,7 @@ Scope: data‑plane only (no control‑plane changes, no D1 SQL in this PR)
 Document the locked Team thin‑slice data‑plane contract and add shared types used across packages. This design reuses live shapes on main and routes already in production:
 - Estate JSON: reuse existing fixture/`EstateSnapshot` shape
 - Envelope encryption: reuse `@nockhq/secure-estate` EnvelopeV1
-- Push path: existing `POST /v1/estate/:repoId` (URL‑encoded `owner/repo`)
+- Push path: `POST /v1/estate/:owner/:repo`
 - Policy: single canonical schema identical to `policy.default.yml`
 - Audit: append‑only, add rule hit detail and freshness metadata (document columns; FE ships migration)
 - Naming is aligned with FE’s PR [#34](https://github.com/saiyamshah1496/nock/pull/34) (do not invent synonyms)
@@ -52,7 +52,7 @@ References:
 ### Push path — reuse existing route
 
 - Client flow: `nock sync-estate` writes local `.nock/estate.json` → encrypts → `POST /v1/estate/:repoId`
-- Live route: `POST /v1/estate/:repoId` and `GET /v1/estate/:repoId` (see `packages/api/src/app.ts`)
+- Live routes: `POST /v1/estate/:owner/:repo` and `GET /v1/estate/:owner/:repo` (see `packages/api/src/app.ts`)
 - Auth: single global bearer token (`NOCK_ESTATE_API_TOKEN`, fallback `NOCK_STATS_API_TOKEN`)
 - Storage key (Worker/R2): `estate/{sanitized(repoId)}/last.envelope.json`
 - Team v1 identifier: `estate_id ≡ repoId` (016 multi‑DB deferred; do not introduce a new `:estate_id` path)

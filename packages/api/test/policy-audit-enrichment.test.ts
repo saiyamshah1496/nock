@@ -25,7 +25,7 @@ describe("Policy Audit enrichment fields", () => {
       body: JSON.stringify(body),
     });
     expect(res.status).toBe(200);
-    res = await app.request(`/v1/audit/${encodeURIComponent("acme/api")}?limit=5`, {
+    res = await app.request(`/v1/audit/acme/api?limit=5`, {
       headers: { authorization: "Bearer t" },
     });
     expect(res.status).toBe(200);

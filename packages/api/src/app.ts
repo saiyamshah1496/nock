@@ -138,17 +138,13 @@ function getCtxOrgId(c: any): string | undefined {
   }
 }
 
-// Resolve a repoId for scoped tokens, enforcing org boundaries when present.
-// - If token has org (set by requireAuth), allow either "owner/repo" when owner === org, or bare "repo" which is resolved to "org/repo".
+// Resolve "owner/repo" for scoped tokens, enforcing org boundaries when present.
+// - If token has org (set by requireAuth), owner MUST equal org, else null.
 // - For env bearer (no org in context), pass through as-is.
-function resolveScopedRepoId(c: any, repoParam: string): string | null {
+function resolveScopedOwnerRepo(c: any, owner: string, repo: string): string | null {
   const ctxOrg = getCtxOrgId(c);
-  if (!ctxOrg) return repoParam;
-  if (repoParam.includes("/")) {
-    const [owner] = repoParam.split("/", 1);
-    return owner === ctxOrg ? repoParam : null;
-  }
-  return `${ctxOrg}/${repoParam}`;
+  if (!ctxOrg) return `${owner}/${repo}`;
+  return owner === ctxOrg ? `${owner}/${repo}` : null;
 }
 
 export function createApp(
@@ -163,12 +159,16 @@ export function createApp(
     const raw = await c.req.arrayBuffer();
     return await handleWebhook(c, raw);
   });
-  // POST /v1/estate/:repoId
-  app.post("/v1/estate/:repoId", async (c) => {
-    const repoId = c.req.param("repoId");
+  // POST /v1/estate/:owner/:repo
+  app.post("/v1/estate/:owner/:repo", async (c) => {
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
     const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
+    // Canonical storage id: "owner/repo" (enforce org owner for org-scoped tokens)
+    const repoId = resolveScopedOwnerRepo(c, owner, repo);
+    if (!repoId) return errJson(c, "not found", 404); // org-scoped token, wrong owner
     const isDevPlain = process.env.NOCK_DEV_PLAINTEXT_ESTATE === "1" || process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
     try {
       const body = await c.req.json();
@@ -197,16 +197,30 @@ export function createApp(
       return errJson(c, e?.message || "invalid request", 400);
     }
   });
-  // GET /v1/estate/:repoId
-  app.get("/v1/estate/:repoId", async (c) => {
-    const repoId = c.req.param("repoId");
+  // GET /v1/estate/:owner/:repo
+  app.get("/v1/estate/:owner/:repo", async (c) => {
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+    // Optional auth: when present and org-scoped, resolve to scoped key; otherwise pass-through.
+    // GET remains readable without auth for backward compatibility.
+    const hasAuthHeader = !!requireToken(c);
+    let selectedRepoId: string | null = null;
+    if (hasAuthHeader) {
+      const auth = await requireAuth(c);
+      // Only use scoping when authorized and org is attached; else fall back to pass-through.
+      if (auth && auth !== "__MISSING_CONFIG__") {
+        selectedRepoId = resolveScopedOwnerRepo(c, owner, repo);
+        if (selectedRepoId === null) return errJson(c, "not found", 404); // wrong owner under org token
+      }
+    }
+    const key = selectedRepoId || `${owner}/${repo}`;
     const isDevPlain = process.env.NOCK_DEV_PLAINTEXT_ESTATE === "1" || process.env.NOCK_DEV_PLAINTEXT_STATS === "1";
     if (isDevPlain) {
-      const pt = await statsStore.loadPlaintext(repoId);
+      const pt = await statsStore.loadPlaintext(key);
       if (!pt) return errJson(c, "not found", 404);
       return okJson(c, pt, 200);
     } else {
-      const env = await statsStore.loadEnvelope(repoId);
+      const env = await statsStore.loadEnvelope(key);
       if (!env) return errJson(c, "not found", 404);
       const kek = process.env.NOCK_ESTATE_KEK || process.env.NOCK_STATS_KEK;
       if (!kek) return errJson(c, "server missing NOCK_ESTATE_KEK", 500);
@@ -220,13 +234,14 @@ export function createApp(
   });
 
   // --- PR2: Export routes (estate + audit) ---
-  // GET /v1/export/estate/:repoId?format=envelope|plaintext
-  app.get("/v1/export/estate/:repoId", async (c) => {
+  // GET /v1/export/estate/:owner/:repo?format=envelope|plaintext
+  app.get("/v1/export/estate/:owner/:repo", async (c) => {
     const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
-    const repoParam = c.req.param("repoId");
-    const repoId = resolveScopedRepoId(c, repoParam);
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+    const repoId = resolveScopedOwnerRepo(c, owner, repo);
     if (!repoId) return errJson(c, "not found", 404); // org-scoped token, wrong owner
     const format = (c.req.query("format") || "envelope").toLowerCase();
     if (format !== "envelope" && format !== "plaintext") {
@@ -255,14 +270,15 @@ export function createApp(
     }
   });
 
-  // GET /v1/export/audit/:repoId?since=&until=&format=jsonl|json
-  app.get("/v1/export/audit/:repoId", async (c) => {
+  // GET /v1/export/audit/:owner/:repo?since=&until=&format=jsonl|json
+  app.get("/v1/export/audit/:owner/:repo", async (c) => {
     const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
-    const repoParam = c.req.param("repoId");
-    const repoId = resolveScopedRepoId(c, repoParam);
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+    const repoId = resolveScopedOwnerRepo(c, owner, repo);
     if (!repoId) return errJson(c, "not found", 404); // org-scoped token, wrong owner
     const format = (c.req.query("format") || "jsonl").toLowerCase();
     if (format !== "jsonl" && format !== "json") {
@@ -311,37 +327,42 @@ export function createApp(
     return (globalThis as any).__nockInMemPolicyAudit as InMemoryPolicyAuditStore;
   }
 
-  // GET /v1/policy/:repoId
-  app.get("/v1/policy/:repoId", async (c) => {
+  // GET /v1/policy/:owner (org default)
+  app.get("/v1/policy/:owner", async (c) => {
     const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
-    const repoParam = c.req.param("repoId");
-    const orgHeader = c.req.header("x-nock-org-id") || c.req.query("orgId") || undefined;
-    const { orgId, repoId } = parseOrgRepo(repoParam, orgHeader || undefined);
-    // 1) repo-scoped
-    const repoRec = await store.getLatestPolicy(orgId || "", repoId);
-    if (repoRec) return okJson(c, repoRec.body, 200);
-    // 2) org default
-    if (orgId) {
-      const orgRec = await store.getLatestPolicy(orgId, null);
-      if (orgRec) return okJson(c, orgRec.body, 200);
-    }
+    const orgId = c.req.param("owner");
+    const orgRec = await store.getLatestPolicy(orgId, null);
+    if (orgRec) return okJson(c, orgRec.body, 200);
     return errJson(c, "not found", 404);
   });
 
-  // PUT /v1/policy/:repoId
-  app.put("/v1/policy/:repoId", async (c) => {
+  // GET /v1/policy/:owner/:repo (repo-level with fallback to org default)
+  app.get("/v1/policy/:owner/:repo", async (c) => {
     const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
-    const repoParam = c.req.param("repoId");
-    const orgHeader = c.req.header("x-nock-org-id") || c.req.query("orgId") || undefined;
-    const scope = (c.req.header("x-nock-policy-scope") || "").toLowerCase();
-    const { orgId, repoId } = parseOrgRepo(repoParam, orgHeader || undefined);
-    if (!orgId) return errJson(c, "orgId required (header x-nock-org-id or owner/repo)", 400);
+    const orgId = c.req.param("owner");
+    const repoId = c.req.param("repo");
+    // Repo-level first
+    const repoRec = await store.getLatestPolicy(orgId || "", repoId);
+    if (repoRec) return okJson(c, repoRec.body, 200);
+    // Fallback to org default
+    const orgRec = await store.getLatestPolicy(orgId, null);
+    if (orgRec) return okJson(c, orgRec.body, 200);
+    return errJson(c, "not found", 404);
+  });
+
+  // PUT /v1/policy/:owner (org default)
+  app.put("/v1/policy/:owner", async (c) => {
+    const auth = await requireAuth(c);
+    if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
+    if (auth === null) return errJson(c, "unauthorized", 401);
+    const store = getPolicyAuditStore(c);
+    const orgId = c.req.param("owner");
     let body: any;
     try {
       body = await c.req.json();
@@ -353,8 +374,7 @@ export function createApp(
     if (!pack || typeof pack !== "object" || !pack.id || !pack.rules) {
       return errJson(c, "invalid policy pack", 400);
     }
-    const repoField: string | null = scope === "org" ? null : repoId;
-    const { version } = await store.putPolicy(orgId, repoField, pack);
+    const { version } = await store.putPolicy(orgId, null, pack);
     return okJson(c, { status: "ok", version }, 200);
   });
 
@@ -404,13 +424,16 @@ export function createApp(
     return okJson(c, { status: "ok" }, 200);
   });
 
-  // GET /v1/audit/:repoId
-  app.get("/v1/audit/:repoId", async (c) => {
+  // GET /v1/audit/:owner/:repo
+  app.get("/v1/audit/:owner/:repo", async (c) => {
     const auth = await requireAuth(c);
     if (auth === "__MISSING_CONFIG__") return errJson(c, "server not configured", 500);
     if (auth === null) return errJson(c, "unauthorized", 401);
     const store = getPolicyAuditStore(c);
-    const repoId = c.req.param("repoId");
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+    const repoId = resolveScopedOwnerRepo(c, owner, repo);
+    if (!repoId) return errJson(c, "not found", 404); // org-scoped token, wrong owner
     const limit = Number(c.req.query("limit") || 50) || 50;
     const rows = await store.listAuditByRepo(repoId, limit);
     // Map rule_ids_json → rule_ids and include enrichment

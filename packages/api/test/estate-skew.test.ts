@@ -13,7 +13,7 @@ const makeSnapshot = (capturedAtIso: string) => ({
   tables: [],
 });
 
-describe("POST /v1/estate/:repoId skew validation", () => {
+describe("POST /v1/estate/:owner/:repo skew validation", () => {
   beforeEach(() => {
     process.env.NOCK_ESTATE_API_TOKEN = "t";
     process.env.NOCK_ESTATE_KEK = Buffer.alloc(32, 7).toString("base64");
@@ -28,7 +28,7 @@ describe("POST /v1/estate/:repoId skew validation", () => {
     const now = Date.now();
     const okSnap = makeSnapshot(new Date(now - 30 * 60 * 1000).toISOString()); // 30m ago
     const env = envelopeEncrypt(okSnap as any, String(process.env.NOCK_ESTATE_KEK));
-    const res = await app.request("/v1/estate/repo1", {
+    const res = await app.request("/v1/estate/acme/repo1", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -44,7 +44,7 @@ describe("POST /v1/estate/:repoId skew validation", () => {
     const now = Date.now();
     const badSnap = makeSnapshot(new Date(now - 2 * 60 * 60 * 1000).toISOString()); // 2h ago
     const env = envelopeEncrypt(badSnap as any, String(process.env.NOCK_ESTATE_KEK));
-    const res = await app.request("/v1/estate/repo2", {
+    const res = await app.request("/v1/estate/acme/repo2", {
       method: "POST",
       headers: {
         "content-type": "application/json",
