@@ -80,6 +80,11 @@ Freshness behavior (locked):
 - Warn when the hosted snapshot’s `captured_at` is older than 7 days.
 - If older than 30 days, size‑dependent gates are neutralized; non‑size rules can still fail.
 
+Getting catalogue into hosted checks
+- After upgrading to CLI 0.1.4+, re‑run your scheduled `sync-estate --push-url ...` (or trigger it once manually) so the hosted snapshot includes `columns[]`/`constraints[]`/`indexes[]`.
+- Until you re‑push, the hosted estate may omit catalogue; catalogue‑aware rules (e.g. R005/R017) remain fail‑closed and will not soften/suppress.
+- Keep npx pins to `@nockhq/cli@0.1.4` in your workflows.
+
 ## 3) (Optional) Sync and push your estate on a schedule
 
 Schedule `sync-estate` to read from a replica and push an envelope‑encrypted snapshot to the hosted API. The Action and App will GET the “last good” snapshot during PRs.
