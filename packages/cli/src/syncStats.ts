@@ -159,8 +159,8 @@ ORDER BY s.n_live_tup DESC NULLS LAST;
 const DEFAULT_COLUMNS_SQL = `
 SELECT
   n.nspname AS schema,
-  c.relname AS table,
-  a.attname AS column,
+  c.relname AS "table",
+  a.attname AS "column",
   a.attnotnull AS not_null,
   pg_catalog.format_type(a.atttypid, a.atttypmod) AS type_name,
   a.atthasdef AS has_default
@@ -178,7 +178,7 @@ const DEFAULT_CONSTRAINTS_SQL = `
 WITH cons AS (
   SELECT
     n.nspname AS schema,
-    c.relname AS table,
+    c.relname AS "table",
     co.conname AS name,
     co.contype AS contype,
     co.convalidated AS validated,
@@ -194,7 +194,7 @@ WITH cons AS (
 )
 SELECT
   schema,
-  table,
+  "table",
   name,
   CASE contype
     WHEN 'c' THEN 'check'
@@ -208,7 +208,7 @@ SELECT
   (
     SELECT array_agg(a.attname ORDER BY i)
     FROM unnest(conkey) WITH ORDINALITY AS k(attnum, i)
-    JOIN pg_attribute a ON a.attrelid = (SELECT oid FROM pg_class WHERE relname = table AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = schema))
+    JOIN pg_attribute a ON a.attrelid = (SELECT oid FROM pg_class WHERE relname = "table" AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = schema))
                        AND a.attnum = k.attnum
   ) AS columns,
   CASE WHEN contype = 'f' THEN
@@ -230,22 +230,22 @@ SELECT
     SELECT ic.relname FROM pg_class ic WHERE ic.oid = conindid
   ) AS supporting_index
 FROM cons
-ORDER BY schema, table, name;
+ORDER BY schema, "table", name;
 `;
 
 const DEFAULT_INDEXES_SQL = `
 WITH idx AS (
   SELECT
     n.nspname AS schema,
-    c.relname AS table,
+    c.relname AS "table",
     i.indexrelid AS indexrelid,
     ci.relname AS name,
-    i.indisunique AS unique,
-    i.indisprimary AS primary,
+    i.indisunique AS "unique",
+    i.indisprimary AS "primary",
     i.indisvalid AS valid,
     i.indisready AS ready,
     i.indislive AS live,
-    i.indimmediate AS immediate,
+    i.indimmediate AS "immediate",
     i.indisreplident AS replica_identity,
     i.indkey AS indkey,
     c.oid AS relid
@@ -258,14 +258,14 @@ WITH idx AS (
 )
 SELECT
   schema,
-  table,
+  "table",
   name,
-  unique,
-  primary,
+  "unique",
+  "primary",
   valid,
   ready,
   live,
-  immediate,
+  "immediate",
   replica_identity,
   (
     SELECT array_agg(a.attname ORDER BY ord.i)
@@ -274,7 +274,7 @@ SELECT
     WHERE ord.attnum > 0 -- skip expression elements (0)
   ) AS columns
 FROM idx
-ORDER BY schema, table, name;
+ORDER BY schema, "table", name;
 `;
 
 export async function runSyncStats(args: { databaseUrl: string; sqlFilePath?: string }): Promise<EstateSnapshot> {
