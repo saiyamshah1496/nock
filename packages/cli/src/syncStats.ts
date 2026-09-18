@@ -31,8 +31,8 @@ export interface SyncTableRow {
 
 export interface SyncColumnRow {
   schema: string;
-  table: string;
-  column: string;
+  table_name: string;
+  column_name: string;
   not_null: boolean;
   type_name: string;
   has_default: boolean;
@@ -40,7 +40,7 @@ export interface SyncColumnRow {
 
 export interface SyncConstraintRow {
   schema: string;
-  table: string;
+  table_name: string;
   name: string;
   kind: string;
   validated: boolean;
@@ -52,14 +52,14 @@ export interface SyncConstraintRow {
 
 export interface SyncIndexRow {
   schema: string;
-  table: string;
+  table_name: string;
   name: string;
-  unique: boolean;
-  primary: boolean;
+  is_unique: boolean;
+  is_primary: boolean;
   valid: boolean;
   ready: boolean;
   live: boolean;
-  immediate: boolean;
+  is_immediate: boolean;
   replica_identity: boolean;
   columns: string[] | null;
 }
@@ -87,15 +87,15 @@ export function mapRowsToStats(parts: {
   }));
   const columns: EstateColumn[] = columnRows.map((r) => ({
     schema: r.schema,
-    table: r.table,
-    column: r.column,
+    table: r.table_name,
+    column: r.column_name,
     not_null: !!r.not_null,
     type_name: r.type_name,
     has_default: r.has_default ? true : undefined
   }));
   const constraints: EstateConstraint[] = constraintRows.map((r) => ({
     schema: r.schema,
-    table: r.table,
+    table: r.table_name,
     name: r.name,
     kind: r.kind,
     validated: !!r.validated,
@@ -106,14 +106,14 @@ export function mapRowsToStats(parts: {
   }));
   const indexes: EstateIndex[] = indexRows.map((r) => ({
     schema: r.schema,
-    table: r.table,
+    table: r.table_name,
     name: r.name,
-    unique: !!r.unique,
-    primary: !!r.primary,
+    unique: !!r.is_unique,
+    primary: !!r.is_primary,
     valid: !!r.valid,
     ready: !!r.ready,
     live: !!r.live,
-    immediate: !!r.immediate,
+    immediate: !!r.is_immediate,
     columns: Array.isArray(r.columns) ? r.columns : [],
     replica_identity: !!r.replica_identity
   }));
@@ -159,8 +159,8 @@ ORDER BY s.n_live_tup DESC NULLS LAST;
 const DEFAULT_COLUMNS_SQL = `
 SELECT
   n.nspname AS schema,
-  c.relname AS "table",
-  a.attname AS "column",
+  c.relname AS table_name,
+  a.attname AS column_name,
   a.attnotnull AS not_null,
   pg_catalog.format_type(a.atttypid, a.atttypmod) AS type_name,
   a.atthasdef AS has_default
@@ -178,10 +178,11 @@ const DEFAULT_CONSTRAINTS_SQL = `
 WITH cons AS (
   SELECT
     n.nspname AS schema,
-    c.relname AS "table",
+    c.relname AS table_name,
     co.conname AS name,
     co.contype AS contype,
     co.convalidated AS validated,
+    co.conrelid AS conrelid,
     co.conkey AS conkey,
     co.confrelid AS confrelid,
     co.confkey AS confkey,
@@ -194,7 +195,7 @@ WITH cons AS (
 )
 SELECT
   schema,
-  "table",
+  table_name,
   name,
   CASE contype
     WHEN 'c' THEN 'check'
@@ -208,7 +209,7 @@ SELECT
   (
     SELECT array_agg(a.attname ORDER BY i)
     FROM unnest(conkey) WITH ORDINALITY AS k(attnum, i)
-    JOIN pg_attribute a ON a.attrelid = (SELECT oid FROM pg_class WHERE relname = "table" AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = schema))
+    JOIN pg_attribute a ON a.attrelid = conrelid
                        AND a.attnum = k.attnum
   ) AS columns,
   CASE WHEN contype = 'f' THEN
@@ -230,22 +231,22 @@ SELECT
     SELECT ic.relname FROM pg_class ic WHERE ic.oid = conindid
   ) AS supporting_index
 FROM cons
-ORDER BY schema, "table", name;
+ORDER BY schema, table_name, name;
 `;
 
 const DEFAULT_INDEXES_SQL = `
 WITH idx AS (
   SELECT
     n.nspname AS schema,
-    c.relname AS "table",
+    c.relname AS table_name,
     i.indexrelid AS indexrelid,
     ci.relname AS name,
-    i.indisunique AS "unique",
-    i.indisprimary AS "primary",
+    i.indisunique AS is_unique,
+    i.indisprimary AS is_primary,
     i.indisvalid AS valid,
     i.indisready AS ready,
     i.indislive AS live,
-    i.indimmediate AS "immediate",
+    i.indimmediate AS is_immediate,
     i.indisreplident AS replica_identity,
     i.indkey AS indkey,
     c.oid AS relid
@@ -258,14 +259,14 @@ WITH idx AS (
 )
 SELECT
   schema,
-  "table",
+  table_name,
   name,
-  "unique",
-  "primary",
+  is_unique,
+  is_primary,
   valid,
   ready,
   live,
-  "immediate",
+  is_immediate,
   replica_identity,
   (
     SELECT array_agg(a.attname ORDER BY ord.i)
@@ -274,7 +275,7 @@ SELECT
     WHERE ord.attnum > 0 -- skip expression elements (0)
   ) AS columns
 FROM idx
-ORDER BY schema, "table", name;
+ORDER BY schema, table_name, name;
 `;
 
 export async function runSyncStats(args: { databaseUrl: string; sqlFilePath?: string }): Promise<EstateSnapshot> {

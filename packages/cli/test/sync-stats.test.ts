@@ -34,8 +34,8 @@ describe("mapRowsToStats", () => {
     const columns: SyncColumnRow[] = [
       {
         schema: "public",
-        table: "sessions",
-        column: "id",
+        table_name: "sessions",
+        column_name: "id",
         not_null: true,
         type_name: "uuid",
         has_default: true
@@ -44,7 +44,7 @@ describe("mapRowsToStats", () => {
     const constraints: SyncConstraintRow[] = [
       {
         schema: "public",
-        table: "sessions",
+        table_name: "sessions",
         name: "sessions_pkey",
         kind: "pk",
         validated: true,
@@ -57,14 +57,14 @@ describe("mapRowsToStats", () => {
     const indexes: SyncIndexRow[] = [
       {
         schema: "public",
-        table: "sessions",
+        table_name: "sessions",
         name: "idx_sessions_user_id",
-        unique: false,
-        primary: false,
+        is_unique: false,
+        is_primary: false,
         valid: true,
         ready: true,
         live: true,
-        immediate: true,
+        is_immediate: true,
         replica_identity: false,
         columns: ["user_id"]
       }
