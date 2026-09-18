@@ -34,11 +34,11 @@ Notes
 
 ## 2) Run a check locally (CLI)
 
-After building this repo or installing the CLI, run:
+Run with the published CLI (recommended for strangers):
 
 ```bash
 # Example using this repo’s fixtures:
-node packages/cli/dist/bin/nock.js check \
+npx @nockhq/cli@0.1.5 check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --policy policy.default.yml \
@@ -49,7 +49,7 @@ node packages/cli/dist/bin/nock.js check \
 To check your own repo, point to your migration file(s) and `.nock/estate.json`:
 
 ```bash
-node packages/cli/dist/bin/nock.js check \
+npx @nockhq/cli@0.1.5 check \
   --sql migrations/001.sql \
   --estate .nock/estate.json \
   --policy policy.default.yml \
@@ -80,16 +80,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - run: corepack enable && pnpm install --frozen-lockfile && pnpm -r build
+        with: { node-version: 20 }
       - name: Run Nock check (CLI)
         run: |
-          node packages/cli/dist/bin/nock.js check \
-            --sql "migrations/001.sql" \
-            --estate ".nock/estate.json" \
-            --policy "policy.default.yml" \
-            --fail-on "red" \
-            --format "json"
+          npx @nockhq/cli@0.1.5 check \
+            --sql migrations/001.sql \
+            --estate .nock/estate.json \
+            --policy policy.default.yml \
+            --fail-on red \
+            --format json
+```
+
+From this repo (contributors), you can also run the built monorepo binary:
+
+```bash
+node packages/cli/dist/bin/nock.js check \
+  --sql migrations/001.sql \
+  --estate .nock/estate.json \
+  --policy policy.default.yml \
+  --fail-on red \
+  --format json
 ```
 
 ## 4) Approve or block
