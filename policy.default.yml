@@ -23,5 +23,7 @@ rules:
   R019: { severity: red }
   R020: { severity: red }
   R021: { severity: yellow }
+  R022: { yellow_rows: 10000, red_rows: 100000 }
+  R023: { severity: yellow }
 no_stats: warn
 

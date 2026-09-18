@@ -194,7 +194,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 | R004 — ADD COLUMN nullable/constant-default on hot table w/o lock_timeout | Implemented (partial) | Size-gated; requires `lock_timeout`; constant-default nuance later |
 | R005 — SET NOT NULL w/o validated CHECK | Implemented (catalogue-aware) | Red ≥100k; soften to yellow when fresh catalogue shows column already NOT NULL or a validated CHECK covering it. Fail‑closed when catalogue sections are omitted; present‑but‑empty arrays don’t match. |
 | R006 — ADD CHECK w/o NOT VALID | Implemented | Red ≥50k rows |
-| R007 — ADD FK w/o NOT VALID | Implemented | Red ≥100k rows; remediate NOT VALID → VALIDATE |
+| R007 — ADD FK w/o NOT VALID | Implemented (catalogue-aware) | Red ≥100k rows; remediate NOT VALID → VALIDATE. Extra yellow when catalogue present and no supporting index covers the FK child columns (prefix/equal) — remediate with CREATE INDEX CONCURRENTLY on the child columns. Omitted catalogue → today’s R007 only (fail‑closed). |
 | R008 — ALTER TYPE non-binary-coercible | Implemented | Yellow unknown; red when clearly rewriting (USING); widen to text/varchar passes |
 | R009 — DROP/RENAME | Implemented | Yellow advisory; includes DROP COLUMN/CONSTRAINT, RENAME COLUMN/TABLE |
 | R010 — DDL w/o lock_timeout on hot tables | Implemented (partial) | Applied to common DDL shapes |
@@ -209,6 +209,8 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 | R019 — TRUNCATE on estate table | Implemented | Always red in CI policy |
 | R020 — CLUSTER | Implemented | Always red in CI (R012 family) |
 | R021 — CIC without explicit index name | Implemented | Yellow advisory |
+| R022 — VALIDATE CONSTRAINT on hot table | Implemented | Yellow ≥10k rows; red ≥100k rows; catalogue-aware suppression when the matching constraint is already validated. Fallback to SQL table when constraints section omitted. |
+| R023 — Invalid or not-ready index on touched table | Implemented | Default yellow when any `valid=false` or `ready=false` index exists on a table touched by the migration; fail‑closed when indexes section omitted. |
 
 ## Docs index
 
