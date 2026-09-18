@@ -30,6 +30,10 @@ export NOCK_TEAM_API_TOKEN="...token..."
 export NOCK_ESTATE_KEK="...base64-32-bytes..."
 ```
 
+Note:
+- These env names are for clients (Action/CLI/MCP) to present your org token to the API as a Bearer.
+- The hosted API no longer relies on a single global env bearer; production auth validates your presented token against a hashed entry in D1 (`tokens.token_hash`). Existing design‑partner tokens already minted in D1 continue to work unchanged.
+
 ## 2) Run PR checks with hosted estate (no committed files)
 
 Use either the packaged Action or the CLI workflow. Both prefer hosted by token and fall back to a file when not configured.

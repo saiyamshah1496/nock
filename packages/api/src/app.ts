@@ -51,12 +51,14 @@ function errJson(c: any, message: string, status = 400) {
 }
 
 /**
- * Authentication (PR1):
+ * Authentication (PR5):
  * - Prefer D1-backed hashed token lookup (tokens.token_hash; revoked_at IS NULL). Attaches org_id to context.
- * - Fallback to env bearer: NOCK_TEAM_API_TOKEN (preferred name), or NOCK_ESTATE_API_TOKEN / NOCK_STATS_API_TOKEN aliases.
+ * - Env-bearer fallback (single-tenant; no org scoping) is DISABLED by default and can be enabled
+ *   only for staff/dev via an explicit flag: NOCK_ALLOW_ENV_BEARER=1. When enabled, the presented
+ *   bearer is compared against NOCK_TEAM_API_TOKEN (preferred) or NOCK_ESTATE_API_TOKEN / NOCK_STATS_API_TOKEN.
  * Returns:
  *   - presented token string on success
- *   - "__MISSING_CONFIG__" if neither D1 nor env bearer is configured at all
+ *   - "__MISSING_CONFIG__" if neither D1 nor (staff-enabled) env bearer is configured at all
  *   - null on unauthorized
  */
 async function requireAuth(c: any): Promise<string | "__MISSING_CONFIG__" | null> {
@@ -67,7 +69,9 @@ async function requireAuth(c: any): Promise<string | "__MISSING_CONFIG__" | null
     process.env.NOCK_ESTATE_API_TOKEN ||
     process.env.NOCK_STATS_API_TOKEN ||
     "";
-  const hasEnvConfigured = !!envToken;
+  const allowEnvBearer =
+    String(c?.env?.NOCK_ALLOW_ENV_BEARER || process.env.NOCK_ALLOW_ENV_BEARER || "") === "1";
+  const hasEnvConfigured = !!envToken && allowEnvBearer;
   const hasD1 = !!c?.env?.NOCK_D1 && typeof c.env.NOCK_D1.prepare === "function";
   if (!presented) {
     // If nothing configured at all, surface missing-config; else unauthorized
@@ -110,7 +114,7 @@ async function requireAuth(c: any): Promise<string | "__MISSING_CONFIG__" | null
       // Fall through to env fallback
     }
   }
-  // 2) Fallback to env bearer tokens (single-tenant; no org scoping)
+  // 2) Fallback to env bearer tokens (single-tenant; no org scoping) — staff/dev only
   if (hasEnvConfigured) {
     if (presented === envToken) {
       return presented;

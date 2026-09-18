@@ -47,11 +47,12 @@ function sha256Hex(s: string): string {
   return h.digest("hex");
 }
 
-describe("Auth PR1: hashed tokens + env fallback", () => {
+describe("Auth PR5: hashed org tokens preferred; env-bearer gated", () => {
   beforeEach(() => {
     delete process.env.NOCK_TEAM_API_TOKEN;
     delete process.env.NOCK_ESTATE_API_TOKEN;
     delete process.env.NOCK_STATS_API_TOKEN;
+    delete process.env.NOCK_ALLOW_ENV_BEARER;
     delete (globalThis as any).__nockInMemPolicyAudit;
   });
 
@@ -104,8 +105,21 @@ describe("Auth PR1: hashed tokens + env fallback", () => {
     expect(res.status).toBe(401);
   });
 
-  it("falls back to env bearer when NOCK_TEAM_API_TOKEN matches", async () => {
+  it("rejects env bearer by default when D1 is configured (no token minted)", async () => {
+    // With D1 bound but no row for the presented token, fallback must NOT be used.
     process.env.NOCK_TEAM_API_TOKEN = "partner-token";
+    const env = { NOCK_D1: new FakeD1(new Map()) };
+    const app = createApp();
+    const req = new Request("http://localhost/v1/policy/acme/api", {
+      headers: { authorization: "Bearer partner-token" },
+    });
+    const res = await (app as any).fetch(req, env);
+    expect(res.status).toBe(401);
+  });
+
+  it("accepts env bearer only when NOCK_ALLOW_ENV_BEARER=1 is set", async () => {
+    process.env.NOCK_TEAM_API_TOKEN = "partner-token";
+    process.env.NOCK_ALLOW_ENV_BEARER = "1";
     const app = createApp();
     const res = await app.request("/v1/policy/acme/api", {
       headers: { authorization: "Bearer partner-token" },

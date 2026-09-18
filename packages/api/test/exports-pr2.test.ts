@@ -54,12 +54,20 @@ function sha256Hex(s: string): string {
 describe("Export routes (PR2)", () => {
   let dir: string;
   let kek: string;
+  let token: string;
+  let envBindings: any;
   beforeEach(() => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), "nock-api-test-"));
     process.env.NOCK_ESTATE_STORE_DIR = dir;
-    process.env.NOCK_ESTATE_API_TOKEN = "t";
+    delete process.env.NOCK_ESTATE_API_TOKEN;
+    delete process.env.NOCK_TEAM_API_TOKEN;
+    delete process.env.NOCK_STATS_API_TOKEN;
+    delete process.env.NOCK_ALLOW_ENV_BEARER;
     kek = Buffer.alloc(32, 7).toString("base64");
     process.env.NOCK_ESTATE_KEK = kek;
+    token = "sekret";
+    const hash = sha256Hex(token);
+    envBindings = { NOCK_D1: new FakeD1(new Map([[hash, { org_id: "acme" }]])) } as any;
     delete (globalThis as any).__nockInMemPolicyAudit;
   });
 
@@ -69,16 +77,18 @@ describe("Export routes (PR2)", () => {
     await s.saveEnvelope("acme/api", env);
     const app = createApp();
     // Default -> envelope
-    let res = await app.request(`/v1/export/estate/acme/api`, {
-      headers: { authorization: "Bearer t" },
+    let req = new Request("http://localhost/v1/export/estate/acme/api", {
+      headers: { authorization: `Bearer ${token}` },
     });
+    let res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(200);
     const gotEnv = await res.json();
     expect(gotEnv.version).toBe("v1");
     // plaintext -> decrypted JSON
-    res = await app.request(`/v1/export/estate/acme/api?format=plaintext`, {
-      headers: { authorization: "Bearer t" },
+    req = new Request("http://localhost/v1/export/estate/acme/api?format=plaintext", {
+      headers: { authorization: `Bearer ${token}` },
     });
+    res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(200);
     const gotPt = await res.json();
     expect(gotPt.pg_version).toBe(sampleEstate.pg_version);
@@ -86,15 +96,17 @@ describe("Export routes (PR2)", () => {
 
   it("returns 401 when missing auth", async () => {
     const app = createApp();
-    const res = await app.request(`/v1/export/estate/acme/api`);
+    const req = new Request("http://localhost/v1/export/estate/acme/api");
+    const res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when estate not found", async () => {
     const app = createApp();
-    const res = await app.request(`/v1/export/estate/acme/unknown`, {
-      headers: { authorization: "Bearer t" },
+    const req = new Request("http://localhost/v1/export/estate/acme/unknown", {
+      headers: { authorization: `Bearer ${token}` },
     });
+    const res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(404);
   });
 
@@ -111,16 +123,18 @@ describe("Export routes (PR2)", () => {
       freshness: "stale",
       rule_hits: [{ id: "R001", severity: "red", table: "users", n_live_tup: 10, reason_code: "NLT_GT_5" }],
     };
-    let res = await app.request("/v1/audit", {
+    let req = new Request("http://localhost/v1/audit", {
       method: "POST",
-      headers: { authorization: "Bearer t", "content-type": "application/json" },
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify(body),
     });
+    let res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(200);
     // NDJSON default
-    res = await app.request(`/v1/export/audit/acme/api`, {
-      headers: { authorization: "Bearer t" },
+    req = new Request("http://localhost/v1/export/audit/acme/api", {
+      headers: { authorization: `Bearer ${token}` },
     });
+    res = await (app as any).fetch(req, envBindings);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type") || "").toMatch(/ndjson/i);
     const text = await res.text();
@@ -130,9 +144,10 @@ describe("Export routes (PR2)", () => {
     expect(row.repo_id).toBe("acme/api");
     expect(Array.isArray(row.rule_hits)).toBe(true);
     // JSON array
-    res = await app.request(`/v1/export/audit/acme/api?format=json`, {
-      headers: { authorization: "Bearer t" },
+    req = new Request("http://localhost/v1/export/audit/acme/api?format=json", {
+      headers: { authorization: `Bearer ${token}` },
     });
+    res = await (app as any).fetch(req, envBindings);
     const arr = await res.json();
     expect(Array.isArray(arr)).toBe(true);
     expect(arr[0].sql_hash).toBe("sha256:feedface");

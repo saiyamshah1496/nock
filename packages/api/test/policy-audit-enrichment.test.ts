@@ -1,13 +1,52 @@
 import { describe, it, beforeEach, expect } from "vitest";
 import { createApp } from "../src/server";
+import crypto from "crypto";
+ 
+class FakeStmt {
+  private params: any[] = [];
+  constructor(private _sql: string, private rowsByHash: Map<string, { org_id: string; revoked?: boolean }>) {}
+  bind(...args: any[]) {
+    this.params = args;
+    return this;
+  }
+  async first(): Promise<any | null> {
+    const h = String(this.params[0] || "");
+    const rec = this.rowsByHash.get(h);
+    if (!rec || rec.revoked) return null;
+    return { org_id: rec.org_id };
+  }
+  async run(): Promise<any> {
+    return { success: true, meta: { changes: 1 } };
+  }
+  async all(): Promise<any> {
+    return { results: [] };
+  }
+}
+class FakeD1 {
+  constructor(private rowsByHash: Map<string, { org_id: string; revoked?: boolean }>) {}
+  prepare(sql: string) {
+    return new FakeStmt(sql, this.rowsByHash);
+  }
+}
+function sha256Hex(s: string): string {
+  const h = crypto.createHash("sha256");
+  h.update(s, "utf8");
+  return h.digest("hex");
+}
 
 describe("Policy Audit enrichment fields", () => {
   beforeEach(() => {
-    process.env.NOCK_ESTATE_API_TOKEN = "t";
+    delete process.env.NOCK_ESTATE_API_TOKEN;
+    delete process.env.NOCK_TEAM_API_TOKEN;
+    delete process.env.NOCK_STATS_API_TOKEN;
+    delete process.env.NOCK_ALLOW_ENV_BEARER;
     delete (globalThis as any).__nockInMemPolicyAudit;
   });
 
   it("accepts and returns optional estate_captured_at, freshness, rule_hits", async () => {
+    const token = "sekret";
+    const hash = sha256Hex(token);
+    const env = { NOCK_D1: new FakeD1(new Map([[hash, { org_id: "acme" }]])) };
     const app = createApp();
     const body = {
       org_id: "acme",
@@ -19,15 +58,17 @@ describe("Policy Audit enrichment fields", () => {
       freshness: "warn",
       rule_hits: [{ id: "R001", severity: "red", table: "users", n_live_tup: 1234, reason_code: "NLT_GT_1000" }],
     };
-    let res = await app.request("/v1/audit", {
+    let req = new Request("http://localhost/v1/audit", {
       method: "POST",
-      headers: { authorization: "Bearer t", "content-type": "application/json" },
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify(body),
     });
+    let res = await (app as any).fetch(req, env);
     expect(res.status).toBe(200);
-    res = await app.request(`/v1/audit/acme/api?limit=5`, {
-      headers: { authorization: "Bearer t" },
+    req = new Request("http://localhost/v1/audit/acme/api?limit=5", {
+      headers: { authorization: `Bearer ${token}` },
     });
+    res = await (app as any).fetch(req, env);
     expect(res.status).toBe(200);
     const events = await res.json();
     expect(events.length).toBe(1);
