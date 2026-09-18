@@ -67,7 +67,7 @@ CLI example (same behavior as Action):
 
 ```bash
 # Prefer hosted by token; falls back to --estate/--policy when not provided
-npx @nockhq/cli check \
+npx @nockhq/cli@0.1.3 check \
   --sql migrations/001.sql \
   --estate-api-url "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo" \
   --estate-api-token "$NOCK_TEAM_API_TOKEN" \
@@ -105,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .nock
-          npx @nockhq/cli@0.1.2 sync-estate \
+          npx @nockhq/cli@0.1.3 sync-estate \
             --database-url "$PG_ESTATE_URL" \
             --out .nock/estate.json \
             --push-url "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo" \

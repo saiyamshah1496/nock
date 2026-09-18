@@ -10,9 +10,9 @@ Nock never applies migrations. CLI ≡ Action ≡ MCP — the same verdict JSON 
 Use directly with npx (recommended):
 
 ```bash
-npx @nockhq/cli@0.1.2 --help
+npx @nockhq/cli@0.1.3 --help
 # or run a check
-npx @nockhq/cli@0.1.2 check --sql migrations/001.sql --estate .nock/estate.json --format json
+npx @nockhq/cli@0.1.3 check --sql migrations/001.sql --estate .nock/estate.json --format json
 ```
 
 Or install globally:
@@ -50,7 +50,7 @@ Minimal shape:
 ## Quick start: check a migration with an estate file
 
 ```bash
-npx @nockhq/cli@0.1.2 check \
+npx @nockhq/cli@0.1.3 check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --format json
@@ -84,7 +84,7 @@ Input B — estate excerpt (`fixtures/estate_billion.json`)
 Command
 
 ```bash
-npx @nockhq/cli@0.1.2 check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
+npx @nockhq/cli@0.1.3 check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 
 Output (real CLI JSON)
