@@ -5,6 +5,7 @@ Senior-staff quickstart for contributing to Nock Phase 1.
 For product usage, see:
 - `docs/guides/quick-start-estate-file.md` (bring your own estate)
 - `docs/guides/sync-estate.md` (sync estate yourself)
+- `docs/guides/nock-team-partner-setup.md` (Nock Team — design partner setup)
 
 ## Repo map
 
@@ -127,6 +128,7 @@ Integration test (optional) reads `NOCK_TEST_DATABASE_URL`. If unset, tests skip
 - Default API base (Saiyam’s Worker): `https://nock.saiyamshah1496.workers.dev`
 - Action inputs on `main`: `estate-api-url`, `estate-api-token`, with `estate-path` as fallback
 - Required secrets (names only): prefer `NOCK_TEAM_API_TOKEN` (partner bearer) and `NOCK_ESTATE_KEK`. For backward compatibility, `NOCK_ESTATE_API_TOKEN`/`NOCK_STATS_API_TOKEN` (and `NOCK_STATS_KEK`) remain accepted.
+- Partner onboarding: see `docs/guides/nock-team-partner-setup.md`.
 - See runnable examples under `examples/workflows/`:
   - `nock-action.yml` — Action with optional hosted estate
   - `nock.yml` — CLI workflow (works without a packaged Action)

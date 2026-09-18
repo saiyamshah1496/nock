@@ -26,11 +26,11 @@ jobs:
       - name: (Optional) Download hosted estate to .nock/estate.json
         if: ${{ vars.NOCK_USE_HOSTED_STATS == '1' }}
         env:
-          NOCK_ESTATE_API_TOKEN: ${{ secrets.NOCK_ESTATE_API_TOKEN }}
+          NOCK_TEAM_API_TOKEN: ${{ secrets.NOCK_TEAM_API_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p .nock
-          curl -fsSL -H "Authorization: Bearer ${NOCK_ESTATE_API_TOKEN}" \
+          curl -fsSL -H "Authorization: Bearer ${NOCK_TEAM_API_TOKEN}" \
             "https://nock.saiyamshah1496.workers.dev/v1/estate/my-repo" \
             > .nock/estate.json
 

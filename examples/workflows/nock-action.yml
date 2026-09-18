@@ -22,7 +22,7 @@ jobs:
           migration-path: migrations/
           # Hosted estate (Nock Team): GET last-good from hosted API
           estate-api-url: https://nock.saiyamshah1496.workers.dev/v1/estate/my-repo
-          estate-api-token: ${{ secrets.NOCK_ESTATE_API_TOKEN }}
+          estate-api-token: ${{ secrets.NOCK_TEAM_API_TOKEN }}
           # Fallback to file when hosted is unavailable (OSS/local)
           estate-path: .nock/estate.json
           policy-path: policy.default.yml
