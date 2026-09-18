@@ -9,5 +9,8 @@
       "name": "sessions",
       "n_live_tup": 100
     }
-  ]
+  ],
+  "columns": [],
+  "constraints": [],
+  "indexes": []
 }
