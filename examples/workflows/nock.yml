@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Nock check (CLI)
         run: |
-          npx @nockhq/cli@0.1.4 check \
+          npx @nockhq/cli@0.1.5 check \
             --sql "migrations/001.sql" \
             --estate ".nock/estate.json" \
             --policy "policy.default.yml" \
