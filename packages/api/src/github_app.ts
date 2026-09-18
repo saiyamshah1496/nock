@@ -297,7 +297,7 @@ export async function resolveEstate(
     "";
   if (base && token) {
     try {
-      const url = `${base}/v1/estate/${encodeURIComponent(`${opts.owner}/${opts.repo}`)}`;
+      const url = `${base}/v1/estate/${encodeURIComponent(opts.owner)}/${encodeURIComponent(opts.repo)}`;
       const res = await fetch(url, {
         headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       });
@@ -390,7 +390,7 @@ export async function resolvePolicy(
     "";
   if (base && token) {
     try {
-      const url = `${base}/v1/policy/${encodeURIComponent(`${opts.owner}/${opts.repo}`)}`;
+      const url = `${base}/v1/policy/${encodeURIComponent(opts.owner)}/${encodeURIComponent(opts.repo)}`;
       const res = await fetch(url, {
         headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       });
