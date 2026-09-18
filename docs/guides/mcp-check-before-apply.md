@@ -16,7 +16,7 @@ Option A — via npx (recommended)
   "mcpServers": {
     "nock": {
       "command": "npx",
-      "args": ["-y", "@nockhq/mcp"]
+      "args": ["-y", "@nockhq/mcp@0.1.4"]
     }
   }
 }
@@ -59,7 +59,7 @@ Optional
 The JSON returned by `check_before_apply` is the same schema and content as:
 
 ```bash
-node packages/cli/dist/bin/nock.js check \
+npx @nockhq/cli@0.1.4 check \
   --sql migrations/001.sql \
   --estate .nock/estate.json \
   --format json
