@@ -76,11 +76,11 @@ Two ways to provide an estate (plus a Path C live-refresh):
 - Experimental Path C thin (live estate from Postgres): pass `--database-url` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to have `nock check` refresh the estate from Postgres on the fly, then evaluate:
   ```bash
   npx @nockhq/cli@latest check \
-    --sql examples/path-c-live/bad.sql \
+    --sql examples/live-estate-database-url/bad.sql \
     --database-url "$DATABASE_URL" \
     --format json
   ```
-  Prefer a read‑only role and a replica. No row data is read; only Phase‑1 catalogue (columns, constraints, indexes) and table sizes.
+  Prefer a read‑only role and a replica. No row data is read; only Phase‑1 catalogue (columns, constraints, indexes) and table sizes. This is a lasting Team‑slice capability (Path C thin) to refresh an estate just‑in‑time before a check; full OAuth connectors may arrive later.
 
 ### Example: input → output
 
