@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "nock": {
+      "command": "npx",
+      "args": ["-y", "@nockhq/mcp@0.1.7"],
+      "env": {
+        "DATABASE_URL": "postgres://USER:PASS@HOST:5432/DB"
+      }
+    }
+  }
+}
