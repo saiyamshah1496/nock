@@ -107,6 +107,9 @@ importers:
       '@nockhq/core':
         specifier: workspace:^0.1.6
         version: link:../core
+      postgres:
+        specifier: ^3.4.4
+        version: 3.4.9
       zod:
         specifier: ^4.6.5
         version: 4.6.5

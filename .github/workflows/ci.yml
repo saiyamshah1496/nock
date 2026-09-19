@@ -150,3 +150,97 @@ jobs:
           cat /tmp/nock_pass.json
           test "$(jq -r '.verdict' /tmp/nock_pass.json)" = "pass"
 
+  live-estate-database-url:
+    name: live-estate-database-url
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nock
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nock"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable corepack (prepare pnpm)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.2 --activate
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install system tools (psql, jq)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client jq
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (workspace)
+        run: pnpm -r build
+
+      - name: Wait for Postgres and seed demo estate (examples)
+        env:
+          PGURL: postgres://postgres:postgres@localhost:5432/nock
+        run: |
+          echo "Waiting for Postgres to be ready..."
+          for i in {1..60}; do
+            if pg_isready -h localhost -p 5432 -U postgres -d nock -t 1 >/dev/null 2>&1; then
+              echo "Postgres is ready."
+              break
+            fi
+            echo "pg_isready retry $i..."
+            sleep 1
+          done
+          echo "Seeding database using examples/live-estate-database-url/seed.sql"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f examples/live-estate-database-url/seed.sql
+          echo "Row counts (top 5):"
+          psql "$PGURL" -c "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 5;"
+
+      - name: Live check (bad.sql) — expect fail with R001 and R010
+        env:
+          PGURL: postgres://postgres:postgres@localhost:5432/nock
+        run: |
+          set -euo pipefail
+          # Run check; expect a red exit code. Capture JSON without failing the step.
+          node packages/cli/dist/bin/nock.js check \
+            --sql examples/live-estate-database-url/bad.sql \
+            --database-url "$PGURL" \
+            --format json \
+            --fail-on red \
+            > /tmp/live_bad.json || true
+          echo "BAD verdict JSON:"
+          cat /tmp/live_bad.json || true
+          test "$(jq -r '.verdict' /tmp/live_bad.json)" = "fail"
+          # Must include both R001 and R010 somewhere in violations
+          jq -e '.violations[] | select(.rule_id=="R001")' /tmp/live_bad.json >/dev/null
+          jq -e '.violations[] | select(.rule_id=="R010")' /tmp/live_bad.json >/dev/null
+
+      - name: Live check (good.sql) — expect pass
+        env:
+          PGURL: postgres://postgres:postgres@localhost:5432/nock
+        run: |
+          set -euo pipefail
+          node packages/cli/dist/bin/nock.js check \
+            --sql examples/live-estate-database-url/good.sql \
+            --database-url "$PGURL" \
+            --format json \
+            --fail-on red \
+            | tee /tmp/live_good.json
+          echo "GOOD verdict JSON:"
+          cat /tmp/live_good.json
+          test "$(jq -r '.verdict' /tmp/live_good.json)" = "pass"

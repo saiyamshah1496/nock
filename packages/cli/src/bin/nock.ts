@@ -29,6 +29,10 @@ program
 program
   .command("check")
   .requiredOption("--sql <path>", "Path to a SQL file to check")
+  .option(
+    "--database-url <url>",
+    "Optional: Postgres connection string (prefer replica; read-only). If provided (or env DATABASE_URL/SUPABASE_DB_URL), the check refreshes estate live before evaluating."
+  )
   .option("--estate <path>", "Path to an estate.json file (fallback when hosted not configured)")
   .option("--policy <path>", "Path to a policy YAML or JSON")
   .option("--estate-api-url <url>", "Optional: GET URL for hosted estate API (Nock Team)")
@@ -45,6 +49,10 @@ program
     const estatePath = opts.estate ? path.resolve(String(opts.estate)) : null;
     const policyPath = opts.policy ? path.resolve(String(opts.policy)) : null;
     const sql = fs.readFileSync(sqlPath, "utf8");
+    // Optional live refresh from DATABASE_URL/SUPABASE_DB_URL or --database-url
+    const dbUrlFromEnv = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || "";
+    const dbUrlInput: string = String(opts.databaseUrl || "");
+    const databaseUrl: string = (dbUrlInput || dbUrlFromEnv).trim();
     // Hosted preference: when both URL and token available, fetch hosted estate/policy; else fallback to local files
     const estateApiUrl: string = String(opts.estateApiUrl || "");
     const estateApiTokenInput: string = String(opts.estateApiToken || "");
@@ -62,20 +70,34 @@ program
         ? new URL(estateApiUrl).origin
         : "";
 
-    // Try hosted estate first
+    // Determine estate source in order of preference:
+    // 1) Live sync when databaseUrl provided (flag or env)
+    // 2) Hosted estate when estateApiUrl + token
+    // 3) Local file via --estate
     let estateMaybe: EstateSnapshot | null = null;
-    if (estateApiUrl && estateApiToken) {
+    if (databaseUrl) {
       try {
-        estateMaybe = await getJsonAsync<EstateSnapshot>(estateApiUrl, estateApiToken);
-      } catch {
-        // swallow; fallback below
+        estateMaybe = await runSyncStats({ databaseUrl });
+      } catch (err) {
+        console.error(`Live estate refresh failed: ${(err as any)?.message || String(err)}`);
+        process.exit(2);
       }
-    }
-    if (!estateMaybe) {
-      if (!estatePath) {
-        throw new Error("Either --estate must be provided, or configure --estate-api-url with a valid token.");
+    } else {
+      if (estateApiUrl && estateApiToken) {
+        try {
+          estateMaybe = await getJsonAsync<EstateSnapshot>(estateApiUrl, estateApiToken);
+        } catch {
+          // swallow; fallback below
+        }
       }
-      estateMaybe = JSON.parse(fs.readFileSync(estatePath, "utf8"));
+      if (!estateMaybe) {
+        if (!estatePath) {
+          throw new Error(
+            "Provide --estate, or configure --estate-api-url with a valid token, or pass --database-url / set DATABASE_URL."
+          );
+        }
+        estateMaybe = JSON.parse(fs.readFileSync(estatePath, "utf8"));
+      }
     }
     const estate: EstateSnapshot = estateMaybe as EstateSnapshot;
 

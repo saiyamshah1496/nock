@@ -28,6 +28,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.0",
     "@nockhq/core": "workspace:^0.1.6",
+    "postgres": "^3.4.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {

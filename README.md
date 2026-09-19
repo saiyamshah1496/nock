@@ -70,9 +70,17 @@ npx @nockhq/cli@latest check \
 
 Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
-Two ways to provide an estate:
+ Three free modes to provide an estate:
 - Bring your own estate — paste/commit `.nock/estate.json`: see [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
 - Sync estate yourself — run `nock sync-estate` on your runner: see [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
+- Experimental Path C thin (live estate from Postgres): pass `--database-url` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to have `nock check` refresh the estate from Postgres on the fly, then evaluate:
+  ```bash
+  npx @nockhq/cli@latest check \
+    --sql examples/live-estate-database-url/bad.sql \
+    --database-url "$DATABASE_URL" \
+    --format json
+  ```
+  Prefer a read‑only role and a replica. No row data is read; only Phase‑1 catalogue (columns, constraints, indexes) and table sizes. FREE FOREVER check‑only: just‑in‑time estate refresh equivalent to `sync-estate` but without writing a file; same read‑only catalogue grants. Nock servers never see your database URL.
 
 ### Example: input → output
 
@@ -150,6 +158,8 @@ Exit code: 2 (fail). 1 = warn when `fail_on=yellow`. 0 = pass.
 ## Keep estate fresh with sync-estate
 
 Generate `.nock/estate.json` with a read‑only role (prefer a replica) on your own GitHub runner and use it in PR checks. Guide: [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
+
+Optionally, you can also skip writing a file and run a single‑shot check with `--database-url` or env `DATABASE_URL`/`SUPABASE_DB_URL`. This is FREE FOREVER check‑only Path C (live estate from Postgres): just‑in‑time refresh without writing a file; same read‑only catalogue grants; Nock servers never see your database URL. Not a replacement for the BYO/self‑sync path used in CI. Hosted push/OAuth connectors are separate and later (not part of this PR).
 
 ## Add Nock to GitHub Actions
 
@@ -231,6 +241,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 
 - Quick start: check a migration with an estate file — [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
 - Keep estate fresh with sync-estate — [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
+- Live estate from DATABASE_URL (Path C thin) — [`docs/guides/live-estate-database-url.md`](docs/guides/live-estate-database-url.md)
 - Grants for sync-estate — [`docs/guides/grants-sync-estate.md`](docs/guides/grants-sync-estate.md)
 - Estate file path reference — [`docs/guides/estate-path.md`](docs/guides/estate-path.md)
 - MCP: check before apply — [`docs/guides/mcp-check-before-apply.md`](docs/guides/mcp-check-before-apply.md)
