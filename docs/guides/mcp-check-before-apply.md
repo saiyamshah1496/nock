@@ -2,6 +2,11 @@
 
 Use Nock in an agent loop to check a migration before applying it. For Nock Team partners, MCP prefers your hosted estate (token) and returns the same verdict JSON as the CLI. Free/local still works with a file path.
 
+Positioning
+- MCP is an advisory “check-before-apply” surface for agents.
+- The hard merge gate lives in your GitHub Action or the Nock App.
+- CLI ≡ Action ≡ MCP ≡ App — same verdict JSON for the same inputs.
+
 ## Install and configure (Cursor/Claude MCP)
 
 Option A — via npx (recommended)
@@ -11,7 +16,7 @@ Option A — via npx (recommended)
   "mcpServers": {
     "nock": {
       "command": "npx",
-      "args": ["-y", "@nockhq/mcp@0.1.6"]
+      "args": ["-y", "@nockhq/mcp@latest"]
     }
   }
 }
@@ -39,7 +44,7 @@ Notes
       "mcpServers": {
         "nock": {
           "command": "npx",
-          "args": ["-y", "@nockhq/mcp@0.1.6"],
+          "args": ["-y", "@nockhq/mcp@latest"],
           "env": { "NOCK_TEAM_API_TOKEN": "…your-org-token…" }
         }
       }
@@ -87,7 +92,7 @@ If you are not using Team hosted, pass a file path:
 The JSON returned by `check_before_apply` matches the CLI for the same inputs:
 
 ```bash
-npx @nockhq/cli@0.1.6 check \
+npx @nockhq/cli@latest check \
   --sql migrations/001.sql \
   --estate .nock/estate.json \ 
   --format json
