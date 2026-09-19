@@ -11,7 +11,7 @@ import { URL } from "url";
 
 const program = new Command();
 // Prefer reading version from package.json; fallback to current release tag
-let cliVersion = "0.1.6";
+let cliVersion = "0.1.7";
 try {
   const pkgPath = path.resolve(__dirname, "../../package.json");
   const pkgJson = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
