@@ -11,7 +11,7 @@ Option A — via npx (recommended)
   "mcpServers": {
     "nock": {
       "command": "npx",
-      "args": ["-y", "@nockhq/mcp@0.1.5"]
+      "args": ["-y", "@nockhq/mcp@0.1.6"]
     }
   }
 }
@@ -39,7 +39,7 @@ Notes
       "mcpServers": {
         "nock": {
           "command": "npx",
-          "args": ["-y", "@nockhq/mcp@0.1.5"],
+          "args": ["-y", "@nockhq/mcp@0.1.6"],
           "env": { "NOCK_TEAM_API_TOKEN": "…your-org-token…" }
         }
       }
@@ -87,7 +87,7 @@ If you are not using Team hosted, pass a file path:
 The JSON returned by `check_before_apply` matches the CLI for the same inputs:
 
 ```bash
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@0.1.6 check \
   --sql migrations/001.sql \
   --estate .nock/estate.json \ 
   --format json
