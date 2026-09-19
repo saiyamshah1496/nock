@@ -1,0 +1,382 @@
+:root {
+  /* Foundations: GitHub/Linear dark with Vercel/Linear hierarchy */
+  --bg: #0B0F14;
+  --panel: #0f141a;       /* slightly lifted from bg */
+  --panel-alt: #0b1117;
+  --text: #F5F7FA;        /* primary text */
+  --muted: #9AA4B2;       /* secondary text */
+  --border: #1F2937;      /* subtle card/border */
+
+  /* Accent: cohesive teal for Postgres category cue */
+  --brand: #14B8A6;       /* primary accent / CTA */
+  --brand-strong: #14B8A6;/* no gradient; keep equal for consistency */
+  --accent: #14B8A6;
+  --warning: #F59E0B;     /* optional warning/status */
+
+  --danger: #e55353;
+  --shadow: 0 8px 24px rgba(0,0,0,0.35);
+  --radius: 12px;
+
+  /* Surfaces for chips/code */
+  --chip-bg: #121821;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 70% -10%, rgba(255,255,255,0.03), transparent 60%),
+              radial-gradient(900px 600px at -10% -20%, rgba(255,255,255,0.025), transparent 50%),
+              var(--bg);
+  line-height: 1.6;
+}
+
+.container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(to bottom, rgba(2,4,8,0.6), rgba(2,4,8,0));
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.site-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+}
+.logo {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-size: 18px;
+}
+.beta-tag {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.hero {
+  padding: 56px 0 24px;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.hero-title {
+  margin: 8px 0 12px;
+  font-size: clamp(28px, 4.5vw, 46px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.hero-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(15px, 2.2vw, 18px);
+}
+
+/* Stacked hero bands */
+.primary-band,
+.secondary-band {
+  width: 100%;
+  max-width: 800px; /* ~720–800px target */
+  margin: 16px auto 0;
+}
+.primary-band .cta-card {
+  margin-top: 0; /* rely on band spacing */
+}
+.secondary-band .waitlist-card {
+  /* Quieter look: softer border, no glow */
+  box-shadow: none;
+  border-color: rgba(255,255,255,0.07);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}
+.secondary-band .waitlist-form button {
+  /* Match teal, remove competing glow */
+  box-shadow: none;
+}
+code {
+  background: var(--chip-bg);
+  color: #d4dbe3;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.waitlist-card {
+  margin-top: 28px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+/* Primary CTA card */
+.cta-card {
+  margin-top: 28px;
+}
+.cta-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 4px 0 10px;
+}
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand);
+  color: #0B0F14;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.25);
+  transition: transform 0.04s ease;
+}
+.cta-btn:hover { transform: translateY(-1px); }
+
+.code-block {
+  position: relative;
+  margin: 6px 0 8px; /* tighten so code block doesn't dominate */
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.code-header {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 12px 0;
+}
+.code-pre {
+  margin: 0;
+  padding: 8px 12px 12px;
+  overflow-x: auto;
+}
+.code-pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #d4dbe3;
+}
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.card-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+.card-subtitle {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.waitlist-form .form-row {
+  display: flex;
+  gap: 12px; /* un-cramp */
+  align-items: center;
+}
+.waitlist-form input[type="email"] {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+}
+.waitlist-form input[type="email"]::placeholder {
+  color: #94a3b8;
+}
+.waitlist-form button {
+  /* Vercel-like restraint: solid mint, no gradient */
+  background: var(--brand);
+  color: #0B0F14; /* dark text on mint */
+  border: none;
+  font-weight: 700;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.04s ease;
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.18);
+}
+.waitlist-form button:hover {
+  transform: translateY(-1px);
+}
+.waitlist-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* Focus states for accessibility */
+.waitlist-form input[type="email"]:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.18);
+}
+.waitlist-form button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.form-hint {
+  margin: 8px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.form-status {
+  margin: 10px 2px 0;
+  font-size: 14px;
+}
+.form-status.success { color: #6ee7b7; }
+.form-status.error { color: var(--danger); }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 1px, 1px);
+  white-space: nowrap;
+  border: 0;
+}
+
+.section {
+  padding: 36px 0;
+}
+.section.alt {
+  background: linear-gradient(0deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.section-header {
+  margin-bottom: 14px;
+}
+.section-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.section-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.section-body {
+  margin: 0;
+  color: var(--muted);
+}
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px; /* consistent with waitlist-card */
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+.card-heading {
+  margin: 0;
+  font-size: 16px;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.chips {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chips li {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+}
+.note {
+  color: var(--muted);
+  font-size: 13px;
+}
+.pull-quote {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--border);
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(0,0,0,0));
+  border-radius: 8px;
+  color: var(--text);
+}
+.pricing-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bullets {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+.bullets li { margin-bottom: 6px; }
+
+@media (min-width: 840px) {
+  .grid-2 { grid-template-columns: 1fr 1fr; gap: 20px; }
+  .hero { padding: 64px 0 28px; }
+  .waitlist-card { padding: 20px; }
+}
+
+.site-footer {
+  padding: 28px 0 40px;
+}
+.foot {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: 13px;
+}
+.foot-brand {
+  color: var(--text);
+  font-weight: 600;
+}
+.small-muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+

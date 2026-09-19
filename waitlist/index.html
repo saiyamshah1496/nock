@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nock - Governance for Postgres DDL</title>
+    <meta name="description" content="Nock adds approve/block governance before risky Postgres DDL ships. Try the free CLI path today." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="brand">
+          <div class="logo">Nock</div>
+        </div>
+        <div class="beta-tag">Open source · Free path</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container">
+          <span class="badge">Open source free path</span>
+          <h1 class="hero-title">Prevent risky Postgres DDL from shipping</h1>
+          <p class="hero-subtitle">
+            Deterministic checks on proposed schema changes using your estate snapshot (table sizes), lock class awareness, and a <code>lock_timeout</code> policy - and it never applies migrations.
+          </p>
+          <!-- Primary band (full width, centered content max-width) -->
+          <div class="primary-band">
+            <!-- Primary CTA: Try free now -->
+            <div class="card cta-card">
+              <h2 class="card-title">Try free now</h2>
+              <p class="card-subtitle">Use the CLI to check migrations locally and in CI.</p>
+              <div class="cta-actions">
+                <a class="cta-btn" href="https://github.com/saiyamshah1496/nock" target="_blank" rel="noopener">View on GitHub</a>
+              </div>
+              <div class="code-block">
+                <div class="code-header">Copy and run:</div>
+                <pre class="code-pre"><code id="npx-command">npx @nockhq/cli@latest check --sql migrations/001.sql --estate .nock/estate.json --format json</code></pre>
+                <button class="copy-btn" data-copy-target="#npx-command" type="button" aria-label="Copy command">Copy</button>
+              </div>
+              <p class="small-muted">Free modes: bring your own estate / sync estate yourself (CLI / Action / MCP).</p>
+            </div>
+          </div>
+
+          <!-- Secondary band (full width, quieter) -->
+          <div class="secondary-band">
+            <div class="waitlist-card">
+              <h2 class="card-title">Get updates</h2>
+              <p class="card-subtitle">Platform and SRE leaders, optional updates on releases and design partner calls.</p>
+
+              <form id="waitlist-form" class="waitlist-form" novalidate>
+                <div class="form-row">
+                  <label class="visually-hidden" for="email">Work email</label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    placeholder="name@company.com"
+                    required
+                  />
+                  <button id="submit-btn" type="submit">Get updates</button>
+                </div>
+                <p class="form-hint">We’ll only use this to contact you with Nock updates.</p>
+                <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+              </form>
+            </div>
+          </div>
+
+          <!-- Design partners blurb (quiet, full-width) -->
+          <div class="secondary-band">
+            <div class="waitlist-card">
+              <h2 class="card-title">Design partners</h2>
+              <p class="card-subtitle small-muted">
+                Looking for a few platform/SRE leads who merge Postgres DDL weekly for an ~8‑week loop — try the free CLI, share blunt feedback, and optionally a short founder call. Use the email capture above to raise your hand.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Problem + AI context as scannable cards -->
+      <section class="section">
+        <div class="container">
+          <div class="section-header">
+            <h3 class="section-title">What breaks in production</h3>
+            <p class="section-kicker">AI made schema change faster - locks didn't get kinder.</p>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <h4 class="card-heading">What teams see in prod</h4>
+              <p class="section-body">
+                Postgres DDL isn’t just a migration. A bad <code>ALTER</code> or index build can take locks that
+                queue behind live traffic and stall control surfaces while apps keep running.
+                Seen in public postmortems (e.g., Railway-style Oct/Dec&nbsp;2025) - details vary, the locking story repeats.
+              </p>
+              <ul class="chips">
+                <li>Locks cascade on busy systems</li>
+                <li>Connection pools get exhausted</li>
+                <li>Control plane stalls under backpressure</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4 class="card-heading">AI accelerates DDL</h4>
+              <ul class="bullets">
+                <li>Coding agents and copilots generate migrations/diffs faster than humans review them.</li>
+                <li>Schema churn rises; shared intuition about hot tables, lock risk, <code>lock_timeout</code>, and sizes does not.</li>
+                <li>More DDL proposals from more people (and agents).</li>
+              </ul>
+              <div class="note">Outcome: more change, same physics of locks.</div>
+            </div>
+          </div>
+          <div class="pull-quote">
+            <em>AI is accelerating schema change. Postgres still punishes a bad lock. Nock is approve/block governance so risky DDL doesn’t ship unchecked.</em>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product framing -->
+      <section class="section alt">
+        <div class="container">
+          <div class="grid-2">
+            <div class="card">
+              <h3 class="section-title">What Nock does</h3>
+              <p class="section-body">
+                Nock is a Postgres migration safety gate: deterministic approve/block on schema-change DDL before merge using your estate snapshot (table sizes), lock class, and a <code>lock_timeout</code> policy. It never applies migrations. Not a pattern or style linter - pattern tools catch shapes, Nock catches unsafe on your data.
+              </p>
+            </div>
+            <div class="card">
+              <h3 class="section-title">How the gate decides</h3>
+              <ul class="bullets">
+                <li><strong>Estate snapshot (table sizes)</strong>: evaluates DDL against your latest estate snapshot.</li>
+                <li><strong>Lock class awareness</strong>: predicts which locks a change will take and where they block.</li>
+                <li><strong><code>lock_timeout</code> policy</strong>: enforces safe timeouts so production does not stall.</li>
+                <li><strong>Plain-language guidance</strong>: pragmatic for platform and SRE leads.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pricing -->
+      <section class="section">
+        <div class="container">
+          <div class="pricing-card card">
+            <div>
+              <h3 class="section-title">Free path today</h3>
+              <p class="section-body"><strong>Free</strong>: local and CI checks with your estate. Bring your own estate and sync yourself (CLI / GitHub Action / MCP).</p>
+              <p class="section-body small-muted"><strong>Team</strong>: hosted estate plus policy and audit - same engine, ops convenience. <strong>Coming soon</strong> for design partners.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container foot">
+        <span class="foot-brand">Nock</span>
+        <span class="foot-note">Governance for Postgres DDL</span>
+      </div>
+    </footer>
+
+    <!-- Config: copy config.sample.js -> config.js and set WAITLIST_FORM_ENDPOINT -->
+    <script src="./config.js"></script>
+    <script src="./script.js"></script>
+  </body>
+  </html>
+
