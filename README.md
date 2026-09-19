@@ -80,7 +80,7 @@ Two ways to provide an estate (plus a Path C live-refresh):
     --database-url "$DATABASE_URL" \
     --format json
   ```
-  Prefer a read‑only role and a replica. No row data is read; only Phase‑1 catalogue (columns, constraints, indexes) and table sizes. FREE forever; no file write.
+  Prefer a read‑only role and a replica. No row data is read; only Phase‑1 catalogue (columns, constraints, indexes) and table sizes. FREE FOREVER check‑only: just‑in‑time estate refresh equivalent to `sync-estate` but without writing a file; same read‑only catalogue grants. Nock servers never see your database URL.
 
 ### Example: input → output
 
@@ -159,7 +159,7 @@ Exit code: 2 (fail). 1 = warn when `fail_on=yellow`. 0 = pass.
 
 Generate `.nock/estate.json` with a read‑only role (prefer a replica) on your own GitHub runner and use it in PR checks. Guide: [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
 
-You can also skip writing a file and run a single-shot check with `--database-url` or env `DATABASE_URL`/`SUPABASE_DB_URL` (Path C thin). This is free and check‑only. The free path remains BYO/self‑sync. Team hosted estate + push is separate (not part of this PR).
+Optionally, you can also skip writing a file and run a single‑shot check with `--database-url` or env `DATABASE_URL`/`SUPABASE_DB_URL`. This is FREE FOREVER check‑only Path C (live estate from Postgres): just‑in‑time refresh without writing a file; same read‑only catalogue grants; Nock servers never see your database URL. Not a replacement for the BYO/self‑sync path used in CI. Hosted push/OAuth connectors are separate and later (not part of this PR).
 
 ## Add Nock to GitHub Actions
 
