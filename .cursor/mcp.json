@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "nock": {
+      "command": "node",
+      "args": ["${workspaceFolder}/packages/mcp/dist/bin.js"],
+      "env": {
+        "NOCK_WORKSPACE": "${workspaceFolder}"
+      }
+    }
+  }
+}

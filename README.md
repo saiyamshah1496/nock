@@ -207,7 +207,7 @@ Create a least‑privilege read‑only role that can run the catalogue query (no
 
 ## MCP: check before apply
 
-See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules`. Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: [`docs/guides/mcp-check-before-apply.md`](docs/guides/mcp-check-before-apply.md). Use either `npx @nockhq/mcp` (bin `nock-mcp`) or the from‑source config in the guide.
+See `@nockhq/mcp` — provides `check_before_apply` (SQL string or `sqlPath`), `get_session`, `list_files`, `read_file`, `explain_lock`, `list_rules`. Cursor/VS Code in this repo pick up the local session + files via [`.cursor/mcp.json`](.cursor/mcp.json) and [`.vscode/mcp.json`](.vscode/mcp.json) (same file paths as the CLI). Golden tests ensure CLI JSON equals MCP JSON on identical inputs. Guide: [`docs/guides/mcp-check-before-apply.md`](docs/guides/mcp-check-before-apply.md). Use either `npx @nockhq/mcp` (bin `nock-mcp`) or the from‑source config in the guide.
 
 ## Rules
 

@@ -1,6 +1,13 @@
 import { check, type PolicyResolved, type EstateSnapshot, computeFreshness } from "@nockhq/core";
 import * as fs from "fs";
 import { z } from "zod";
+import { discoverSession, listNockFiles, readWorkspaceFile } from "./session.js";
+
+export { discoverSession, listNockFiles, readWorkspaceFile, resolveWorkspaceRoot } from "./session.js";
+
+function jsonContent(json: unknown) {
+  return { content: [{ type: "json" as const, json }] };
+}
 
 // Start an MCP server using dynamic imports to avoid ESM resolution friction at build time.
 export async function startMcpServer() {
@@ -10,7 +17,51 @@ export async function startMcpServer() {
   // Create server (high-level API exposes tool registration)
   const server = new McpServer(
     { name: "@nockhq/mcp", version: "0.1.0" },
-    { capabilities: { tools: {} } }
+    { capabilities: { tools: {}, resources: {} } }
+  );
+
+  // Tool: get_session — IDE workspace snapshot (estate + files like local CLI)
+  server.registerTool(
+    "get_session",
+    {
+      title: "Nock session",
+      description:
+        "Returns the local IDE/workspace session: discovered estate, policy, and SQL files (the same local files the CLI uses).",
+      inputSchema: z.object({ workspaceRoot: z.string().optional() }).strip(),
+    },
+    async (args: any) => jsonContent(discoverSession(args?.workspaceRoot ? String(args.workspaceRoot) : undefined))
+  );
+
+  // Tool: list_files
+  server.registerTool(
+    "list_files",
+    {
+      title: "List Nock files",
+      description:
+        "List local Nock files under the workspace: estate snapshots, policy, and migration SQL (fixtures/, migrations/, examples/, .nock/).",
+      inputSchema: z.object({ workspaceRoot: z.string().optional() }).strip(),
+    },
+    async (args: any) =>
+      jsonContent(listNockFiles(args?.workspaceRoot ? String(args.workspaceRoot) : undefined))
+  );
+
+  // Tool: read_file
+  server.registerTool(
+    "read_file",
+    {
+      title: "Read a Nock workspace file",
+      description: "Read a local estate, policy, or SQL file from the workspace (paths must stay inside the workspace).",
+      inputSchema: z
+        .object({
+          path: z.string(),
+          workspaceRoot: z.string().optional(),
+        })
+        .strip(),
+    },
+    async (args: any) =>
+      jsonContent(
+        readWorkspaceFile(String(args?.path ?? ""), args?.workspaceRoot ? String(args.workspaceRoot) : undefined)
+      )
   );
 
   // Tool: check_before_apply
@@ -19,11 +70,13 @@ export async function startMcpServer() {
     {
       title: "Check migration before apply",
       description:
-        "Returns Nock verdict JSON for a migration SQL. Prefers hosted estate (token) or local file; optionally refreshes estate live from Postgres when databaseUrl/env is provided (experimental).",
+        "Returns Nock verdict JSON for a migration SQL string or sqlPath (like the local CLI --sql file). Prefers hosted estate (token) or local file; uses .nock/estate.json from the workspace session when estatePath is omitted. Optionally refreshes estate live from Postgres when databaseUrl/env is provided (experimental).",
       // Zod input schema for validation
       inputSchema: z
         .object({
-          sql: z.string(),
+          sql: z.string().optional(),
+          sqlPath: z.string().optional(),
+          workspaceRoot: z.string().optional(),
           pgVersion: z.string().optional(),
           estatePath: z.string().optional(),
           policyPath: z.string().optional(),
@@ -36,7 +89,9 @@ export async function startMcpServer() {
     },
     async (args: any) => {
       const verdict = await checkBeforeApplyHostedOrLocal({
-        sql: String(args?.sql ?? ""),
+        sql: args?.sql ? String(args.sql) : undefined,
+        sqlPath: args?.sqlPath ? String(args.sqlPath) : undefined,
+        workspaceRoot: args?.workspaceRoot ? String(args.workspaceRoot) : undefined,
         pgVersion: args?.pgVersion ? String(args.pgVersion) : undefined,
         estatePath: args?.estatePath ? String(args.estatePath) : undefined,
         policyPath: args?.policyPath ? String(args.policyPath) : undefined,
@@ -45,7 +100,7 @@ export async function startMcpServer() {
         apiBaseUrl: args?.apiBaseUrl ? String(args.apiBaseUrl) : undefined,
         databaseUrl: args?.databaseUrl ? String(args.databaseUrl) : undefined,
       });
-      return { content: [{ type: "json", json: verdict }] };
+      return jsonContent(verdict);
     }
   );
 
@@ -97,8 +152,54 @@ export async function startMcpServer() {
     }
   );
 
+  await registerSessionFileResources(server);
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+async function registerSessionFileResources(server: any) {
+  if (typeof server.registerResource !== "function") return;
+  try {
+    server.registerResource(
+      "session",
+      "nock://session",
+      {
+        title: "Nock session",
+        description: "Workspace session: discovered estate, policy, and SQL files",
+        mimeType: "application/json",
+      },
+      async () => ({
+        contents: [
+          {
+            uri: "nock://session",
+            mimeType: "application/json",
+            text: JSON.stringify(discoverSession(), null, 2),
+          },
+        ],
+      })
+    );
+    server.registerResource(
+      "files",
+      "nock://files",
+      {
+        title: "Nock files",
+        description: "Discovered local estate, policy, and SQL files",
+        mimeType: "application/json",
+      },
+      async () => ({
+        contents: [
+          {
+            uri: "nock://files",
+            mimeType: "application/json",
+            text: JSON.stringify(listNockFiles(), null, 2),
+          },
+        ],
+      })
+    );
+  } catch {
+    // Older SDK builds may not expose resources; tools still work.
+  }
 }
 
 // If launched as a standalone process, start the server
@@ -134,7 +235,9 @@ export function checkBeforeApplyLocal(args: {
 
 // Test helper: mirrors tool logic (hosted preference with env fallbacks)
 export async function checkBeforeApplyHostedOrLocal(args: {
-  sql: string;
+  sql?: string;
+  sqlPath?: string;
+  workspaceRoot?: string;
   pgVersion?: string;
   estatePath?: string;
   policyPath?: string;
@@ -143,6 +246,14 @@ export async function checkBeforeApplyHostedOrLocal(args: {
   apiBaseUrl?: string;
   databaseUrl?: string;
 }) {
+  let sql = args.sql ?? "";
+  if (!sql.trim() && args.sqlPath) {
+    sql = readWorkspaceFile(args.sqlPath, args.workspaceRoot).text;
+  }
+  if (!sql.trim()) {
+    throw new Error("Provide sql or sqlPath (a workspace SQL file, like the local CLI --sql).");
+  }
+
   // Optional live refresh (experimental Path C thin)
   const dbUrlEnv = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || "";
   const dbUrl = (args.databaseUrl || dbUrlEnv || "").trim();
@@ -182,8 +293,10 @@ export async function checkBeforeApplyHostedOrLocal(args: {
     }
   }
   if (!estate) {
-    if (args.estatePath) {
-      estate = JSON.parse(fs.readFileSync(String(args.estatePath), "utf8")) as EstateSnapshot;
+    const session = discoverSession(args.workspaceRoot);
+    const estatePath = args.estatePath || session.estatePath || undefined;
+    if (estatePath) {
+      estate = JSON.parse(fs.readFileSync(String(estatePath), "utf8")) as EstateSnapshot;
     } else {
       throw new Error(
         "Either provide estatePath, or configure estateApiUrl with a valid token."
@@ -211,10 +324,13 @@ export async function checkBeforeApplyHostedOrLocal(args: {
       // ignore
     }
   }
+  const sessionPolicy = args.policyPath
+    ? args.policyPath
+    : discoverSession(args.workspaceRoot).policyPath;
   const policy: PolicyResolved =
     hostedPolicy ||
-    (args.policyPath
-      ? (JSON.parse(fs.readFileSync(String(args.policyPath), "utf8")) as PolicyResolved)
+    (sessionPolicy
+      ? (JSON.parse(fs.readFileSync(String(sessionPolicy), "utf8")) as PolicyResolved)
       : {
           id: "nock.postgres.ddl.default",
           version: "1.0.0",
@@ -226,7 +342,7 @@ export async function checkBeforeApplyHostedOrLocal(args: {
         });
   const band = computeFreshness(estate.captured_at);
   return check({
-    sql: args.sql,
+    sql,
     estate,
     policy,
     pgVersion: args.pgVersion,
