@@ -1,6 +1,6 @@
 {
   "name": "@nockhq/secure-estate",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Estate-aware approve/block for Postgres DDL. Never applies migrations. CLI ≡ Action ≡ MCP.",
   "license": "MIT",
   "main": "dist/index.js",
@@ -22,7 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nockhq/core": "workspace:^0.1.6"
+    "@nockhq/core": "workspace:^0.1.7"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

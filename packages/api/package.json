@@ -1,6 +1,6 @@
 {
   "name": "@nockhq/api",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Nock hosted estate API (Team)",
   "license": "MIT",
   "main": "dist/server.js",
@@ -12,8 +12,8 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@nockhq/core": "workspace:^0.1.6",
-    "@nockhq/secure-estate": "workspace:^0.1.6",
+    "@nockhq/core": "workspace:^0.1.7",
+    "@nockhq/secure-estate": "workspace:^0.1.7",
     "hono": "^4.5.10",
     "@hono/node-server": "^1.12.2",
     "aws4fetch": "^1.0.20",
