@@ -22,8 +22,24 @@ Option B — start tiny and edit by hand
   "captured_at": "2026-09-16T05:00:00Z",
   "pg_version": "16.4",
   "tables": [
-    { "schema": "public", "name": "sessions", "n_live_tup": 1040000, "relation_bytes": 890000000, "total_bytes": 1120000000 }
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000 }
   ]
+}
+```
+
+Add catalogue (optional but recommended):
+
+```json
+{
+  "schema_version": "1",
+  "captured_at": "2026-09-16T05:00:00Z",
+  "pg_version": "16.4",
+  "tables": [
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000, "replica_identity": "d" }
+  ],
+  "columns": [],
+  "constraints": [],
+  "indexes": []
 }
 ```
 
@@ -38,7 +54,7 @@ Run with the published CLI (recommended for strangers):
 
 ```bash
 # Example using this repo’s fixtures:
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@latest check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --policy policy.default.yml \
@@ -49,7 +65,7 @@ npx @nockhq/cli@0.1.5 check \
 To check your own repo, point to your migration file(s) and `.nock/estate.json`:
 
 ```bash
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@latest check \
   --sql migrations/001.sql \
   --estate .nock/estate.json \
   --policy policy.default.yml \
@@ -83,7 +99,7 @@ jobs:
         with: { node-version: 20 }
       - name: Run Nock check (CLI)
         run: |
-          npx @nockhq/cli@0.1.5 check \
+          npx @nockhq/cli@latest check \
             --sql migrations/001.sql \
             --estate .nock/estate.json \
             --policy policy.default.yml \
