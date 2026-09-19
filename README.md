@@ -10,9 +10,9 @@ Nock never applies migrations. CLI ≡ Action ≡ MCP — the same verdict JSON 
 Use directly with npx (recommended):
 
 ```bash
-npx @nockhq/cli@0.1.6 --help
+npx @nockhq/cli@latest --help
 # or run a check
-npx @nockhq/cli@0.1.6 check --sql migrations/001.sql --estate .nock/estate.json --format json
+npx @nockhq/cli@latest check --sql migrations/001.sql --estate .nock/estate.json --format json
 ```
 
 Or install globally:
@@ -34,7 +34,7 @@ pnpm build
 
 An estate is a small JSON snapshot of your Postgres tables’ sizes and governance facts (columns, constraints, indexes) that Nock uses to reason about locks and risk on your actual data. It is not a dump — no row contents, no passwords, and no stored SQL/expressions.
 
-Minimal shape:
+Minimal shape (Phase‑1 catalogue; additive sections):
 
 ```json
 {
@@ -42,15 +42,27 @@ Minimal shape:
   "captured_at": "2026-09-16T05:00:00Z",
   "pg_version": "16.4",
   "tables": [
-    { "schema": "public", "name": "sessions", "n_live_tup": 1040000000 }
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000000, "relkind": "r", "replica_identity": "d" }
+  ],
+  "columns": [
+    { "schema": "public", "table": "sessions", "column": "id", "not_null": true, "type_name": "bigint" },
+    { "schema": "public", "table": "sessions", "column": "archived_at", "not_null": false, "type_name": "timestamptz", "has_default": false }
+  ],
+  "constraints": [
+    { "schema": "public", "table": "sessions", "name": "sessions_pkey", "kind": "pk", "validated": true, "columns": ["id"], "supporting_index": "sessions_pkey" }
+  ],
+  "indexes": [
+    { "schema": "public", "table": "sessions", "name": "sessions_pkey", "unique": true, "primary": true, "valid": true, "ready": true, "live": true, "immediate": true, "columns": ["id"], "replica_identity": true }
   ]
 }
 ```
 
+Omit vs [] semantics: omitting a section key means “catalogue absent” (catalogue‑aware rules fail‑closed); a present‑but‑empty `[]` means “synced; none found”.
+
 ## Quick start: check a migration with an estate file
 
 ```bash
-npx @nockhq/cli@0.1.6 check \
+npx @nockhq/cli@latest check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --format json
@@ -76,15 +88,18 @@ Input B — estate excerpt (`fixtures/estate_billion.json`)
 ```json
 {
   "tables": [
-    { "schema": "public", "name": "sessions", "n_live_tup": 1040000000 }
-  ]
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000000, "relkind": "r", "replica_identity": "d" }
+  ],
+  "columns": [],
+  "constraints": [],
+  "indexes": []
 }
 ```
 
 Command
 
 ```bash
-npx @nockhq/cli@0.1.6 check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
+npx @nockhq/cli@latest check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 
 Output (real CLI JSON)
@@ -167,7 +182,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Prefer the CLI workflow in [`examples/workflows/nock.yml`](examples/workflows/nock.yml) if you’re not using a published Action yet — it runs `npx @nockhq/cli` directly on your runner. Or install the Nock DDL Gate GitHub App to enforce checks on pull requests: https://github.com/apps/nock-ddl-gate.
+Prefer the CLI workflow in [`examples/workflows/nock.yml`](examples/workflows/nock.yml) if you’re not using a published Action yet — it runs `npx @nockhq/cli` directly on your runner. Or install the Nock DDL Gate GitHub App to enforce checks on pull requests: [Nock DDL Gate](https://github.com/apps/nock-ddl-gate).
 
 ## How to read results
 
