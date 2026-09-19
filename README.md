@@ -250,6 +250,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 - License — MIT (see [`LICENSE`](LICENSE))
 - Nock Team (hosted estate + org policy + audit) — [`docs/guides/nock-team.md`](docs/guides/nock-team.md)
 - Nock Team partner setup (design partners) — [`docs/guides/nock-team-partner-setup.md`](docs/guides/nock-team-partner-setup.md)
+ - Architecture diagram — [`docs/architecture/README.md`](docs/architecture/README.md)
 
 ## Nock Team (hosted estate + org policy + audit + export)
 
