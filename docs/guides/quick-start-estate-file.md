@@ -22,13 +22,24 @@ Option B — start tiny and edit by hand
   "captured_at": "2026-09-16T05:00:00Z",
   "pg_version": "16.4",
   "tables": [
-    { "schema": "public", "name": "sessions", "n_live_tup": 1040000, "relation_bytes": 890000000, "total_bytes": 1120000000 }
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000, "relation_bytes": 890000000, "total_bytes": 1120000000, "relkind": "r", "replica_identity": "d" }
+  ],
+  "columns": [
+    { "schema": "public", "table": "sessions", "column": "id", "not_null": true, "type_name": "bigint" },
+    { "schema": "public", "table": "sessions", "column": "archived_at", "not_null": false, "type_name": "timestamptz", "has_default": false }
+  ],
+  "constraints": [
+    { "schema": "public", "table": "sessions", "name": "sessions_pkey", "kind": "pk", "validated": true, "columns": ["id"], "supporting_index": "sessions_pkey" }
+  ],
+  "indexes": [
+    { "schema": "public", "table": "sessions", "name": "sessions_pkey", "unique": true, "primary": true, "valid": true, "ready": true, "live": true, "immediate": true, "columns": ["id"], "replica_identity": true }
   ]
 }
 ```
 
 Notes
 - “Estate” is table sizes + Postgres version and may include a governance catalogue (columns, constraints, indexes). It never contains row data, default expression text, or CHECK/index expressions.
+- Omit vs [] semantics: omitting a catalogue section key means “catalogue absent” (catalogue‑aware rules fail‑closed); a present‑but‑empty `[]` means “synced; none found”.
 - You can keep `.nock/estate.json` in the repo (commit) or publish it as a build artifact.
 - If you hand‑author an estate: you may omit catalogue sections entirely (fail‑closed for catalogue‑aware rules), or include present‑but‑empty arrays. Prefer pasting real catalogue output from `sync-estate` — don’t invent fake `columns[]`/`constraints[]`/`indexes[]`.
 
@@ -38,7 +49,7 @@ Run with the published CLI (recommended for strangers):
 
 ```bash
 # Example using this repo’s fixtures:
-npx @nockhq/cli@0.1.6 check \
+npx @nockhq/cli@latest check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --policy policy.default.yml \
@@ -49,7 +60,7 @@ npx @nockhq/cli@0.1.6 check \
 To check your own repo, point to your migration file(s) and `.nock/estate.json`:
 
 ```bash
-npx @nockhq/cli@0.1.6 check \
+npx @nockhq/cli@latest check \
   --sql migrations/001.sql \
   --estate .nock/estate.json \
   --policy policy.default.yml \
@@ -83,7 +94,7 @@ jobs:
         with: { node-version: 20 }
       - name: Run Nock check (CLI)
         run: |
-          npx @nockhq/cli@0.1.6 check \
+          npx @nockhq/cli@latest check \
             --sql migrations/001.sql \
             --estate .nock/estate.json \
             --policy policy.default.yml \
