@@ -79,3 +79,9 @@ Constraints
 
 Acknowledgements
 - Fixtures provided by Staff for this specific demo; do not invent new SQL/estate beyond this folder.
+
+Design packaging notes (merged)
+- Open path for Loom: `examples/demo-sessionly/ui/index.html`
+- Staging badge: “~200 sessions”; Production badge: “500,000 sessions · Supabase us‑east‑1”
+- Tickets: SESS‑184, SESS‑191, SESS‑203 (clickable)
+- Optional screenshot: `examples/demo-sessionly/ui/sessionly-first-visual.png`
