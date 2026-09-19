@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-19T16:00:00.000Z",
+  "source": "demo-fixture",
+  "tables": [
+    {
+      "schema": "public",
+      "name": "sessions",
+      "n_live_tup": 200,
+      "relation_bytes": 65536,
+      "relkind": "r",
+      "replica_identity": "d"
+    }
+  ],
+  "columns": [
+    {
+      "schema": "public",
+      "table": "sessions",
+      "column": "id",
+      "not_null": true,
+      "type_name": "bigint",
+      "has_default": true
+    },
+    {
+      "schema": "public",
+      "table": "sessions",
+      "column": "archived_at",
+      "not_null": false,
+      "type_name": "timestamp with time zone",
+      "has_default": false
+    },
+    {
+      "schema": "public",
+      "table": "sessions",
+      "column": "user_id",
+      "not_null": false,
+      "type_name": "bigint",
+      "has_default": false
+    },
+    {
+      "schema": "public",
+      "table": "sessions",
+      "column": "label",
+      "not_null": false,
+      "type_name": "text",
+      "has_default": false
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "public",
+      "table": "sessions",
+      "name": "sessions_pkey",
+      "kind": "pk",
+      "validated": true,
+      "columns": ["id"]
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "public",
+      "table": "sessions",
+      "name": "sessions_pkey",
+      "unique": true,
+      "primary": true,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "immediate": true,
+      "columns": ["id"],
+      "replica_identity": true
+    }
+  ]
+}
