@@ -34,81 +34,14 @@ export async function startMcpServer() {
         .strip(),
     },
     async (args: any) => {
-      const sql = String(args?.sql ?? "");
-      const estateApiUrl: string = String(args?.estateApiUrl || "");
-      const tokenInput: string = String(args?.estateApiToken || "");
-      const tokenEnv =
-        process.env.NOCK_TEAM_API_TOKEN ||
-        process.env.NOCK_ESTATE_API_TOKEN ||
-        process.env.NOCK_STATS_API_TOKEN ||
-        "";
-      const estateApiToken = tokenInput || tokenEnv;
-      const apiBaseUrl: string = String(args?.apiBaseUrl || "");
-      const apiBase = apiBaseUrl
-        ? apiBaseUrl.replace(/\/+$/, "")
-        : estateApiUrl
-        ? new URL(estateApiUrl).origin
-        : "";
-      // Fetch hosted or fallback to local
-      let estate: EstateSnapshot | null = null;
-      if (estateApiUrl && estateApiToken) {
-        try {
-          const res = await fetch(estateApiUrl, {
-            headers: { Accept: "application/json", Authorization: `Bearer ${estateApiToken}` },
-          });
-          if (res.ok) {
-            estate = (await res.json()) as EstateSnapshot;
-          }
-        } catch {
-          // ignore
-        }
-      }
-      if (!estate) {
-        estate = args?.estatePath
-          ? (JSON.parse(fs.readFileSync(String(args.estatePath), "utf8")) as EstateSnapshot)
-          : ({ tables: [] } as EstateSnapshot);
-      }
-      let hostedPolicy: PolicyResolved | null = null;
-      if (apiBase && estateApiToken) {
-        try {
-          let repoId: string | null = null;
-          try {
-            const u = new URL(estateApiUrl);
-            const m = /\/v1\/estate\/(.+)$/.exec(u.pathname);
-            if (m && m[1]) repoId = decodeURIComponent(m[1]);
-          } catch {
-            // ignore
-          }
-          if (repoId) {
-            const res = await fetch(`${apiBase}/v1/policy/${encodeURIComponent(repoId)}`, {
-              headers: { Accept: "application/json", Authorization: `Bearer ${estateApiToken}` },
-            });
-            if (res.ok) hostedPolicy = (await res.json()) as PolicyResolved;
-          }
-        } catch {
-          // ignore
-        }
-      }
-      const policy: PolicyResolved =
-        hostedPolicy ||
-        (args?.policyPath
-          ? (JSON.parse(fs.readFileSync(String(args.policyPath), "utf8")) as PolicyResolved)
-          : {
-              id: "nock.postgres.ddl.default",
-              version: "1.0.0",
-              fail_on: "red",
-              rules: {
-                R001: { red_rows: 10000 },
-                R010: { always_require_lock_timeout_above_rows: 1000000 },
-              },
-            });
-      const band = computeFreshness(estate.captured_at);
-      const verdict = check({
-        sql,
-        estate,
-        policy,
+      const verdict = await checkBeforeApplyHostedOrLocal({
+        sql: String(args?.sql ?? ""),
         pgVersion: args?.pgVersion ? String(args.pgVersion) : undefined,
-        noStatsBehavior: band === "stale" ? "warn" : undefined,
+        estatePath: args?.estatePath ? String(args.estatePath) : undefined,
+        policyPath: args?.policyPath ? String(args.policyPath) : undefined,
+        estateApiUrl: args?.estateApiUrl ? String(args.estateApiUrl) : undefined,
+        estateApiToken: args?.estateApiToken ? String(args.estateApiToken) : undefined,
+        apiBaseUrl: args?.apiBaseUrl ? String(args.apiBaseUrl) : undefined,
       });
       return { content: [{ type: "json", json: verdict }] };
     }
@@ -233,7 +166,13 @@ export async function checkBeforeApplyHostedOrLocal(args: {
     }
   }
   if (!estate) {
-    estate = args.estatePath ? (JSON.parse(fs.readFileSync(String(args.estatePath), "utf8")) as EstateSnapshot) : { tables: [] };
+    if (args.estatePath) {
+      estate = JSON.parse(fs.readFileSync(String(args.estatePath), "utf8")) as EstateSnapshot;
+    } else {
+      throw new Error(
+        "Either provide estatePath, or configure estateApiUrl with a valid token."
+      );
+    }
   }
   let hostedPolicy: PolicyResolved | null = null;
   if (apiBase && estateApiToken) {

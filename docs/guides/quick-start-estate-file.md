@@ -38,7 +38,7 @@ Run with the published CLI (recommended for strangers):
 
 ```bash
 # Example using this repo’s fixtures:
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@0.1.6 check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --policy policy.default.yml \
@@ -49,7 +49,7 @@ npx @nockhq/cli@0.1.5 check \
 To check your own repo, point to your migration file(s) and `.nock/estate.json`:
 
 ```bash
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@0.1.6 check \
   --sql migrations/001.sql \
   --estate .nock/estate.json \
   --policy policy.default.yml \
@@ -83,7 +83,7 @@ jobs:
         with: { node-version: 20 }
       - name: Run Nock check (CLI)
         run: |
-          npx @nockhq/cli@0.1.5 check \
+          npx @nockhq/cli@0.1.6 check \
             --sql migrations/001.sql \
             --estate .nock/estate.json \
             --policy policy.default.yml \

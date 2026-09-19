@@ -14,7 +14,7 @@ CLI ≡ Action ≡ MCP — same verdict surface; this guide uses CLI in workflow
 On your side — checklist (to get catalogue into PR checks)
 - Create/verify a least‑privilege read‑only role with catalogue grants. See [`docs/guides/grants-sync-estate.md`](./grants-sync-estate.md). Phase‑1 catalogue reads `pg_attribute`, `pg_constraint`, `pg_index` in addition to sizes — not just stats.
 - Prefer a read‑replica; store its DSN in a repo secret `PG_ESTATE_URL`.
-- Upgrade to CLI 0.1.5+ (older CLI won’t emit `columns[]`/`constraints[]`/`indexes[]`).
+- Upgrade to CLI 0.1.6+ (older CLI won’t emit `columns[]`/`constraints[]`/`indexes[]`).
 - Re‑run `sync-estate` so `.nock/estate.json` contains the new catalogue sections (or present‑but‑empty `[]` when none).
 - Make the estate available to PR checks: commit `.nock/estate.json`, download a recent artifact at job start, or (Team) use `--push-url` after sync.
 - Keep it fresh: re‑run/schedule sync. When catalogue sections are omitted, catalogue‑aware rules fail‑closed (e.g. R005/R017 softens/suppresses only when catalogue is present).
@@ -69,7 +69,7 @@ jobs:
           PG_ESTATE_URL: ${{ secrets.PG_ESTATE_URL }}
         run: |
           mkdir -p .nock
-          npx @nockhq/cli@0.1.5 sync-estate \
+          npx @nockhq/cli@0.1.6 sync-estate \
             --database-url "$PG_ESTATE_URL" \
             --out .nock/estate.json
       - name: Upload estate artifact (optional)
@@ -110,7 +110,7 @@ jobs:
         with: { node-version: 20, cache: 'npm' }
       - name: Run Nock check (CLI)
         run: |
-          npx @nockhq/cli@0.1.5 check \
+          npx @nockhq/cli@0.1.6 check \
             --sql "migrations/001.sql" \
             --estate ".nock/estate.json" \
             --policy "policy.default.yml" \

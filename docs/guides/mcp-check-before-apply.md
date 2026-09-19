@@ -1,11 +1,6 @@
 # MCP: check before apply
 
-Use Nock in an agent loop to check a migration before applying it. This runs locally against an estate snapshot you provide and returns the same verdict JSON as the CLI.
-
-What this is
-- A local MCP server that exposes tools: `check_before_apply`, `explain_lock`, `list_rules`
-- No database connection; you pass a file path to your estate snapshot
-- Same verdicts as the CLI for identical inputs (CLI ≡ Action ≡ MCP)
+Use Nock in an agent loop to check a migration before applying it. For Nock Team partners, MCP prefers your hosted estate (token) and returns the same verdict JSON as the CLI. Free/local still works with a file path.
 
 ## Install and configure (Cursor/Claude MCP)
 
@@ -16,7 +11,7 @@ Option A — via npx (recommended)
   "mcpServers": {
     "nock": {
       "command": "npx",
-      "args": ["-y", "@nockhq/mcp@0.1.5"]
+      "args": ["-y", "@nockhq/mcp@0.1.6"]
     }
   }
 }
@@ -37,11 +32,48 @@ Option B — from source (this repo)
 
 Notes
 - Transport: stdio (no network port). The `@nockhq/mcp` package provides a `nock-mcp` bin that speaks MCP over stdio.
-- Estate lives on your machine/repo; point `estatePath` to `.nock/estate.json` (or your chosen path).
+- Team token (optional): set `NOCK_TEAM_API_TOKEN` in your environment so MCP can fetch your hosted estate/policy. Aliases also accepted: `NOCK_ESTATE_API_TOKEN`, `NOCK_STATS_API_TOKEN`.
+  - Example (Cursor settings or host supports env on MCP servers):
+    ```json
+    {
+      "mcpServers": {
+        "nock": {
+          "command": "npx",
+          "args": ["-y", "@nockhq/mcp@0.1.6"],
+          "env": { "NOCK_TEAM_API_TOKEN": "…your-org-token…" }
+        }
+      }
+    }
+    ```
+  - Or export in your shell:
+    ```bash
+    export NOCK_TEAM_API_TOKEN="…"
+    ```
 
-## First tool call — check_before_apply
+## First tool call — hosted (Team)
 
-Call `nock.check_before_apply` with your migration SQL and paths:
+Team partners should pass the hosted estate URL; you do not need to download the estate to a file first.
+
+Call `nock.check_before_apply` with your migration SQL and hosted fields:
+
+```json
+{
+  "sql": "ALTER TABLE public.sessions ADD COLUMN last_seen_at timestamp with time zone;",
+  "estateApiUrl": "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo"
+}
+```
+
+Behavior
+- When `estateApiUrl` + a valid token are present, MCP fetches the hosted estate and organization policy (policy via the API base derived from `estateApiUrl`; you can also pass `apiBaseUrl` explicitly).
+- If hosted fetch is unavailable, MCP falls back to `estatePath` when provided; otherwise it returns a clear error (no silent empty estate).
+
+Optional
+- `policyPath` (JSON only). If omitted, a safe default policy is used. YAML policy paths are not supported in MCP at this time; use the default or convert to JSON.
+- `pgVersion` can override autodetection for specific checks.
+
+## Local-only (free) — fallback
+
+If you are not using Team hosted, pass a file path:
 
 ```json
 {
@@ -50,26 +82,22 @@ Call `nock.check_before_apply` with your migration SQL and paths:
 }
 ```
 
-Optional
-- `policyPath` may be provided (JSON only). If omitted, a safe default policy is used. YAML policy paths are not supported in MCP at this time; use the default or convert to JSON.
-- `pgVersion` can override autodetection for specific checks.
-
 ## Verdict JSON parity
 
-The JSON returned by `check_before_apply` is the same schema and content as:
+The JSON returned by `check_before_apply` matches the CLI for the same inputs:
 
 ```bash
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@0.1.6 check \
   --sql migrations/001.sql \
-  --estate .nock/estate.json \
+  --estate .nock/estate.json \ 
   --format json
 ```
 
-This parity is covered by golden tests in this repo.
+Hosted parity is also covered: same SQL + same hosted estate → MCP verdict JSON ≡ CLI JSON.
 
 ## Non-goals
 
 - No apply: MCP does not run or apply migrations.
-- No database connection: MCP tools read local files you pass; they do not connect to Postgres.
+- No database connection: MCP tools read hosted snapshots (Team) or local files you pass; they do not connect to Postgres.
 - No hosted MCP: the server runs locally via stdio; there’s no managed MCP endpoint.
 
