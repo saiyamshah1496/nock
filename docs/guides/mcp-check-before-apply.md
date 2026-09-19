@@ -1,6 +1,6 @@
 # MCP: check before apply
 
-Use Nock in an agent loop to check a migration before applying it. For Nock Team partners, MCP prefers your hosted estate (token) and returns the same verdict JSON as the CLI. Free/local still works with a file path. You can also provide a `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh the estate live from Postgres before checking (Path C thin).
+Use Nock in an agent loop to check a migration before applying it. For Nock Team partners, MCP prefers your hosted estate (token) and returns the same verdict JSON as the CLI. Free/local still works with a file path. For demos, you can also provide a `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh the estate live from Postgres before checking — this is experimental Path C thin.
 
 Positioning
 - MCP is an advisory “check-before-apply” surface for agents.
@@ -76,7 +76,7 @@ Behavior
 Optional
 - `policyPath` (JSON only). If omitted, a safe default policy is used. YAML policy paths are not supported in MCP at this time; use the default or convert to JSON.
 - `pgVersion` can override autodetection for specific checks.
-- Path C thin: pass `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh estate live from Postgres before evaluating. Example:
+- Experimental Path C thin: pass `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh estate live from Postgres before evaluating. Example:
   ```json
   {
     "sql": "CREATE INDEX idx_sessions_archived_at ON public.sessions(archived_at);",
@@ -111,6 +111,6 @@ Hosted parity is also covered: same SQL + same hosted estate → MCP verdict JSO
 ## Non-goals
 
 - No apply: MCP does not run or apply migrations.
-- No database connection (production path): MCP tools read hosted snapshots (Team) or local files you pass. The `databaseUrl` path is a thin Path C convenience to refresh an estate before checking; it reads only catalogue metadata (no row data).
+- No database connection (production): MCP tools read hosted snapshots (Team) or local files you pass. The `databaseUrl` path is an experimental Path C convenience to refresh an estate before checking; it reads only catalogue metadata (no row data). Prefer a read‑only role and a replica.
 - No hosted MCP: the server runs locally via stdio; there’s no managed MCP endpoint.
 

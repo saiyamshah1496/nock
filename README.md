@@ -73,10 +73,10 @@ Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 Two ways to provide an estate (plus a Path C live-refresh):
 - Bring your own estate — paste/commit `.nock/estate.json`: see [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
 - Sync estate yourself — run `nock sync-estate` on your runner: see [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
-- Path C thin (lasting): pass `--database-url` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to have `nock check` refresh the estate from Postgres just-in-time, then evaluate:
+- Experimental Path C thin (live estate from Postgres): pass `--database-url` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to have `nock check` refresh the estate from Postgres on the fly, then evaluate:
   ```bash
   npx @nockhq/cli@latest check \
-    --sql examples/live-estate-database-url/bad.sql \
+    --sql examples/path-c-live/bad.sql \
     --database-url "$DATABASE_URL" \
     --format json
   ```
@@ -159,7 +159,7 @@ Exit code: 2 (fail). 1 = warn when `fail_on=yellow`. 0 = pass.
 
 Generate `.nock/estate.json` with a read‑only role (prefer a replica) on your own GitHub runner and use it in PR checks. Guide: [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
 
-You can also skip writing a file and run a single-shot check with `--database-url` or env `DATABASE_URL`/`SUPABASE_DB_URL` (Path C thin). The free path remains BYO/self‑sync; Team connectors (OAuth) will arrive later.
+For demos (Path C demo kit), you can also skip writing a file and run a single‑shot check with `--database-url` or env `DATABASE_URL`/`SUPABASE_DB_URL`. This is experimental Path C (live estate from Postgres) and not a replacement for the BYO/self‑sync path used in CI.
 
 ## Add Nock to GitHub Actions
 
