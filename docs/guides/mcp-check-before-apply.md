@@ -9,7 +9,14 @@ Positioning
 
 ## Install and configure (Cursor/Claude MCP)
 
-Option A — via npx (recommended)
+This repo ships committed IDE configs so a local Cursor/VS Code window gets the same file-based Nock session as the CLI:
+
+- Cursor: [`.cursor/mcp.json`](../../.cursor/mcp.json)
+- VS Code: [`.vscode/mcp.json`](../../.vscode/mcp.json)
+
+Both start `packages/mcp/dist/bin.js` with `NOCK_WORKSPACE=${workspaceFolder}`. Build first (`pnpm --filter @nockhq/mcp build` or `pnpm build`).
+
+Option A — via npx (recommended for other projects)
 
 ```json
 {
@@ -22,14 +29,15 @@ Option A — via npx (recommended)
 }
 ```
 
-Option B — from source (this repo)
+Option B — from source (this repo; same as the committed IDE files)
 
 ```json
 {
   "mcpServers": {
     "nock": {
       "command": "node",
-      "args": ["./packages/mcp/dist/bin.js"]
+      "args": ["${workspaceFolder}/packages/mcp/dist/bin.js"],
+      "env": { "NOCK_WORKSPACE": "${workspaceFolder}" }
     }
   }
 }
@@ -38,6 +46,34 @@ Option B — from source (this repo)
 Notes
 - Transport: stdio (no network port). The `@nockhq/mcp` package provides a `nock-mcp` bin that speaks MCP over stdio.
 - Hosted estate + push is separate and not part of this PR.
+
+## Session and files (IDE)
+
+Like the local CLI (`--sql` / `--estate` file paths), MCP can see the workspace session and files:
+
+| Tool / resource | Purpose |
+|-----------------|---------|
+| `get_session` / `nock://session` | Workspace root, preferred `.nock/estate.json`, policy JSON, and discovered SQL/estate/policy files. Never returns secret values — only whether `DATABASE_URL` or a Team token is set. |
+| `list_files` / `nock://files` | Same file list (`.nock/`, `migrations/`, `fixtures/`, `examples/`, root `estate.json` / `policy*.json`). |
+| `read_file` | Read one of those files. Paths must stay inside the workspace; `node_modules` / `dist` / `.git` are rejected. |
+| `check_before_apply` | Accepts `sql` **or** `sqlPath` (a workspace `.sql` file). When `estatePath` is omitted, uses `.nock/estate.json` from the session if present. |
+
+Example — check a file the way the CLI does:
+
+```json
+{
+  "sqlPath": "migrations/001.sql",
+  "estatePath": ".nock/estate.json"
+}
+```
+
+Or rely on the session’s conventional estate file:
+
+```json
+{
+  "sqlPath": "examples/live-estate-database-url/bad.sql"
+}
+```
  
  
 

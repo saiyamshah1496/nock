@@ -15,7 +15,7 @@ For product usage, see:
 ├─ packages/
 │  ├─ core/      # @nockhq/core — parse → classify → rules → VerdictV1 (matchers live here)
 │  ├─ cli/       # @nockhq/cli  — bin `nock` (commander)
-│  ├─ mcp/       # @nockhq/mcp  — local MCP server tools + parity tests
+│  ├─ mcp/       # @nockhq/mcp  — local MCP server tools + IDE session/files + parity tests
 │  ├─ action/    # @nockhq/action — GitHub Action runner + comment renderer
 │  ├─ api/       # @nockhq/api — thin hosted estate API (Path B+)
 │  └─ secure-stats/ # @nockhq/secure-estate — AES-GCM envelope utils shared by CLI/API
