@@ -70,9 +70,17 @@ npx @nockhq/cli@latest check \
 
 Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
-Two ways to provide an estate:
+Two ways to provide an estate (plus an experimental live-refresh):
 - Bring your own estate — paste/commit `.nock/estate.json`: see [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
 - Sync estate yourself — run `nock sync-estate` on your runner: see [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
+- Experimental (hackathon Path C thin): pass `--database-url` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to have `nock check` refresh the estate from Postgres on the fly, then evaluate:
+  ```bash
+  npx @nockhq/cli@latest check \
+    --sql examples/hackathon-supabase/bad.sql \
+    --database-url "$DATABASE_URL" \
+    --format json
+  ```
+  Prefer a read‑only role and a replica. No row data is read; only Phase‑1 catalogue (columns, constraints, indexes) and table sizes.
 
 ### Example: input → output
 
@@ -150,6 +158,8 @@ Exit code: 2 (fail). 1 = warn when `fail_on=yellow`. 0 = pass.
 ## Keep estate fresh with sync-estate
 
 Generate `.nock/estate.json` with a read‑only role (prefer a replica) on your own GitHub runner and use it in PR checks. Guide: [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
+
+For hackathon demos, you can also skip writing a file and run a single-shot check with `--database-url` or env `DATABASE_URL`/`SUPABASE_DB_URL`. This is experimental and not a replacement for the BYO/self‑sync path.
 
 ## Add Nock to GitHub Actions
 

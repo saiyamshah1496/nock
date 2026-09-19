@@ -1,6 +1,6 @@
 # MCP: check before apply
 
-Use Nock in an agent loop to check a migration before applying it. For Nock Team partners, MCP prefers your hosted estate (token) and returns the same verdict JSON as the CLI. Free/local still works with a file path.
+Use Nock in an agent loop to check a migration before applying it. For Nock Team partners, MCP prefers your hosted estate (token) and returns the same verdict JSON as the CLI. Free/local still works with a file path. For hackathon demos, you can also provide a `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh the estate live from Postgres before checking (experimental Path C thin).
 
 Positioning
 - MCP is an advisory “check-before-apply” surface for agents.
@@ -76,6 +76,13 @@ Behavior
 Optional
 - `policyPath` (JSON only). If omitted, a safe default policy is used. YAML policy paths are not supported in MCP at this time; use the default or convert to JSON.
 - `pgVersion` can override autodetection for specific checks.
+- Experimental (hackathon Path C thin): pass `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh estate live from Postgres before evaluating. Example:
+  ```json
+  {
+    "sql": "CREATE INDEX idx_sessions_archived_at ON public.sessions(archived_at);",
+    "databaseUrl": "postgres://user:pass@host:5432/db"
+  }
+  ```
 
 ## Local-only (free) — fallback
 
@@ -104,6 +111,6 @@ Hosted parity is also covered: same SQL + same hosted estate → MCP verdict JSO
 ## Non-goals
 
 - No apply: MCP does not run or apply migrations.
-- No database connection: MCP tools read hosted snapshots (Team) or local files you pass; they do not connect to Postgres.
+- No database connection (production): MCP tools read hosted snapshots (Team) or local files you pass. The `databaseUrl` path is an experimental hackathon convenience to refresh an estate before checking; it reads only catalogue metadata (no row data).
 - No hosted MCP: the server runs locally via stdio; there’s no managed MCP endpoint.
 

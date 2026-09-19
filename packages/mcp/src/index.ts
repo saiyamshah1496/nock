@@ -19,7 +19,7 @@ export async function startMcpServer() {
     {
       title: "Check migration before apply",
       description:
-        "Returns Nock verdict JSON for a migration SQL against a hosted (token) or local estate snapshot (no DB connection).",
+        "Returns Nock verdict JSON for a migration SQL. Prefers hosted estate (token) or local file; optionally refreshes estate live from Postgres when databaseUrl/env is provided (experimental).",
       // Zod input schema for validation
       inputSchema: z
         .object({
@@ -30,6 +30,7 @@ export async function startMcpServer() {
           estateApiUrl: z.string().optional(),
           estateApiToken: z.string().optional(),
           apiBaseUrl: z.string().optional(),
+          databaseUrl: z.string().optional(),
         })
         .strip(),
     },
@@ -42,6 +43,7 @@ export async function startMcpServer() {
         estateApiUrl: args?.estateApiUrl ? String(args.estateApiUrl) : undefined,
         estateApiToken: args?.estateApiToken ? String(args.estateApiToken) : undefined,
         apiBaseUrl: args?.apiBaseUrl ? String(args.apiBaseUrl) : undefined,
+        databaseUrl: args?.databaseUrl ? String(args.databaseUrl) : undefined,
       });
       return { content: [{ type: "json", json: verdict }] };
     }
@@ -139,7 +141,11 @@ export async function checkBeforeApplyHostedOrLocal(args: {
   estateApiUrl?: string;
   estateApiToken?: string;
   apiBaseUrl?: string;
+  databaseUrl?: string;
 }) {
+  // Optional live refresh (experimental Path C thin)
+  const dbUrlEnv = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || "";
+  const dbUrl = (args.databaseUrl || dbUrlEnv || "").trim();
   const estateApiUrl: string = String(args?.estateApiUrl || "");
   const tokenInput: string = String(args?.estateApiToken || "");
   const tokenEnv =
@@ -155,7 +161,17 @@ export async function checkBeforeApplyHostedOrLocal(args: {
     ? new URL(estateApiUrl).origin
     : "";
   let estate: EstateSnapshot | null = null;
-  if (estateApiUrl && estateApiToken) {
+  if (dbUrl) {
+    // Live sync from DB takes highest precedence when provided
+    try {
+      const { runSyncStats } = await import("./syncEstate.js");
+      estate = await runSyncStats({ databaseUrl: dbUrl });
+    } catch (err) {
+      throw new Error(
+        `Live estate refresh failed: ${(err as any)?.message || String(err)}`
+      );
+    }
+  } else if (estateApiUrl && estateApiToken) {
     try {
       const res = await fetch(estateApiUrl, {
         headers: { Accept: "application/json", Authorization: `Bearer ${estateApiToken}` },
