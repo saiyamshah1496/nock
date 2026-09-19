@@ -252,6 +252,10 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 - Nock Team partner setup (design partners) — [`docs/guides/nock-team-partner-setup.md`](docs/guides/nock-team-partner-setup.md)
  - Architecture diagram — [`docs/architecture/README.md`](docs/architecture/README.md)
 
+### Architecture (overview)
+
+![Nock architecture](docs/architecture/nock-architecture.png)
+
 ## Nock Team (hosted estate + org policy + audit + export)
 
 Nock Team thin-slice is live for design partners (invite): hosted estate with envelope encryption, organization policy, audit trails, and export. No Stripe / no self-serve signup yet. For onboarding, see [`docs/guides/nock-team-partner-setup.md`](docs/guides/nock-team-partner-setup.md).

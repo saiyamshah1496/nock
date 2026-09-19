@@ -1,9 +1,12 @@
 ### Nock architecture diagram
 
-- Open/edit the Excalidraw source: `docs/architecture/nock-architecture.excalidraw`
+![Nock architecture](./nock-architecture.png)
+
+- Edit source: `docs/architecture/nock-architecture.excalidraw`
   - Web: open `https://excalidraw.com` → Open → select the file
   - VS Code: install the “Excalidraw” extension and open the `.excalidraw` file directly
-- Static render for docs: `docs/architecture/nock-architecture.svg` (kept in sync with the source)
+- Note: `.excalidraw` is JSON for editing (no GitHub preview). Prefer the PNG above for embeds.
+- Also included: `docs/architecture/nock-architecture.svg` (GitHub‑safe SVG, inline attributes)
 
 What it shows:
 - Surfaces (CLI, GitHub Action, MCP, GitHub App) on the left
