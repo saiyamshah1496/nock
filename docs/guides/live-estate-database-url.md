@@ -5,8 +5,8 @@ Nock is an estate‑aware Postgres migration safety gate — not a pattern linte
 This guide shows a lasting, thin Path C slice that refreshes an estate snapshot directly from Postgres using a `DATABASE_URL`/`SUPABASE_DB_URL` just before running a check. No row data is read or stored.
 
 Notes
-- Live refresh is a convenience for local/agent workflows. The recommended free mode remains BYO/self‑sync (`nock sync-estate` on your runner) and/or Team hosted estate.
-- This is a thin step toward Team connectors (OAuth, managed refresh) to come later.
+- FREE forever: just‑in‑time catalogue refresh (no file write); same read‑only grants as `sync-estate`.
+- Works alongside the free BYO estate file and `nock sync-estate` paths.
 - CLI ≡ MCP verdicts for the same inputs and policy.
 
 ## Prerequisites
@@ -78,5 +78,5 @@ Call the tool with your SQL — the server will refresh the estate then evaluate
 1) “Nock gates risky Postgres DDL based on your estate — sizes + catalogue. I’ll use a `DATABASE_URL` to refresh the estate just‑in‑time before checking a migration.”  
 2) “Bad path: non‑concurrent index on hot `sessions` with no `lock_timeout`.” → red (`R001`, `R010`).  
 3) “Good path: set `lock_timeout` and use `CONCURRENTLY`.” → pass.  
-4) “For CI, keep estate fresh with `nock sync‑estate` (BYO/self‑sync) or Team hosted; live refresh is a convenience for local/agent loops.”  
+4) “For CI, keep estate fresh with `nock sync‑estate` (BYO/self‑sync). Team hosted estate + push is separate and not part of this PR.”  
 
