@@ -52,7 +52,8 @@ Scene 4 — Remediate and re-check
 
 Optional Scene 5 — B/C quick mentions
 7) B-case (volatile DEFAULT) and C-case (NOT NULL) are included as pairs under `sql/B-*` and `sql/C-*`.
-   - For C-case on prod, ensure `user_id` exists first (see `sql/prod-add-user-id.sql`).
+   - Prod has nullable `user_id` and ~500k rows; `C-bad` (SET NOT NULL) will trigger R005 on prod.
+   - If running locally and `user_id` is missing, add it first (see `sql/prod-add-user-id.sql`).
 
 Close
 - Reiterate: MCP is check-before-apply; Nock never applies migrations. All demo-only disclaimers live in `examples/demo-sessionly/README.md`, not in the UI.
