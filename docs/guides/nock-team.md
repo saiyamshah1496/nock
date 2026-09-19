@@ -10,3 +10,5 @@ Design partners (invite) — thin-slice is live.
 
 Partner setup guide (design partners): [`docs/guides/nock-team-partner-setup.md`](./nock-team-partner-setup.md)
 
+MCP (agents) using hosted estate: [`docs/guides/mcp-check-before-apply.md`](./mcp-check-before-apply.md)
+

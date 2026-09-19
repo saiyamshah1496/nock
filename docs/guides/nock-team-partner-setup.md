@@ -41,6 +41,7 @@ Use either the packaged Action or the CLI workflow. Both prefer hosted by token 
 - Current design‑partner API base: `https://nock.saiyamshah1496.workers.dev`
 - Default API base for examples: `https://nock.saiyamshah1496.workers.dev`
 - Repo identifier pattern: `/v1/estate/:owner/:repo`
+- MCP (agents): see `docs/guides/mcp-check-before-apply.md` for hosted estate usage (no file download required).
 
 Action example (replace `owner/repo`):
 
