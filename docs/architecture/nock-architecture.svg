@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Nock architecture (v0.1.x)</title>
+  <desc id="desc">High-level architecture showing Surfaces, Core engine, Estate inputs, Hosted Team (Cloudflare), and Outputs, with data paths and annotations.</desc>
+  <defs>
+    <style>
+      .box { fill: #f3f4f6; stroke: #111827; stroke-width: 2; rx: 8; }
+      .t-title { font: 700 28px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #111827; }
+      .t-h { font: 600 20px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #111827; }
+      .t { font: 16px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #111827; }
+      .muted { fill: #6b7280; }
+      .arrow { stroke: #6b7280; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 6 6; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="800" y="60" text-anchor="middle" class="t-title">Nock architecture (v0.1.x)</text>
+
+  <!-- Surfaces -->
+  <g transform="translate(80,160)">
+    <rect class="box" width="340" height="210"/>
+    <text x="16" y="28" class="t-h">Surfaces (left)</text>
+    <text x="16" y="62" class="t">" CLI (@nockhq/cli)</text>
+    <text x="16" y="86" class="t">" GitHub Action</text>
+    <text x="16" y="110" class="t">" MCP (@nockhq/mcp)</text>
+    <text x="16" y="134" class="t">" GitHub App (DDL Gate)</text>
+  </g>
+
+  <!-- Core -->
+  <g transform="translate(560,160)">
+    <rect class="box" width="460" height="220"/>
+    <text x="16" y="28" class="t-h">Core: @nockhq/core engine</text>
+    <text x="16" y="64" class="t">parse/classify DDL ’ estate context ’ policy/rules (R00x)</text>
+    <text x="16" y="88" class="t">’ verdict JSON (never applies migrations)</text>
+  </g>
+
+  <!-- Estate inputs -->
+  <g transform="translate(80,440)">
+    <rect class="box" width="340" height="280"/>
+    <text x="16" y="26" class="t-h">Estate inputs</text>
+    <text x="16" y="58" class="t">Path A: committed estate.json / paste</text>
+    <text x="16" y="82" class="t">Path B: nock sync-estate (customer DB, read-only role) ’ file</text>
+    <text x="16" y="106" class="t">Path B+: push encrypted estate to hosted API (Team)</text>
+    <text x="16" y="142" class="t">Live refresh: --database-url / MCP databaseUrl</text>
+    <text x="16" y="166" class="t">(client-side catalogue refresh, check-only; free path)</text>
+  </g>
+
+  <!-- Hosted Team (Cloudflare) -->
+  <g transform="translate(1120,160)">
+    <rect class="box" width="460" height="260"/>
+    <text x="16" y="26" class="t-h">Hosted Team (Cloudflare)</text>
+    <text x="16" y="58" class="t">Worker (Hono)</text>
+    <text x="16" y="82" class="t">D1 (orgs/tokens, policy knobs, audit)</text>
+    <text x="16" y="106" class="t">R2 (encrypted estate blobs)</text>
+    <text x="16" y="130" class="t">org API token auth</text>
+  </g>
+
+  <!-- Outputs -->
+  <g transform="translate(1120,520)">
+    <rect class="box" width="460" height="170"/>
+    <text x="16" y="26" class="t-h">Outputs</text>
+    <text x="16" y="58" class="t">pass / fail / yellow verdict + remediation hints</text>
+    <text x="16" y="82" class="t">’ CI check / PR comment / MCP to agent</text>
+  </g>
+
+  <!-- Annotations -->
+  <text x="790" y="500" class="t muted" text-anchor="middle">
+    Postgres-only v1 " check-only (never APPLY) " same engine everywhere
+  </text>
+
+  <!-- Arrows -->
+  <!-- Surfaces -> Core -->
+  <line class="arrow" x1="420" y1="265" x2="560" y2="265"/>
+
+  <!-- Estate (A/B) -> Core -->
+  <line class="arrow" x1="420" y1="540" x2="560" y2="540"/>
+  <text x="440" y="520" class="t muted">Path A / B</text>
+
+  <!-- Estate (B+) -> Team (dashed) -->
+  <line class="arrow dashed" x1="420" y1="600" x2="1120" y2="600"/>
+  <text x="760" y="585" class="t muted" text-anchor="middle">Path B+: push encrypted estate to hosted API</text>
+
+  <!-- Core -> Outputs -->
+  <line class="arrow" x1="1020" y1="420" x2="1120" y2="520"/>
+
+  <!-- Live refresh label -->
+  <text x="720" y="300" class="t muted">Live refresh (--database-url / MCP databaseUrl)</text>
+</svg>
