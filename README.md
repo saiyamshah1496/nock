@@ -10,9 +10,9 @@ Nock never applies migrations. CLI ≡ Action ≡ MCP — the same verdict JSON 
 Use directly with npx (recommended):
 
 ```bash
-npx @nockhq/cli@0.1.5 --help
+npx @nockhq/cli@latest --help
 # or run a check
-npx @nockhq/cli@0.1.5 check --sql migrations/001.sql --estate .nock/estate.json --format json
+npx @nockhq/cli@latest check --sql migrations/001.sql --estate .nock/estate.json --format json
 ```
 
 Or install globally:
@@ -47,10 +47,34 @@ Minimal shape:
 }
 ```
 
+Add catalogue (optional but recommended):
+
+```json
+{
+  "schema_version": "1",
+  "captured_at": "2026-09-16T05:00:00Z",
+  "pg_version": "16.4",
+  "tables": [
+    { "schema": "public", "name": "sessions", "n_live_tup": 1040000000, "replica_identity": "d" }
+  ],
+  "columns": [
+    { "schema": "public", "table": "sessions", "name": "id", "type_name": "uuid", "not_null": true, "has_default": true }
+  ],
+  "constraints": [
+    { "schema": "public", "table": "sessions", "name": "sessions_pkey", "kind": "pk", "columns": ["id"], "validated": true }
+  ],
+  "indexes": [
+    { "schema": "public", "table": "sessions", "name": "idx_sessions_archived_at", "columns": ["archived_at"], "unique": false, "valid": true, "ready": true, "immediate": true }
+  ]
+}
+```
+
+Omit vs empty: if a catalogue section key is omitted, catalogue‑aware rules fail‑closed; a present‑but‑empty `[]` means “synced; none found”.
+
 ## Quick start: check a migration with an estate file
 
 ```bash
-npx @nockhq/cli@0.1.5 check \
+npx @nockhq/cli@latest check \
   --sql fixtures/railway_oct.sql \
   --estate fixtures/estate_billion.json \
   --format json
@@ -84,7 +108,7 @@ Input B — estate excerpt (`fixtures/estate_billion.json`)
 Command
 
 ```bash
-npx @nockhq/cli@0.1.5 check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
+npx @nockhq/cli@latest check --sql fixtures/railway_oct.sql --estate fixtures/estate_billion.json --format json
 ```
 
 Output (real CLI JSON)
