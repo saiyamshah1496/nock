@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .nock
-          npx @nockhq/cli@0.1.6 sync-estate \
+          npx @nockhq/cli@latest sync-estate \
             --database-url "$PG_ESTATE_URL" \
             --out .nock/estate.json \
             --push-url "https://nock.saiyamshah1496.workers.dev/v1/estate/my-repo" \

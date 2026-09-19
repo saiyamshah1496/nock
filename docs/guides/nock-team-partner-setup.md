@@ -72,7 +72,7 @@ CLI example (same behavior as Action):
 
 ```bash
 # Prefer hosted by token; falls back to --estate/--policy when not provided
-npx @nockhq/cli@0.1.6 check \
+npx @nockhq/cli@latest check \
   --sql migrations/001.sql \
   --estate-api-url "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo" \
   --estate-api-token "$NOCK_TEAM_API_TOKEN" \
@@ -88,7 +88,7 @@ Freshness behavior (locked):
 Getting catalogue into hosted checks
 - After upgrading to CLI 0.1.6+, re‑run your scheduled `sync-estate --push-url ...` (or trigger it once manually) so the hosted snapshot includes `columns[]`/`constraints[]`/`indexes[]`.
 - Until you re‑push, the hosted estate may omit catalogue; catalogue‑aware rules (e.g. R005/R017) remain fail‑closed and will not soften/suppress.
-- Keep npx pins to `@nockhq/cli@0.1.6` in your workflows.
+- Keep npx pins to `@nockhq/cli@latest` in your workflows.
 
 ## 3) (Optional) Sync and push your estate on a schedule
 
@@ -115,7 +115,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .nock
-          npx @nockhq/cli@0.1.6 sync-estate \
+          npx @nockhq/cli@latest sync-estate \
             --database-url "$PG_ESTATE_URL" \
             --out .nock/estate.json \
             --push-url "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo" \
