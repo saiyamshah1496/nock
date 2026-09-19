@@ -86,7 +86,7 @@ Freshness behavior (locked):
 - If older than 30 days, size‑dependent gates are neutralized; non‑size rules can still fail.
 
 Getting catalogue into hosted checks
-- After upgrading to CLI 0.1.6+, re‑run your scheduled `sync-estate --push-url ...` (or trigger it once manually) so the hosted snapshot includes `columns[]`/`constraints[]`/`indexes[]`.
+- After upgrading to current `@latest` (or any recent CLI that emits the catalogue), re‑run your scheduled `sync-estate --push-url ...` (or trigger it once manually) so the hosted snapshot includes `columns[]`/`constraints[]`/`indexes[]`.
 - Until you re‑push, the hosted estate may omit catalogue; catalogue‑aware rules (e.g. R005/R017) remain fail‑closed and will not soften/suppress.
 - Keep npx pins to `@nockhq/cli@latest` in your workflows.
 

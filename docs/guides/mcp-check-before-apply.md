@@ -37,7 +37,7 @@ Option B — from source (this repo)
 
 Notes
 - Transport: stdio (no network port). The `@nockhq/mcp` package provides a `nock-mcp` bin that speaks MCP over stdio.
-- Team token (optional): set `NOCK_TEAM_API_TOKEN` in your environment so MCP can fetch your hosted estate/policy. Aliases also accepted: `NOCK_ESTATE_API_TOKEN`, `NOCK_STATS_API_TOKEN`.
+- Team token (optional): you can pass it inline as `estateApiToken` in tool calls, or set `NOCK_TEAM_API_TOKEN` in your environment so MCP can fetch your hosted estate/policy. Aliases also accepted: `NOCK_ESTATE_API_TOKEN`, `NOCK_STATS_API_TOKEN`.
   - Example (Cursor settings or host supports env on MCP servers):
     ```json
     {
@@ -57,19 +57,20 @@ Notes
 
 ## First tool call — hosted (Team)
 
-Team partners should pass the hosted estate URL; you do not need to download the estate to a file first.
+Team partners should pass the hosted estate URL and a token; you do not need to download the estate to a file first.
 
 Call `nock.check_before_apply` with your migration SQL and hosted fields:
 
 ```json
 {
   "sql": "ALTER TABLE public.sessions ADD COLUMN last_seen_at timestamp with time zone;",
-  "estateApiUrl": "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo"
+  "estateApiUrl": "https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo",
+  "estateApiToken": "…your-org-token…"
 }
 ```
 
 Behavior
-- When `estateApiUrl` + a valid token are present, MCP fetches the hosted estate and organization policy (policy via the API base derived from `estateApiUrl`; you can also pass `apiBaseUrl` explicitly).
+- When `estateApiUrl` + a valid token are present (passed as `estateApiToken` or via env), MCP fetches the hosted estate and organization policy (policy via the API base derived from `estateApiUrl`; you can also pass `apiBaseUrl` explicitly).
 - If hosted fetch is unavailable, MCP falls back to `estatePath` when provided; otherwise it returns a clear error (no silent empty estate).
 
 Optional
