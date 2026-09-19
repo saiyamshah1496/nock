@@ -6,10 +6,10 @@ Status: initial guidance. Managed providers vary; mark caveats as UNVERIFIED whe
 
 ## What `sync-estate` reads (Phase‑1)
 
-System catalogs and stats it selects from:
+System catalogs and statistics views it selects from:
 - `pg_catalog.pg_class`
 - `pg_catalog.pg_namespace`
-- `pg_catalog.pg_stat_user_tables`  — row count + vac stats (provider defaults vary; see notes)
+- `pg_catalog.pg_stat_user_tables`  — row count + vacuum statistics (provider defaults vary; see notes)
 - `pg_catalog.pg_attribute`         — columns (presence‑only `has_default`, never expression text)
 - `pg_catalog.pg_constraint`        — PK/UNIQUE/FK/CHECK metadata (no expression text)
 - `pg_catalog.pg_index`             — index metadata (column list, flags)
@@ -41,7 +41,7 @@ GRANT USAGE ON SCHEMA public TO nock_estate;
 -- Size functions (pg_total_relation_size / pg_indexes_size) are callable without extra GRANTs.
 
 -- Managed PG quirk (UNVERIFIED across all providers):
--- If pg_stat_user_tables is restricted, grant stats reader:
+-- If pg_stat_user_tables is restricted, grant the statistics reader role:
 --   GRANT pg_read_all_stats TO nock_estate;
 ```
 
