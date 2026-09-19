@@ -70,7 +70,7 @@ npx @nockhq/cli@latest check \
 
 Exit codes: 0 pass, 1 warn-only (yellow when fail_on=yellow), 2 fail.
 
-Two ways to provide an estate (plus a Path C live-refresh):
+ Three free modes to provide an estate:
 - Bring your own estate — paste/commit `.nock/estate.json`: see [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
 - Sync estate yourself — run `nock sync-estate` on your runner: see [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
 - Experimental Path C thin (live estate from Postgres): pass `--database-url` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to have `nock check` refresh the estate from Postgres on the fly, then evaluate:
@@ -241,6 +241,7 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 
 - Quick start: check a migration with an estate file — [`docs/guides/quick-start-estate-file.md`](docs/guides/quick-start-estate-file.md)
 - Keep estate fresh with sync-estate — [`docs/guides/sync-estate.md`](docs/guides/sync-estate.md)
+- Live estate from DATABASE_URL (Path C thin) — [`docs/guides/live-estate-database-url.md`](docs/guides/live-estate-database-url.md)
 - Grants for sync-estate — [`docs/guides/grants-sync-estate.md`](docs/guides/grants-sync-estate.md)
 - Estate file path reference — [`docs/guides/estate-path.md`](docs/guides/estate-path.md)
 - MCP: check before apply — [`docs/guides/mcp-check-before-apply.md`](docs/guides/mcp-check-before-apply.md)

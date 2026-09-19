@@ -1,11 +1,11 @@
-# Path C thin: live estate from DATABASE_URL (CLI + MCP)
+# Path C thin — live estate from DATABASE_URL (CLI+MCP)
 
 Nock is an estate‑aware Postgres migration safety gate — not a pattern linter and not a proxy. It evaluates DDL against your estate (sizes + Phase‑1 catalogue facts: columns, constraints, indexes) and a policy to approve or block before merge.
 
 This guide shows a lasting, thin Path C slice that refreshes an estate snapshot directly from Postgres using a `DATABASE_URL`/`SUPABASE_DB_URL` just before running a check. No row data is read or stored.
 
 Notes
-- FREE forever: just‑in‑time catalogue refresh (no file write); same read‑only grants as `sync-estate`.
+- FREE FOREVER: just‑in‑time catalogue refresh (no file write); same read‑only grants as `sync-estate`.
 - Works alongside the free BYO estate file and `nock sync-estate` paths.
 - CLI ≡ MCP verdicts for the same inputs and policy.
 
@@ -80,3 +80,13 @@ Call the tool with your SQL — the server will refresh the estate then evaluate
 3) “Good path: set `lock_timeout` and use `CONCURRENTLY`.” → pass.  
 4) “For CI, keep estate fresh with `nock sync‑estate` (BYO/self‑sync). Team hosted estate + push is separate and not part of this PR.”  
 
+## What this reads from Postgres (catalogue only)
+
+Path C thin refreshes the same catalogue/stats as `sync-estate` (no row data):
+- Tables: joins `pg_class` + `pg_namespace` + `pg_stat_user_tables`, plus size functions (e.g., `pg_relation_size`, `pg_total_relation_size`) to collect table names, schemas, live row estimates, and sizes.
+- Columns: from `pg_attribute` to list column names and nullability; we record the presence of a default via a boolean flag only — we do not store default expression text.
+- Constraints: from `pg_constraint` to list keys (PK/UNIQUE/FK/CHECK) and validation status; CHECK expression text is not stored.
+- Indexes: from `pg_index` (and related name lookups) to capture index names and which columns they cover; expression indexes appear with empty `columns: []` (no expression text).
+- Explicit: Nock never SELECTs application table row data.
+
+Grants for the least‑privilege read‑only role are documented here: [`docs/guides/grants-sync-estate.md`](grants-sync-estate.md).

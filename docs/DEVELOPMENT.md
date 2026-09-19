@@ -5,6 +5,7 @@ Senior-staff quickstart for contributing to Nock Phase 1.
 For product usage, see:
 - `docs/guides/quick-start-estate-file.md` (Bring your own estate)
 - `docs/guides/sync-estate.md` (Sync estate yourself)
+- `docs/guides/live-estate-database-url.md` (Path C thin — live estate from DATABASE_URL)
 - `docs/guides/nock-team-partner-setup.md` (Nock Team — design partner setup)
 
 ## Repo map
