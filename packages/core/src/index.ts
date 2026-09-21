@@ -1240,6 +1240,44 @@ export function check(input: CheckInput): VerdictV1 {
           }
         }
       }
+      // R024 — Index density on large tables (catalogue-aware, size-gated)
+      if (isRuleEnabled("R024") && cic.table && hasCatalogueSection(input.estate, "indexes")) {
+        const tbl = cic.table;
+        const tstats = findTableEstate(input.estate, tbl);
+        const nLiveRows = tstats?.n_live_tup;
+        const largeRows = policy.rules?.R024?.large_rows ?? 100_000;
+        const largeRelBytes = policy.rules?.R024?.large_relation_bytes ?? 64 * 1024 * 1024; // 64MiB
+        const hasRowCount = typeof nLiveRows === "number" && nLiveRows > 0;
+        const isLarge = hasRowCount ? nLiveRows! >= largeRows : (tstats?.relation_bytes ?? 0) >= largeRelBytes;
+        if (isLarge) {
+          const schemaLc = tbl.schema.toLowerCase();
+          const nameLc = tbl.name.toLowerCase();
+          const candidateName = cic.indexName ? cic.indexName.toLowerCase() : undefined;
+          const idxs = (input.estate.indexes ?? []).filter(
+            (ix) =>
+              ix &&
+              ix.schema.toLowerCase() === schemaLc &&
+              ix.table.toLowerCase() === nameLc &&
+              // only count live, non-invalid (valid/ready not false)
+              (ix.live === true) &&
+              (ix.valid !== false) &&
+              (ix.ready !== false) &&
+              // exclude the index being created if name matches
+              (!candidateName || ix.name.toLowerCase() !== candidateName)
+          );
+          const indexCount = idxs.length;
+          const maxIdx = policy.rules?.R024?.max_indexes_large ?? 8;
+          if (indexCount >= maxIdx) {
+            const rowsText =
+              typeof nLiveRows === "number" ? `~${formatRows(nLiveRows)} rows` : `~${Math.floor((tstats?.relation_bytes ?? 0) / (1024 * 1024))}MiB`;
+            violations.push({
+              rule_id: "R024",
+              severity: "red",
+              message: `R024: ${tbl.schema}.${tbl.name} already has ${indexCount} indexes and ${rowsText}; another index increases write cost on every insert/update. Raise policy max_indexes_large or drop an unused index first.`
+            });
+          }
+        }
+      }
       if (isRuleEnabled("R021") && (!cic.indexName || cic.indexName.length === 0)) {
         violations.push({
           rule_id: "R021",
@@ -1665,6 +1703,45 @@ export function check(input: CheckInput): VerdictV1 {
         estimated_hold_label: est ? "approximate" : undefined,
         rules_hit: hitRules
       });
+      // R024 — Index density on large tables (catalogue-aware, size-gated). Runs after R001/R010 on same statement.
+      if (isRuleEnabled("R024") && m.table && hasCatalogueSection(input.estate, "indexes")) {
+        const tbl = m.table;
+        const tstats = findTableEstate(input.estate, tbl);
+        const nLiveRows = tstats?.n_live_tup;
+        const largeRows = policy.rules?.R024?.large_rows ?? 100_000;
+        const largeRelBytes = policy.rules?.R024?.large_relation_bytes ?? 64 * 1024 * 1024; // 64MiB
+        // Co-gate: if rows is absent/0, fall back to relation_bytes
+        const hasRowCount = typeof nLiveRows === "number" && nLiveRows > 0;
+        const isLarge = hasRowCount ? nLiveRows! >= largeRows : (tstats?.relation_bytes ?? 0) >= largeRelBytes;
+        if (isLarge) {
+          const schemaLc = tbl.schema.toLowerCase();
+          const nameLc = tbl.name.toLowerCase();
+          const candidateName = m.indexName ? m.indexName.toLowerCase() : undefined;
+          const idxs = (input.estate.indexes ?? []).filter(
+            (ix) =>
+              ix &&
+              ix.schema.toLowerCase() === schemaLc &&
+              ix.table.toLowerCase() === nameLc &&
+              // only count live, non-invalid (valid/ready not false)
+              (ix.live === true) &&
+              (ix.valid !== false) &&
+              (ix.ready !== false) &&
+              // exclude the index being created if name matches
+              (!candidateName || ix.name.toLowerCase() !== candidateName)
+          );
+          const indexCount = idxs.length;
+          const maxIdx = policy.rules?.R024?.max_indexes_large ?? 8;
+          if (indexCount >= maxIdx) {
+            const rowsText =
+              typeof nLiveRows === "number" ? `~${formatRows(nLiveRows)} rows` : `~${Math.floor((tstats?.relation_bytes ?? 0) / (1024 * 1024))}MiB`;
+            violations.push({
+              rule_id: "R024",
+              severity: "red",
+              message: `R024: ${tbl.schema}.${tbl.name} already has ${indexCount} indexes and ${rowsText}; another index increases write cost on every insert/update. Raise policy max_indexes_large or drop an unused index first.`
+            });
+          }
+        }
+      }
       continue;
     }
 
@@ -1996,6 +2073,7 @@ export function check(input: CheckInput): VerdictV1 {
       "R017",
       "R018",
       "R022",
+      "R024",
     ]);
     for (const v of violations) {
       if (v.severity === "red" && sizeGated.has(v.rule_id)) {
