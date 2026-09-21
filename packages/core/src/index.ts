@@ -1268,11 +1268,13 @@ export function check(input: CheckInput): VerdictV1 {
           const indexCount = idxs.length;
           const maxIdx = policy.rules?.R024?.max_indexes_large ?? 8;
           if (indexCount >= maxIdx) {
+            const sevKnob = (policy.rules?.R024 as any)?.severity;
+            const sev: "red" | "yellow" = sevKnob === "yellow" ? "yellow" : "red";
             const rowsText =
               typeof nLiveRows === "number" ? `~${formatRows(nLiveRows)} rows` : `~${Math.floor((tstats?.relation_bytes ?? 0) / (1024 * 1024))}MiB`;
             violations.push({
               rule_id: "R024",
-              severity: "red",
+              severity: sev,
               message: `R024: ${tbl.schema}.${tbl.name} already has ${indexCount} indexes and ${rowsText}; another index increases write cost on every insert/update. Raise policy max_indexes_large or drop an unused index first.`
             });
           }
@@ -1732,11 +1734,13 @@ export function check(input: CheckInput): VerdictV1 {
           const indexCount = idxs.length;
           const maxIdx = policy.rules?.R024?.max_indexes_large ?? 8;
           if (indexCount >= maxIdx) {
+            const sevKnob = (policy.rules?.R024 as any)?.severity;
+            const sev: "red" | "yellow" = sevKnob === "yellow" ? "yellow" : "red";
             const rowsText =
               typeof nLiveRows === "number" ? `~${formatRows(nLiveRows)} rows` : `~${Math.floor((tstats?.relation_bytes ?? 0) / (1024 * 1024))}MiB`;
             violations.push({
               rule_id: "R024",
-              severity: "red",
+              severity: sev,
               message: `R024: ${tbl.schema}.${tbl.name} already has ${indexCount} indexes and ${rowsText}; another index increases write cost on every insert/update. Raise policy max_indexes_large or drop an unused index first.`
             });
           }

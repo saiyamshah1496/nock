@@ -260,5 +260,275 @@ describe("R024 — Index density on large tables", () => {
     const v = check({ sql, estate, policy });
     expect(v.violations.find((x) => x.rule_id === "R024")?.severity).toBe("red");
   });
+
+  // Additional coverage
+  it("CREATE UNIQUE INDEX at cap → red", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      indexes: Array.from({ length: 8 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: i % 2 === 0,
+        primary: i === 7 ? true : false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE UNIQUE INDEX idx_new_unique ON public.sessions(archived_at);`;
+    const policy = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy });
+    expect(v.violations.find((x) => x.rule_id === "R024")?.severity).toBe("red");
+  });
+
+  it("no estate (empty snapshot) → neutralize", () => {
+    const estate: EstateSnapshot = { tables: [] }; // no indexes section either
+    const sql = `CREATE INDEX idx_new ON public.sessions(archived_at);`;
+    const policy = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy });
+    expect(v.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
+
+  it("table absent from estate.tables → neutralize for that CREATE", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      // keep big table stats for sessions; create index on a different table not present
+      indexes: Array.from({ length: 8 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON public.missing(archived_at);`;
+    const policy = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy });
+    expect(v.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
+
+  it("indexes on other tables only, target large table has 0 → pass", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      // make indexes only on another table
+      indexes: Array.from({ length: 12 }).map((_, i) => ({
+        schema: "public",
+        table: "other_table",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["c"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON public.sessions(archived_at);`;
+    const policy = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy });
+    expect(v.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
+
+  it("large_rows boundary: == threshold and at cap → fail; threshold-1 → pass", () => {
+    // == threshold
+    const estateAt: EstateSnapshot = {
+      ...bigEstate,
+      tables: [{ schema: "public", name: "sessions", n_live_tup: 100000 }],
+      indexes: Array.from({ length: 8 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON public.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v1 = check({ sql, estate: estateAt, policy: pol });
+    expect(v1.violations.find((x) => x.rule_id === "R024")?.severity).toBe("red");
+    // threshold - 1 → pass
+    const estateBelow: EstateSnapshot = {
+      ...estateAt,
+      tables: [{ schema: "public", name: "sessions", n_live_tup: 99999 }]
+    };
+    const v2 = check({ sql, estate: estateBelow, policy: pol });
+    expect(v2.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
+
+  it("relation_bytes just under 64MiB with n_live_tup=0 + many indexes → pass", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      tables: [{ schema: "public", name: "sessions", n_live_tup: 0, relation_bytes: 64 * 1024 * 1024 - 1 }],
+      indexes: Array.from({ length: 12 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON public.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R024: { large_rows: 100000, large_relation_bytes: 64 * 1024 * 1024, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy: pol });
+    expect(v.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
+
+  it("severity knob to yellow when configured", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      indexes: Array.from({ length: 8 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON public.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8, severity: "yellow" } } as any };
+    const v = check({ sql, estate, policy: pol });
+    expect(v.violations.find((x) => x.rule_id === "R024")?.severity).toBe("yellow");
+  });
+
+  it("enabled: false disables R024 even when would fail", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      indexes: Array.from({ length: 12 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON public.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R024: { enabled: false, large_rows: 100000, max_indexes_large: 8 } } as any };
+    const v = check({ sql, estate, policy: pol });
+    expect(v.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
+
+  it("schema match: CREATE INDEX on other.sessions must not count public.sessions indexes", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      tables: [
+        { schema: "public", name: "sessions", n_live_tup: 1040000000 },
+        { schema: "other", name: "sessions", n_live_tup: 1040000000 }
+      ],
+      indexes: Array.from({ length: 12 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON other.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy: pol });
+    expect(v.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
+
+  it("CREATE INDEX IF NOT EXISTS at cap → red", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      indexes: Array.from({ length: 8 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX IF NOT EXISTS idx_new ON public.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy: pol });
+    const r = v.violations.find((x) => x.rule_id === "R024");
+    expect(r?.severity).toBe("red");
+    expect(r?.message).toContain("already has 8 indexes");
+  });
+
+  it("message includes table, index count, and guidance", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      indexes: Array.from({ length: 8 }).map((_, i) => ({
+        schema: "public",
+        table: "sessions",
+        name: `idx_${i}`,
+        unique: false,
+        primary: false,
+        valid: true,
+        ready: true,
+        live: true,
+        immediate: true,
+        columns: ["archived_at"]
+      }))
+    };
+    const sql = `CREATE INDEX idx_new ON public.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy: pol });
+    const msg = v.violations.find((x) => x.rule_id === "R024")?.message || "";
+    expect(msg).toContain("public.sessions");
+    expect(msg).toMatch(/already has 8 indexes/);
+    expect(msg).toContain("max_indexes_large");
+    expect(msg).toContain("drop an unused index");
+  });
+
+  it("only CREATE INDEX path — unrelated DDL must not emit R024", () => {
+    const estate: EstateSnapshot = { ...bigEstate, indexes: Array.from({ length: 20 }).map((_, i) => ({
+      schema: "public",
+      table: "sessions",
+      name: `idx_${i}`,
+      unique: false,
+      primary: false,
+      valid: true,
+      ready: true,
+      live: true,
+      immediate: true,
+      columns: ["archived_at"]
+    })) };
+    const sql = `ALTER TABLE public.sessions ADD COLUMN x int;`;
+    const pol = { ...policyBase, rules: { R024: { large_rows: 100000, max_indexes_large: 8 } } };
+    const v = check({ sql, estate, policy: pol });
+    expect(v.violations.find((x) => x.rule_id === "R024")).toBeUndefined();
+  });
 });
 
