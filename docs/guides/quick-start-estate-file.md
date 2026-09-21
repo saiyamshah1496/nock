@@ -10,8 +10,8 @@ Goal: run Nock in minutes and see approve/block on your migrations. CLI ≡ Acti
   pass `--database-url` (or set `DATABASE_URL`) to refresh the estate in‑memory, then evaluate
 
 Notes
-- “Estate” = table sizes + optional governance catalogue (columns, constraints, indexes). No row data.
-- Omit vs [] semantics: omitting a catalogue section key means “catalogue absent” (catalogue‑aware rules fail‑closed); a present‑but‑empty `[]` means “synced; none found”. See `docs/reference/estate-schema.md`.
+- “Estate” = table sizes + optional catalogue (columns, constraints, indexes). No row data.
+- Estate schema notes: see `docs/reference/estate-schema.md`.
 
 Custom estate path
 - Default lookup is `.nock/estate.json` on the PR head (falls back to base)

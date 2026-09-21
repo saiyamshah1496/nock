@@ -1,6 +1,8 @@
 # Nock
 
-> Nock: estate-aware approve/block for Postgres DDL — same verdict in CI and Cursor MCP. Never applies migrations.
+> Estate-aware approve/block for Postgres DDL.
+
+Same verdict in CLI, CI, and Cursor MCP. Never applies migrations.
 
 [![npm](https://img.shields.io/npm/v/%40nockhq%2Fcli.svg)](https://www.npmjs.com/package/@nockhq/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
