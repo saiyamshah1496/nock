@@ -17,3 +17,7 @@ BEGIN
   END IF;
 END$$;
 
+-- Reset per-table write counters so \"good\" CIC example reflects post-reset activity
+-- (R025 counters are since stats reset).
+SELECT pg_stat_reset_single_table_counters('public.sessions'::regclass);
+
