@@ -159,7 +159,7 @@ describe("R026 — Redundant / overlapping index", () => {
     expect(v2.violations.find((x) => x.rule_id === "R026")).toBeUndefined();
   });
 
-  it("neutralizes when any existing index on the table has unknown columns (expression-only)", () => {
+  it("still hits when some existing indexes omit columns but a comparable one has columns[]", () => {
     const estate: EstateSnapshot = {
       ...bigEstate,
       indexes: [
@@ -175,12 +175,25 @@ describe("R026 — Redundant / overlapping index", () => {
           immediate: true
           // columns omitted intentionally to simulate expression-only
         } as any
+        ,
+        {
+          schema: "public",
+          table: "sessions",
+          name: "idx_sessions_archived_at",
+          unique: false,
+          primary: false,
+          valid: true,
+          ready: true,
+          live: true,
+          immediate: true,
+          columns: ["archived_at"]
+        }
       ]
     };
     const sql = `CREATE INDEX idx_a ON public.sessions(archived_at);`;
     const pol = { ...policyBase, rules: { R026: { large_rows: 100000, large_relation_bytes: 64 * 1024 * 1024 } } };
     const v = check({ sql, estate, policy: pol });
-    expect(v.violations.find((x) => x.rule_id === "R026")).toBeUndefined();
+    expect(v.violations.find((x) => x.rule_id === "R026")).toBeDefined();
   });
 
   it("parses CONCURRENTLY forms as well", () => {
@@ -240,6 +253,30 @@ describe("R026 — Redundant / overlapping index", () => {
       indexes: []
     };
     const sql = `CREATE INDEX idx_expr ON public.sessions ((lower(archived_at)));`;
+    const pol = { ...policyBase, rules: { R026: { large_rows: 100000, large_relation_bytes: 64 * 1024 * 1024 } } };
+    const v = check({ sql, estate, policy: pol });
+    expect(v.violations.find((x) => x.rule_id === "R026")).toBeUndefined();
+  });
+
+  it("neutralizes when only expression-only indexes exist on the table (no comparable columns[])", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      indexes: [
+        {
+          schema: "public",
+          table: "sessions",
+          name: "idx_expr_only",
+          unique: false,
+          primary: false,
+          valid: true,
+          ready: true,
+          live: true,
+          immediate: true
+          // columns omitted intentionally
+        } as any
+      ]
+    };
+    const sql = `CREATE INDEX idx_a ON public.sessions(archived_at);`;
     const pol = { ...policyBase, rules: { R026: { large_rows: 100000, large_relation_bytes: 64 * 1024 * 1024 } } };
     const v = check({ sql, estate, policy: pol });
     expect(v.violations.find((x) => x.rule_id === "R026")).toBeUndefined();

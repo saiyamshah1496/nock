@@ -2272,14 +2272,9 @@ function evaluateR026IndexOverlap(
   if (!hasCatalogueSection(estate, "indexes")) return out;
   // If proposed columns cannot be resolved, neutralize
   if (!proposedColumns || proposedColumns.length === 0) return out;
-  // Neutralize if any existing index on the table lacks resolvable columns
   const schemaLc = table.schema.toLowerCase();
   const nameLc = table.name.toLowerCase();
-  const anyUnknownExisting = (estate.indexes ?? []).some(
-    (ix) => ix && ix.schema.toLowerCase() === schemaLc && ix.table.toLowerCase() === nameLc && !Array.isArray(ix.columns)
-  );
-  if (anyUnknownExisting) return out;
-  // Gather comparable existing indexes (valid, ready)
+  // Gather comparable existing indexes (valid, ready) that HAVE resolvable columns
   const candidates = (estate.indexes ?? []).filter(
     (ix) =>
       ix &&
@@ -2290,6 +2285,7 @@ function evaluateR026IndexOverlap(
       Array.isArray(ix.columns) &&
       (ix.columns as string[]).length > 0
   );
+  if (candidates.length === 0) return out; // nothing to compare against
   const want = proposedColumns.map((c) => c.toLowerCase());
   let hit: { kind: "duplicate" | "left_prefix"; idxName: string; existingIsUnique: boolean } | null = null;
   for (const ix of candidates) {
