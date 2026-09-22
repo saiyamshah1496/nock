@@ -76,6 +76,8 @@ code,pre,.mono{font-family:var(--mono)}
 /* hero */
 .hero{padding:64px 0 40px}
 .hero-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:40px;align-items:start}
+/* Allow grid children to shrink so long content doesn't force overflow */
+.hero-grid > *{min-width:0}
 @media(max-width:900px){
   .hero-grid{grid-template-columns:1fr;gap:32px}
   .nav{display:none}
@@ -132,6 +134,8 @@ code,pre,.mono{font-family:var(--mono)}
 .sql-block,.json-block{
   margin:0;font-size:12px;line-height:1.55;color:#c8ced8;
   background:#050607;border:1px solid var(--frost);border-radius:8px;padding:12px 14px;
+  /* Prefer wrapping for readability; retain scroll for tall content */
+  white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
   overflow:auto;max-height:180px
 }
 .chip{
@@ -142,11 +146,17 @@ code,pre,.mono{font-family:var(--mono)}
 .chip.pass{color:var(--pass);background:var(--pass-bg);border-color:rgba(93,222,160,.35)}
 .chip.idle{color:var(--muted)}
 .plain{
-  margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5
+  margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5;
+  /* Ensure summary never clips mid-word */
+  word-break:break-word;overflow-wrap:anywhere
 }
 .plain strong{color:var(--text);font-weight:600}
 .verdict-actions{padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(0,0,0,.2)}
-.verdict-actions .hint{font-size:12px;color:var(--dim);margin-left:auto}
+.verdict-actions .hint{
+  font-size:12px;color:var(--dim);margin-left:auto;
+  /* Allow wrapping and shrinking within the flex row */
+  min-width:0;word-break:break-word;overflow-wrap:anywhere
+}
 
 /* sections */
 section.band{padding:56px 0;border-top:1px solid var(--border)}
