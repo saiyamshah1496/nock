@@ -1,7 +1,11 @@
 ## Example: Nock — GitHub Action with hosted estate (Nock Team)
-## NOTE: The `uses:` line below assumes you've copied the packaged action
-## to `.github/actions/nock` in YOUR repo, or replaced it with a published action reference.
-## The action on this repo is in `packages/action/` and is not packaged with `dist/` here.
+## Preferred: use the subdirectory Action via a version tag:
+##   uses: saiyamshah1496/nock/packages/action@v0.1.8
+## After this PR merges, cut a new tag that includes committed dist (e.g., v0.1.9)
+## and pin to that instead.
+##
+## Alternative (not preferred): copy this action into your repo under `.github/actions/nock`
+## and reference it with `uses: ./.github/actions/nock`.
 name: Nock — Action (hosted estate)
 on:
   pull_request:
@@ -17,7 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Nock check (Action)
-        uses: ./.github/actions/nock  # replace with your published action ref if applicable
+        # Prefer pinning a version tag that includes committed dist:
+        uses: saiyamshah1496/nock/packages/action@v0.1.8
+        # Or, if testing this PR before merge, you can pin the branch SHA:
+        # uses: saiyamshah1496/nock/packages/action@<commit-sha>
         with:
           migration-path: migrations/
           # Hosted estate (Nock Team): GET last-good from hosted API
