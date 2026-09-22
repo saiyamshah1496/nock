@@ -8,3 +8,7 @@ coverage/
 .DS_Store
 *.tsbuildinfo
 
+# Keep the bundled GitHub Action artifacts committed
+!packages/action/dist/
+!packages/action/dist/**
+
