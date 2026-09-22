@@ -35,6 +35,10 @@ export interface EstateTable {
   name: string;
   n_live_tup: number;
   n_dead_tup?: number;
+  // Optional write counters from pg_stat_user_tables; omitted when unavailable
+  n_tup_ins?: number;
+  n_tup_upd?: number;
+  n_tup_del?: number;
   relation_bytes?: number;
   total_bytes?: number;
   /**
@@ -428,6 +432,57 @@ function formatRows(n?: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + "M";
   if (n >= 1_000) return (n / 1_000).toFixed(2) + "k";
   return String(n);
+}
+
+// R025 helper — write-heavy index cost on large tables
+function evaluateR025WriteHeaviness(
+  estate: EstateSnapshot,
+  policy: PolicyResolved,
+  table: TableRef | undefined
+): Violation[] {
+  const results: Violation[] = [];
+  if (!table) return results;
+  const tstats = findTableEstate(estate, table);
+  if (!tstats) return results; // neutralize when table absent from estate
+  const nIns = typeof tstats.n_tup_ins === "number" ? tstats.n_tup_ins : undefined;
+  const nUpd = typeof tstats.n_tup_upd === "number" ? tstats.n_tup_upd : undefined;
+  const nDel = typeof tstats.n_tup_del === "number" ? tstats.n_tup_del : undefined;
+  // When all counters are missing, neutralize
+  if (typeof nIns !== "number" && typeof nUpd !== "number" && typeof nDel !== "number") return results;
+  const writeSum =
+    (typeof nIns === "number" ? nIns : 0) +
+    (typeof nUpd === "number" ? nUpd : 0) +
+    (typeof nDel === "number" ? nDel : 0);
+  const yellowWrites = policy.rules?.R025?.yellow_writes ?? 100_000;
+  const redWrites = policy.rules?.R025?.red_writes ?? 1_000_000;
+  const nLiveRows = tstats?.n_live_tup;
+  const largeRows = policy.rules?.R025?.large_rows ?? 100_000;
+  const largeRelBytes = policy.rules?.R025?.large_relation_bytes ?? 64 * 1024 * 1024; // 64MiB
+  const hasRowCount = typeof nLiveRows === "number" && nLiveRows > 0;
+  const isLarge = hasRowCount ? (nLiveRows as number) >= largeRows : (tstats?.relation_bytes ?? 0) >= largeRelBytes;
+  if (writeSum >= redWrites && isLarge) {
+    const sevKnob = (policy.rules?.R025 as any)?.severity;
+    const sev: "red" | "yellow" = sevKnob === "yellow" ? "yellow" : "red";
+    const rowsText = hasRowCount
+      ? `~${formatRows(nLiveRows)} rows`
+      : `~${Math.floor((tstats?.relation_bytes ?? 0) / (1024 * 1024))}MiB`;
+    results.push({
+      rule_id: "R025",
+      severity: sev,
+      message: `R025: ${table.schema}.${table.name} is write-heavy (~${formatRows(
+        writeSum
+      )} writes since stats reset) and ${rowsText}; another index increases write maintenance on each insert/update/delete.`
+    });
+  } else if (writeSum >= yellowWrites) {
+    results.push({
+      rule_id: "R025",
+      severity: "yellow",
+      message: `R025: ${table.schema}.${table.name} is write-heavy (~${formatRows(
+        writeSum
+      )} writes); consider index cost on hot write paths.`
+    });
+  }
+  return results;
 }
 
 // R024 helper — shared between CIC and non-CIC CREATE INDEX paths
@@ -1294,6 +1349,11 @@ export function check(input: CheckInput): VerdictV1 {
         const r024 = evaluateR024IndexDensity(input.estate, policy, cic.table, cic.indexName);
         if (r024.length > 0) violations.push(...r024);
       }
+      // R025 — Write-heavy index maintenance cost (size/write-gated)
+      if (isRuleEnabled("R025") && cic.table) {
+        const r025 = evaluateR025WriteHeaviness(input.estate, policy, cic.table);
+        if (r025.length > 0) violations.push(...r025);
+      }
       if (isRuleEnabled("R021") && (!cic.indexName || cic.indexName.length === 0)) {
         violations.push({
           rule_id: "R021",
@@ -1724,6 +1784,11 @@ export function check(input: CheckInput): VerdictV1 {
         const r024 = evaluateR024IndexDensity(input.estate, policy, m.table, m.indexName);
         if (r024.length > 0) violations.push(...r024);
       }
+      // R025 — Write-heavy index maintenance cost (size/write-gated)
+      if (isRuleEnabled("R025") && m.table) {
+        const r025 = evaluateR025WriteHeaviness(input.estate, policy, m.table);
+        if (r025.length > 0) violations.push(...r025);
+      }
       continue;
     }
 
@@ -2056,6 +2121,7 @@ export function check(input: CheckInput): VerdictV1 {
       "R018",
       "R022",
       "R024",
+      "R025",
     ]);
     for (const v of violations) {
       if (v.severity === "red" && sizeGated.has(v.rule_id)) {
