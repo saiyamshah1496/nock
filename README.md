@@ -36,7 +36,37 @@ Example verdict (truncated)
 { "verdict": "fail", "violations": [ { "rule_id": "R001", "severity": "red" } ] }
 ```
 
-## Add to CI (CLI-first)
+## Add to CI (GitHub Action)
+Preferred: use the published Action from this repo’s `packages/action` subdirectory, pinned to a tag:
+
+```yaml
+name: Nock — Postgres migration safety (Action)
+on:
+  pull_request:
+    paths: ['migrations/**', '.nock/**']
+jobs:
+  nock:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: write }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Nock check (Action)
+        uses: saiyamshah1496/nock/packages/action@v0.1.8
+        # After this PR merges, cut a new tag that includes committed dist (e.g., v0.1.9)
+        # and pin to that instead.
+        with:
+          migration-path: migrations/
+          estate-path: .nock/estate.json
+          policy-path: policy.default.yml
+          fail-on: red
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Notes:
+- This Action is intentionally published from a subdirectory; GitHub Marketplace listing requires a dedicated public repo with a root `action.yml` (follow‑up item).
+- You can also test a PR branch by pinning a commit SHA in `uses: owner/repo/path@<sha>`.
+
+Alternative (CLI):
 Copy-paste into `.github/workflows/nock.yml`:
 
 ```yaml
@@ -62,7 +92,7 @@ jobs:
             --format "json" | tee nock-verdict.json
 ```
 
-Prefer CLI; a published Action is available but secondary. See [examples/workflows/nock.yml](examples/workflows/nock.yml) and [examples/workflows/nock-action.yml](examples/workflows/nock-action.yml).
+See more in [examples/workflows/nock.yml](examples/workflows/nock.yml) and [examples/workflows/nock-action.yml](examples/workflows/nock-action.yml).
 
 ## Add to Cursor (MCP)
 - Install server via npx:
