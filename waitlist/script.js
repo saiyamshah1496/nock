@@ -8,37 +8,44 @@
 -- and drop / skip redundant indexes (R026)`;
 
   const JSON_IDLE = `{
-  "status": "ready",
-  "hint": "Run Nock check on the proposed DDL"
+  "schema_version": "1",
+  "verdict": "…",
+  "violations": []
 }`;
 
   const JSON_FAIL = `{
+  "schema_version": "1",
   "verdict": "fail",
-  "rule_hits": [
+  "violations": [
     {
-      "id": "R025",
+      "rule_id": "R025",
       "severity": "red",
-      "table": "sessions",
-      "n_live_tup": 500000,
-      "reason_code": "write_cost_index_on_hot_table"
+      "message": "R025: public.sessions is write-heavy (~500k live tuples); another index increases write maintenance on each insert/update/delete."
     },
     {
-      "id": "R026",
+      "rule_id": "R026",
       "severity": "red",
-      "table": "sessions",
-      "reason_code": "redundant_index_risk"
+      "message": "R026: Proposed index on public.sessions(archived_at) is redundant with an existing index — skip creating it"
     }
-  ]
+  ],
+  "meta": {
+    "policy_id": "nock.postgres.ddl.default",
+    "engine": "postgres"
+  }
 }`;
 
   const JSON_PASS = `{
+  "schema_version": "1",
   "verdict": "pass",
-  "rule_hits": [],
-  "note": "Concurrent build + no redundant sibling"
+  "violations": [],
+  "meta": {
+    "policy_id": "nock.postgres.ddl.default",
+    "engine": "postgres"
+  }
 }`;
 
   const PLAIN_IDLE =
-    "Estate knows <strong>sessions</strong> is write-heavy (~500k live tuples). Pattern lint alone would shrug.";
+    "Estate knows <strong>sessions</strong> is write-heavy (~500k live tuples). Shape-only checkers would shrug.";
   const PLAIN_FAIL =
     "<strong>Blocked.</strong> R025 write-cost on a hot table + R026 redundant-index risk — fail-closed. Same engine in CLI, CI, and Cursor MCP.";
   const PLAIN_PASS =
@@ -69,7 +76,7 @@
       sqlPane.textContent = SQL_NAIVE;
       jsonPane.textContent = JSON_IDLE;
       plainPane.innerHTML = PLAIN_IDLE;
-      label.textContent = "pending";
+      label.textContent = "awaiting check";
       setChip("idle", "Idle");
       fixBtn.hidden = true;
       runBtn.hidden = false;

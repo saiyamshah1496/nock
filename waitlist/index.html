@@ -45,7 +45,8 @@
             <button class="btn btn-ghost btn-sm copy" type="button" data-copy="#npx-command" aria-label="Copy command">Copy</button>
             <p class="cmd-links">
               <a href="https://github.com/saiyamshah1496/nock" target="_blank" rel="noopener">GitHub</a>
-              · Getting started / live DATABASE_URL in the README
+              · <a href="https://github.com/saiyamshah1496/nock/blob/main/docs/guides/quick-start-estate-file.md" target="_blank" rel="noopener">Getting started</a>
+              · <a href="https://github.com/saiyamshah1496/nock/blob/main/docs/guides/live-estate-database-url.md" target="_blank" rel="noopener">Live DATABASE_URL</a>
               · MCP as a secondary surface
             </p>
           </div>
@@ -87,7 +88,7 @@
         <div class="estate-card">
           <p>
             <strong>A small JSON snapshot of Postgres table sizes + catalogue facts (columns, constraints, indexes)—not row data—that Nock uses to approve/block DDL for <em>your</em> database.</strong>
-            Hot tables change the verdict. Pattern-only lint does not.
+            Hot tables change the verdict. Tools that only look at SQL shape do not.
           </p>
           <pre class="mini-json">{
   "schema_version": "1",
