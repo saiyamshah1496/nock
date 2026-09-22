@@ -21,3 +21,6 @@ END$$;
 -- (R025 counters are since stats reset).
 SELECT pg_stat_reset_single_table_counters('public.sessions'::regclass);
 
+-- Refresh stats so n_live_tup reflects seeded row count for size-gated tests
+ANALYZE public.sessions;
+
