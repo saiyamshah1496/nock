@@ -72,6 +72,9 @@ export function mapRowsToStats(parts: {
     name: r.name,
     n_live_tup: Number(r.n_live_tup ?? 0),
     n_dead_tup: r.n_dead_tup ?? undefined,
+    n_tup_ins: Number.isFinite(Number(r.n_tup_ins as any)) ? Number(r.n_tup_ins as any) : undefined,
+    n_tup_upd: Number.isFinite(Number(r.n_tup_upd as any)) ? Number(r.n_tup_upd as any) : undefined,
+    n_tup_del: Number.isFinite(Number(r.n_tup_del as any)) ? Number(r.n_tup_del as any) : undefined,
     relation_bytes: r.relation_bytes ?? undefined,
     total_bytes: r.total_bytes ?? undefined,
     relkind: r.relkind ?? undefined,
@@ -98,19 +101,24 @@ export function mapRowsToStats(parts: {
     foreign_columns: Array.isArray(r.foreign_columns) ? r.foreign_columns : undefined,
     supporting_index: r.supporting_index ?? undefined
   }));
-  const indexes: EstateIndex[] = indexRows.map((r) => ({
-    schema: r.schema,
-    table: r.table_name,
-    name: r.name,
-    unique: !!r.is_unique,
-    primary: !!r.is_primary,
-    valid: !!r.valid,
-    ready: !!r.ready,
-    live: !!r.live,
-    immediate: !!r.is_immediate,
-    columns: Array.isArray(r.columns) ? r.columns : [],
-    replica_identity: !!r.replica_identity
-  }));
+  const indexes: EstateIndex[] = indexRows.map((r) => {
+    const base: EstateIndex = {
+      schema: r.schema,
+      table: r.table_name,
+      name: r.name,
+      unique: !!r.is_unique,
+      primary: !!r.is_primary,
+      valid: !!r.valid,
+      ready: !!r.ready,
+      live: !!r.live,
+      immediate: !!r.is_immediate,
+      replica_identity: !!r.replica_identity
+    };
+    if (Array.isArray(r.columns)) {
+      base.columns = r.columns;
+    }
+    return base;
+  });
   return {
     schema_version: "1",
     captured_at: capturedAt,

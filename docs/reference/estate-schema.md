@@ -27,6 +27,10 @@ Minimal shape (Phase‑1 catalogue; additive sections):
 
 Omit vs [] semantics: omitting a section key means “catalogue absent” (catalogue‑aware rules fail‑closed); a present‑but‑empty `[]` means “synced; none found”.
 
+Optional fields and conventions
+- Tables may include write counters `n_tup_ins`, `n_tup_upd`, `n_tup_del` (absolute counts since stats reset). Omit when unknown; do not invent zeros.
+- Index entries include an order‑sensitive `columns[]` list for attribute keys when known. Omit `columns` when unknown or expression‑only; do not emit empty `[]` to represent unknown. INCLUDE columns are ignored.
+
 Related:
 - [Grants for sync-estate](../guides/grants-sync-estate.md)
 - [CLI reference](./cli.md)

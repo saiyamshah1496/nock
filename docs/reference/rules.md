@@ -27,6 +27,9 @@ This page lists the current rule matrix enforced by Nock when evaluating Postgre
 | R021 — CIC without explicit index name | Implemented | Yellow advisory |
 | R022 — VALIDATE CONSTRAINT on hot table | Implemented | Yellow ≥10k rows; red ≥100k rows; catalogue-aware suppression when the matching constraint is already validated. Fallback to SQL table when constraints section omitted. |
 | R023 — Invalid or not-ready index on touched table | Implemented | Default yellow when any `valid=false` or `ready=false` index exists on a table touched by the migration; fail‑closed when indexes section omitted. |
+| R024 — Index density on large tables | Implemented | Estate-aware: on CREATE INDEX/CREATE INDEX CONCURRENTLY when the target table is large (≥100k rows or ≥64MiB when rows unknown) and existing index count exceeds a threshold (default 8). Neutralized when size facts are missing/stale. Optional downgrade to yellow via policy; shares `fail_on` with sibling index rules. |
+| R025 — Write-heavy index maintenance cost | Implemented | Uses estate write counters `n_tup_ins`/`n_tup_upd`/`n_tup_del` (sum since stats reset). Yellow at ≥100k writes; red at ≥1M writes only when the table is also large (same large gates as R024). Neutralized when write counters are absent; never inferred from size alone. Optional severity yellow. Messages mention “since stats reset.” |
+| R026 — Redundant / overlapping index | Implemented (catalogue-aware) | Detects exact-duplicate (order-sensitive) or left-prefix overlap for NON-UNIQUE btree indexes via `indexes[].columns[]`. Uniqueness matrix: existing UNIQUE covers new NON-UNIQUE same/prefix; existing NON-UNIQUE does not cover new UNIQUE; new UNIQUE only exact-matches existing UNIQUE. Skips indexes missing `columns[]` and expression-only indexes; INCLUDE columns ignored. Red when overlap and table is large; yellow otherwise. Optional severity yellow. |
 
 See also:
 - [CLI reference](./cli.md)

@@ -83,9 +83,10 @@ Call the tool with your SQL — the server will refresh the estate then evaluate
 
 The live check refreshes the same catalogue/stats as `sync-estate` (no row data):
 - Tables: joins `pg_class` + `pg_namespace` + `pg_stat_user_tables`, plus size functions (e.g., `pg_relation_size`, `pg_total_relation_size`) to collect table names, schemas, live row estimates, and sizes.
+- Tables: may also read write counters `n_tup_ins`/`n_tup_upd`/`n_tup_del` (absolute counts since stats reset) when available.
 - Columns: from `pg_attribute` to list column names and nullability; we record the presence of a default via a boolean flag only — we do not store default expression text.
 - Constraints: from `pg_constraint` to list keys (PK/UNIQUE/FK/CHECK) and validation status; CHECK expression text is not stored.
-- Indexes: from `pg_index` (and related name lookups) to capture index names and which columns they cover; expression indexes appear with empty `columns: []` (no expression text).
+- Indexes: from `pg_index` (and related name lookups) to capture index names and which columns they cover. Omit `columns` when unknown or expression‑only; INCLUDE columns are ignored.
 - Explicit: Nock never SELECTs application table row data.
 
 Grants for the least‑privilege read‑only role are documented here: [`docs/guides/grants-sync-estate.md`](grants-sync-estate.md).
