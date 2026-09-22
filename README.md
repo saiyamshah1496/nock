@@ -14,10 +14,12 @@ Same verdict in CLI, CI, and Cursor MCP. Never applies migrations.
 - Exit codes: 0 pass · 1 warn · 2 fail
 
 ## Quick start (golden path)
+An **estate** is a small JSON snapshot of your Postgres table sizes and catalogue facts (columns, constraints, indexes)—not a dump of row data—that Nock uses to approve or block DDL for your database. Details: [Estate schema](docs/reference/estate-schema.md).
+
 1) Get an estate (pick one)
 - Bring your own estate: commit `.nock/estate.json`
 - Sync estate yourself: `npx @nockhq/cli@latest sync-estate --database-url "$DATABASE_URL" --out .nock/estate.json`
-- Live DATABASE_URL check: omit `--estate`, pass `--database-url`
+- [Live DATABASE_URL check](docs/guides/live-estate-database-url.md): omit `--estate`, pass `--database-url`
 
 2) Check
 ```bash
@@ -60,7 +62,7 @@ jobs:
             --format "json" | tee nock-verdict.json
 ```
 
-Prefer CLI; a published Action is available but secondary. See `examples/workflows/nock.yml` and `examples/workflows/nock-action.yml`.
+Prefer CLI; a published Action is available but secondary. See [examples/workflows/nock.yml](examples/workflows/nock.yml) and [examples/workflows/nock-action.yml](examples/workflows/nock-action.yml).
 
 ## Add to Cursor (MCP)
 - Install server via npx:
@@ -70,7 +72,7 @@ Prefer CLI; a published Action is available but secondary. See `examples/workflo
 - Call `check_before_apply` with either:
   - `estatePath: ".nock/estate.json"` (file)
   - or `databaseUrl: "postgres://..."` (live DATABASE_URL check)
-- Guide: `docs/guides/mcp-check-before-apply.md`
+- Guide: [docs/guides/mcp-check-before-apply.md](docs/guides/mcp-check-before-apply.md)
 
 ## Not Squawk, not Atlas
 > Not Squawk, not Atlas. Squawk lints migration shapes without knowing your table sizes. Atlas plans and applies schema changes. Nock does neither: it takes your DDL plus an estate snapshot (or a live read-only `DATABASE_URL`) and returns approve or block for CI and agents—lock risk on your data—without ever applying SQL.
@@ -80,12 +82,13 @@ Prefer CLI; a published Action is available but secondary. See `examples/workflo
 - Team: Hosted estate, org policy, and audit/export for design partners—optional when you outgrow file-based estate in CI.
 
 ## Docs
-- Getting started — `docs/guides/quick-start-estate-file.md`
-- Estate (sync estate yourself) — `docs/guides/sync-estate.md`
-- CI — `examples/workflows/nock.yml`
-- MCP — `docs/guides/mcp-check-before-apply.md`
-- Grants — `docs/guides/grants-sync-estate.md`
-- Reference: CLI · Rules · Verdict JSON · Estate schema — see `docs/reference/`
+- [Getting started](docs/guides/quick-start-estate-file.md)
+- [Estate (sync estate yourself)](docs/guides/sync-estate.md)
+- [Live DATABASE_URL check](docs/guides/live-estate-database-url.md)
+- [CI](examples/workflows/nock.yml)
+- [MCP](docs/guides/mcp-check-before-apply.md)
+- [Grants](docs/guides/grants-sync-estate.md)
+- Reference: [CLI](docs/reference/cli.md) · [Rules](docs/reference/rules.md) · [Verdict JSON](docs/reference/verdict-json.md) · [Estate schema](docs/reference/estate-schema.md)
 
 ---
 
@@ -93,10 +96,10 @@ Prefer CLI; a published Action is available but secondary. See `examples/workflo
 - No row data is read or processed; only catalogue (columns, constraints, indexes) and table sizes
 - Your database URL never leaves your runner in Free mode
 - Prefer read‑only roles and replicas for `sync-estate` or live checks
-See `docs/SECURITY.md`.
+See [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Contributing
-See `docs/DEVELOPMENT.md`.
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## License
 MIT
