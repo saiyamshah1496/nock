@@ -27,5 +27,6 @@ rules:
   R023: { severity: yellow }
   R024: { large_rows: 100000, large_relation_bytes: 67108864, max_indexes_large: 8 }
   R025: { yellow_writes: 100000, red_writes: 1000000, large_rows: 100000, large_relation_bytes: 67108864 }
+  R026: { large_rows: 100000, large_relation_bytes: 67108864 }
 no_stats: warn
 

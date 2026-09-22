@@ -109,9 +109,11 @@ export interface EstateIndex {
   live: boolean;
   immediate: boolean;
   /**
-   * Column names in order. For expression indexes, emit [] and DO NOT store expressions.
+   * Column names in order.
+   * Omit when unknown/unresolvable (e.g., expression-only indexes or unavailable catalogue).
+   * NEVER store expressions.
    */
-  columns: string[];
+  columns?: string[];
   /**
    * True when this index is the replica identity (pg_index.indisreplident).
    */
@@ -1354,6 +1356,13 @@ export function check(input: CheckInput): VerdictV1 {
         const r025 = evaluateR025WriteHeaviness(input.estate, policy, cic.table);
         if (r025.length > 0) violations.push(...r025);
       }
+      // R026 — Redundant / overlapping index (catalogue-aware via columns[])
+      if (isRuleEnabled("R026") && cic.table) {
+        const proposed = extractIndexKeyColumns(sql);
+        const isUnique = /^\s*CREATE\s+UNIQUE\s+INDEX\s+CONCURRENTLY\b/i.test(sql);
+        const r026 = evaluateR026IndexOverlap(input.estate, policy, cic.table, proposed, isUnique);
+        if (r026.length > 0) violations.push(...r026);
+      }
       if (isRuleEnabled("R021") && (!cic.indexName || cic.indexName.length === 0)) {
         violations.push({
           rule_id: "R021",
@@ -1789,6 +1798,12 @@ export function check(input: CheckInput): VerdictV1 {
         const r025 = evaluateR025WriteHeaviness(input.estate, policy, m.table);
         if (r025.length > 0) violations.push(...r025);
       }
+      // R026 — Redundant / overlapping index (catalogue-aware via columns[])
+      if (isRuleEnabled("R026") && m.table) {
+        const proposed = extractIndexKeyColumns(sql);
+        const r026 = evaluateR026IndexOverlap(input.estate, policy, m.table, proposed, m.isUnique === true);
+        if (r026.length > 0) violations.push(...r026);
+      }
       continue;
     }
 
@@ -2122,6 +2137,7 @@ export function check(input: CheckInput): VerdictV1 {
       "R022",
       "R024",
       "R025",
+      "R026",
     ]);
     for (const v of violations) {
       if (v.severity === "red" && sizeGated.has(v.rule_id)) {
@@ -2150,4 +2166,178 @@ export function check(input: CheckInput): VerdictV1 {
 }
 
 // Team data-plane freshness/types are exported above from ./team/data-plane
+
+// -------- R026 helpers: parse proposed key columns and evaluate overlap --------
+
+// Extract index key columns (identifiers only) from a CREATE INDEX statement.
+// - Returns undefined when columns cannot be resolved cleanly (expressions/opclasses only).
+// - Ignores INCLUDE(...) keys; only the leading key columns participate in left-prefix logic.
+function extractIndexKeyColumns(sql: string): string[] | undefined {
+  const clean = stripSqlComments(sql);
+  const up = clean.toUpperCase();
+  if (!/^CREATE\s+(UNIQUE\s+)?INDEX\b/.test(up)) return undefined;
+  // Walk to the first '(' after ON <table> [USING <method>]
+  const onIdx = up.indexOf(" ON ");
+  if (onIdx < 0) return undefined;
+  // find the '(' that starts the key list, accounting for optional USING <method>
+  let i = onIdx + 4;
+  // skip table name (possibly schema-qualified and quoted)
+  while (i < clean.length && clean[i] !== "(") {
+    // Skip over USING <method> if present
+    if (/\bUSING\s+$/i.test(up.slice(onIdx, i + 1))) {
+      // continue scanning; the '(' after USING is still the one we want
+    }
+    i++;
+  }
+  if (i >= clean.length || clean[i] !== "(") return undefined;
+  // Extract balanced parentheses content for the key list
+  let depth = 0;
+  let start = i + 1;
+  let end = -1;
+  for (let j = i; j < clean.length; j++) {
+    const ch = clean[j];
+    if (ch === "(") depth++;
+    else if (ch === ")") {
+      depth--;
+      if (depth === 0) {
+        end = j;
+        break;
+      }
+    }
+  }
+  if (end < 0) return undefined;
+  const body = clean.slice(start, end);
+  // Split by top-level commas
+  const cols: string[] = [];
+  let token = "";
+  let tDepth = 0;
+  for (let k = 0; k < body.length; k++) {
+    const ch = body[k];
+    if (ch === "(") {
+      tDepth++;
+      token += ch;
+    } else if (ch === ")") {
+      tDepth--;
+      token += ch;
+    } else if (ch === "," && tDepth === 0) {
+      const name = normalizeIndexColToken(token);
+      if (name === null) return undefined; // expression/opclass we don't model
+      if (name.length > 0) cols.push(name);
+      token = "";
+    } else {
+      token += ch;
+    }
+  }
+  if (token.trim().length > 0) {
+    const name = normalizeIndexColToken(token);
+    if (name === null) return undefined;
+    if (name.length > 0) cols.push(name);
+  }
+  return cols.length > 0 ? cols : undefined;
+}
+
+// Normalize one column token to a bare identifier.
+// Returns null when token is an expression or otherwise non-trivial we cannot model.
+function normalizeIndexColToken(token: string): string | null {
+  const raw = token.trim();
+  if (raw.length === 0) return "";
+  // Any parentheses inside means expression/functional index — treat as unknown
+  if (raw.includes("(") || raw.includes(")")) return null;
+  // Strip quotes
+  let s = raw.replace(/"/g, "").trim();
+  // Remove common suffixes: COLLATE ..., ASC|DESC, NULLS FIRST|LAST, opclass
+  s = s.replace(/\s+COLLATE\s+[A-Za-z0-9_.]+/i, "");
+  s = s.replace(/\s+(ASC|DESC)\b/i, "");
+  s = s.replace(/\s+NULLS\s+(FIRST|LAST)\b/i, "");
+  // Remove simple opclass names at end (e.g., text_pattern_ops)
+  s = s.replace(/\s+[A-Za-z0-9_]+$/i, (m) => {
+    // Heuristic: keep only the leading identifier; if token contains spaces, we already trimmed suffixes
+    return "";
+  }).trim();
+  // After trimming, token should be a single identifier
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(s)) return null;
+  return s;
+}
+
+function evaluateR026IndexOverlap(
+  estate: EstateSnapshot,
+  policy: PolicyResolved,
+  table: TableRef | undefined,
+  proposedColumns: string[] | undefined,
+  proposedIsUnique: boolean
+): Violation[] {
+  const out: Violation[] = [];
+  if (!table) return out;
+  // Require indexes catalogue section
+  if (!hasCatalogueSection(estate, "indexes")) return out;
+  // If proposed columns cannot be resolved, neutralize
+  if (!proposedColumns || proposedColumns.length === 0) return out;
+  const schemaLc = table.schema.toLowerCase();
+  const nameLc = table.name.toLowerCase();
+  // Gather comparable existing indexes (valid, ready) that HAVE resolvable columns
+  const candidates = (estate.indexes ?? []).filter(
+    (ix) =>
+      ix &&
+      ix.schema.toLowerCase() === schemaLc &&
+      ix.table.toLowerCase() === nameLc &&
+      ix.valid === true &&
+      ix.ready === true &&
+      Array.isArray(ix.columns) &&
+      (ix.columns as string[]).length > 0
+  );
+  if (candidates.length === 0) return out; // nothing to compare against
+  const want = proposedColumns.map((c) => c.toLowerCase());
+  let hit: { kind: "duplicate" | "left_prefix"; idxName: string; existingIsUnique: boolean } | null = null;
+  for (const ix of candidates) {
+    const cols = (ix.columns as string[]).map((c) => c.toLowerCase());
+    if (proposedIsUnique) {
+      // Unique: only exact duplicate with an existing unique index qualifies
+      if (ix.unique && cols.length === want.length && cols.every((c, i) => c === want[i])) {
+        hit = { kind: "duplicate", idxName: ix.name, existingIsUnique: true };
+        break;
+      }
+    } else {
+      // Non-unique: duplicate or strict left-prefix of any existing index (unique or not)
+      if (cols.length === want.length && cols.every((c, i) => c === want[i])) {
+        hit = { kind: "duplicate", idxName: ix.name, existingIsUnique: ix.unique === true };
+        break;
+      }
+      if (cols.length > want.length) {
+        let isPrefix = true;
+        for (let i = 0; i < want.length; i++) {
+          if (cols[i] !== want[i]) {
+            isPrefix = false;
+            break;
+          }
+        }
+        if (isPrefix) {
+          hit = { kind: "left_prefix", idxName: ix.name, existingIsUnique: ix.unique === true };
+          break;
+        }
+      }
+    }
+  }
+  if (!hit) return out;
+  // Severity: red when table is large; else yellow. Allow knob to downgrade reds.
+  const tstats = findTableEstate(estate, table);
+  const nLive = tstats?.n_live_tup;
+  const largeRows = policy.rules?.R026?.large_rows ?? 100_000;
+  const largeRelBytes = policy.rules?.R026?.large_relation_bytes ?? 64 * 1024 * 1024;
+  const hasRowCount = typeof nLive === "number" && nLive > 0;
+  const isLarge = hasRowCount ? (nLive as number) >= largeRows : (tstats?.relation_bytes ?? 0) >= largeRelBytes;
+  const sevKnob = (policy.rules?.R026 as any)?.severity;
+  const sev: "red" | "yellow" = isLarge ? (sevKnob === "yellow" ? "yellow" : "red") : "yellow";
+  const colsText = proposedColumns.join(", ");
+  const suffix =
+    hit.kind === "duplicate"
+      ? `exact duplicate of existing index ${hit.idxName}`
+      : `redundant; existing index ${hit.idxName} covers this key as a left-prefix`;
+  out.push({
+    rule_id: "R026",
+    severity: sev,
+    message: `R026: Proposed ${proposedIsUnique ? "UNIQUE " : ""}index on ${table.schema}.${table.name}(${colsText}) is ${suffix} — skip creating it`,
+    remediation_sql: `/* Skip creating this index; existing ${hit.idxName} already covers it */`
+  });
+  return out;
+}
 
