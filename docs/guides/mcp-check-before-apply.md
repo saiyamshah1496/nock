@@ -1,6 +1,6 @@
-# MCP: check before apply
+# MCP: check before apply (Cursor)
 
-Use Nock in an agent loop to check a migration before applying it. MCP returns the same verdict JSON as the CLI. Provide either a local estate file or a `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh the estate live from Postgres before checking (Path C thin). Free and check‑only; no file write.
+Use Nock in a Cursor/Claude MCP agent loop to check a migration before applying it. MCP returns the same verdict JSON as the CLI. Provide either a local estate file or a `databaseUrl` (or set `DATABASE_URL`) to refresh the estate live from Postgres before checking. Free and check‑only; no file write.
 
 Positioning
 - MCP is an advisory “check-before-apply” surface for agents.
@@ -46,7 +46,7 @@ Notes
 Optional
 - `policyPath` (JSON only). If omitted, a safe default policy is used. YAML policy paths are not supported in MCP at this time; use the default or convert to JSON.
 - `pgVersion` can override autodetection for specific checks.
-- Path C thin (free, check‑only): pass `databaseUrl` (or set `DATABASE_URL` / `SUPABASE_DB_URL`) to refresh estate live from Postgres before evaluating. Example:
+- Live DATABASE_URL check (free, check‑only): pass `databaseUrl` (or set `DATABASE_URL`) to refresh estate live from Postgres before evaluating. Example:
   ```json
   {
     "sql": "CREATE INDEX idx_sessions_archived_at ON public.sessions(archived_at);",

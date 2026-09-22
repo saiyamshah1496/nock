@@ -1,17 +1,16 @@
-# Path C thin — live estate from DATABASE_URL (CLI+MCP)
+# Live DATABASE_URL check (CLI + MCP)
 
-Nock is an estate‑aware Postgres migration safety gate — not a pattern linter and not a proxy. It evaluates DDL against your estate (sizes + Phase‑1 catalogue facts: columns, constraints, indexes) and a policy to approve or block before merge.
+Use a Postgres connection string (`DATABASE_URL`) to refresh an estate snapshot in‑memory just before evaluating your DDL. The verdict JSON is identical across CLI and MCP. No row data is read; only catalogue and sizes. Nock never applies migrations.
 
-This guide shows a lasting, thin Path C slice that refreshes an estate snapshot directly from Postgres using a `DATABASE_URL`/`SUPABASE_DB_URL` just before running a check. No row data is read or stored.
+This deep guide shows how to run a live `DATABASE_URL` check that refreshes an estate directly from Postgres just before running a check.
 
-Notes
-- FREE FOREVER: just‑in‑time catalogue refresh (no file write); same read‑only grants as `sync-estate`.
-- Works alongside the free BYO estate file and `nock sync-estate` paths.
-- CLI ≡ MCP verdicts for the same inputs and policy.
+Recommendations
+- Prefer a read‑only role and a replica for live checks.
+- Works alongside “Bring your own estate” and “Sync estate yourself”. CLI ≡ MCP verdicts for the same inputs and policy.
 
 ## Prerequisites
 
-- A Postgres connection string in `DATABASE_URL` (Supabase works). Prefer a read‑only role and a replica.
+- A Postgres connection string in `DATABASE_URL`. Prefer a read‑only role and a replica.
 - Node 20+.
 
 ## Seed a hot-ish sessions table (optional)
@@ -46,7 +45,7 @@ npx @nockhq/cli@latest check \
 
 ## MCP: check_before_apply with live refresh
 
-Configure MCP to use `@nockhq/mcp@latest` and provide a database URL via env:
+Configure MCP to use `@nockhq/mcp@latest` and provide `DATABASE_URL` via env:
 
 ```json
 {
@@ -55,7 +54,7 @@ Configure MCP to use `@nockhq/mcp@latest` and provide a database URL via env:
       "command": "npx",
       "args": ["-y", "@nockhq/mcp@latest"],
       "env": {
-        "DATABASE_URL": "postgres://user:pass@host:5432/db" // or SUPABASE_DB_URL
+        "DATABASE_URL": "postgres://user:pass@host:5432/db"
       }
     }
   }
@@ -82,11 +81,12 @@ Call the tool with your SQL — the server will refresh the estate then evaluate
 
 ## What this reads from Postgres (catalogue only)
 
-Path C thin refreshes the same catalogue/stats as `sync-estate` (no row data):
+The live check refreshes the same catalogue/stats as `sync-estate` (no row data):
 - Tables: joins `pg_class` + `pg_namespace` + `pg_stat_user_tables`, plus size functions (e.g., `pg_relation_size`, `pg_total_relation_size`) to collect table names, schemas, live row estimates, and sizes.
+- Tables: may also read write counters `n_tup_ins`/`n_tup_upd`/`n_tup_del` (absolute counts since stats reset) when available.
 - Columns: from `pg_attribute` to list column names and nullability; we record the presence of a default via a boolean flag only — we do not store default expression text.
 - Constraints: from `pg_constraint` to list keys (PK/UNIQUE/FK/CHECK) and validation status; CHECK expression text is not stored.
-- Indexes: from `pg_index` (and related name lookups) to capture index names and which columns they cover; expression indexes appear with empty `columns: []` (no expression text).
+- Indexes: from `pg_index` (and related name lookups) to capture index names and which columns they cover. Omit `columns` when unknown or expression‑only; INCLUDE columns are ignored.
 - Explicit: Nock never SELECTs application table row data.
 
 Grants for the least‑privilege read‑only role are documented here: [`docs/guides/grants-sync-estate.md`](grants-sync-estate.md).
