@@ -1,6 +1,5 @@
-@font-face{font-family:Syne;font-weight:500;font-display:swap;src:url("fonts/syne-latin-500-normal.woff2") format("woff2")}
-@font-face{font-family:Syne;font-weight:600;font-display:swap;src:url("fonts/syne-latin-600-normal.woff2") format("woff2")}
-@font-face{font-family:Syne;font-weight:700;font-display:swap;src:url("fonts/syne-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Instrument Serif";font-weight:400;font-style:normal;font-display:swap;src:url("fonts/instrument-serif-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Instrument Serif";font-weight:400;font-style:italic;font-display:swap;src:url("fonts/instrument-serif-latin-400-italic.woff2") format("woff2")}
 @font-face{font-family:Geist;font-weight:400;font-display:swap;src:url("fonts/geist-sans-latin-400-normal.woff2") format("woff2")}
 @font-face{font-family:Geist;font-weight:500;font-display:swap;src:url("fonts/geist-sans-latin-500-normal.woff2") format("woff2")}
 @font-face{font-family:Geist;font-weight:600;font-display:swap;src:url("fonts/geist-sans-latin-600-normal.woff2") format("woff2")}
@@ -24,7 +23,7 @@
   --warn:#f0c674;
   --radius:12px;
   --font:Geist,system-ui,sans-serif;
-  --display:Syne,Geist,system-ui,sans-serif;
+  --display:"Instrument Serif",Georgia,"Times New Roman",serif;
   --mono:"Geist Mono",ui-monospace,Menlo,Consolas,monospace;
   --max:1080px;
 }
@@ -52,7 +51,7 @@ code,pre,.mono{font-family:var(--mono)}
 }
 .top-inner{display:flex;align-items:center;gap:20px;height:56px}
 .logo{
-  font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.03em;
+  font-family:Geist,system-ui,sans-serif;font-weight:600;font-size:18px;letter-spacing:-.03em;
   text-decoration:none
 }
 .nav{display:flex;gap:4px;flex:1}
@@ -88,7 +87,7 @@ code,pre,.mono{font-family:var(--mono)}
 }
 .kicker i{width:6px;height:6px;border-radius:50%;background:var(--pass);display:block}
 .hero h1{
-  font-family:var(--display);font-weight:700;font-size:clamp(32px,5vw,48px);
+  font-family:var(--display);font-weight:400;font-size:clamp(32px,5vw,48px);
   line-height:1.08;letter-spacing:-.035em;margin:0 0 14px;max-width:14ch
 }
 .hero-sub{margin:0 0 28px;color:var(--muted);font-size:17px;max-width:36ch;line-height:1.45}
@@ -152,7 +151,7 @@ code,pre,.mono{font-family:var(--mono)}
 /* sections */
 section.band{padding:56px 0;border-top:1px solid var(--border)}
 .sec-title{
-  font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.03em;
+  font-family:var(--display);font-size:28px;font-weight:400;letter-spacing:-.03em;
   margin:0 0 10px;line-height:1.15
 }
 .sec-lead{margin:0 0 28px;color:var(--muted);max-width:52ch;font-size:15px}
@@ -182,7 +181,7 @@ section.band{padding:56px 0;border-top:1px solid var(--border)}
   font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)
 }
 .lane h3{
-  font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.03em;margin:0
+  font-family:var(--display);font-size:22px;font-weight:400;letter-spacing:-.03em;margin:0
 }
 .lane .pack-meta{font-size:13px;color:var(--muted);margin:0}
 .lane ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}

@@ -12,3 +12,8 @@ cd waitlist && python3 -m http.server 8080
 
 ## Deploy
 Pages root should be `waitlist/` — coordinate with Founding Engineer.
+
+## Typography
+- Display: Instrument Serif (hero / section titles)
+- UI/body: Geist
+- Code: Geist Mono
