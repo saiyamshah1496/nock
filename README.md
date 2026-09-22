@@ -8,10 +8,10 @@ Same verdict in CLI, CI, and Cursor MCP. Never applies migrations.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Why Nock
-- Estate sizes + catalogue → approve or block on your data, not patterns
-- Never mutates your database — pure check-only gate
-- Same JSON verdict across CLI ≡ GitHub Actions ≡ MCP
-- Exit codes: 0 pass · 1 warn · 2 fail
+- Checks your proposed DDL against an **estate** — a snapshot of your table sizes plus catalogue facts (columns, constraints, indexes) — so it approves or blocks based on *your* data, not generic SQL patterns
+- **Check-only**: never applies migrations and never writes to your database
+- Returns the **same JSON verdict** from the CLI, GitHub Actions, and Cursor MCP
+- Exit codes: `0` pass · `1` warnings only · `2` fail (blocking)
 
 ## Quick start (golden path)
 An **estate** is a small JSON snapshot of your Postgres table sizes and catalogue facts (columns, constraints, indexes)—not a dump of row data—that Nock uses to approve or block DDL for your database. Details: [Estate schema](docs/reference/estate-schema.md).
@@ -78,8 +78,12 @@ Prefer CLI; a published Action is available but secondary. See [examples/workflo
 > Not Squawk, not Atlas. Squawk lints migration shapes without knowing your table sizes. Atlas plans and applies schema changes. Nock does neither: it takes your DDL plus an estate snapshot (or a live read-only `DATABASE_URL`) and returns approve or block for CI and agents—lock risk on your data—without ever applying SQL.
 
 ## Free vs Team
-- Free: Run `check` / `sync-estate` / MCP locally and in your CI with a committed or self-synced estate (or live `DATABASE_URL` on your runner); Nock never applies migrations and never needs your DB URL on Nock servers.
-- Team: Hosted estate, org policy, and audit/export for design partners—optional when you outgrow file-based estate in CI.
+
+**Free — one estate, DIY**
+Bring your own estate file, sync estate yourself, or run a live `DATABASE_URL` check on *your* runner. Staging + production means two checks or a CI matrix you own. Nock does **not** host multi-estate packs on Free.
+
+**Team — estate packs**
+Hosted staging / production / tenant estates under one org, plus org policy, audit, and export. Same approve/block engine as Free — ops convenience when you outgrow a single estate file in CI.
 
 ## Docs
 - [Getting started](docs/guides/quick-start-estate-file.md)
