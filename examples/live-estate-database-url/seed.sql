@@ -17,3 +17,10 @@ BEGIN
   END IF;
 END$$;
 
+-- Reset per-table write counters so \"good\" CIC example reflects post-reset activity
+-- (R025 counters are since stats reset).
+SELECT pg_stat_reset_single_table_counters('public.sessions'::regclass);
+
+-- Refresh stats so n_live_tup reflects seeded row count for size-gated tests
+ANALYZE public.sessions;
+
