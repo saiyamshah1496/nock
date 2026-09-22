@@ -479,7 +479,7 @@ function evaluateR025WriteHeaviness(
       severity: "yellow",
       message: `R025: ${table.schema}.${table.name} is write-heavy (~${formatRows(
         writeSum
-      )} writes); consider index cost on hot write paths.`
+      )} writes since stats reset); consider index cost on hot write paths.`
     });
   }
   return results;
