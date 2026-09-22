@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   mapRowsToStats,
   type SyncTableRow,
@@ -6,6 +6,16 @@ import {
   type SyncConstraintRow,
   type SyncIndexRow,
 } from "../src/syncStats";
+
+// Stub 'postgres' for module-load in unit tests that only exercise mappers
+vi.mock("postgres", () => {
+  return {
+    default: () => ({
+      unsafe: async () => [],
+      end: async () => {}
+    })
+  };
+});
 
 describe("governance catalogue mapper", () => {
   it("maps full shapes for tables/columns/constraints/indexes", () => {
@@ -83,7 +93,7 @@ describe("governance catalogue mapper", () => {
         live: true,
         is_immediate: true,
         replica_identity: false,
-        // Expression index: mapper should accept null and emit []
+        // Expression index: mapper should accept null and omit columns field
         columns: null as any
       }
     ];
@@ -130,10 +140,10 @@ describe("governance catalogue mapper", () => {
         replica_identity: false
       })
     );
-    // Expression index columns are []
+    // Expression index columns are omitted (unknown)
     const expr = snap.indexes?.find(i => i.name === "idx_orders_lower_email");
     expect(expr).toBeTruthy();
-    expect(expr?.columns).toEqual([]);
+    expect(Object.prototype.hasOwnProperty.call(expr || {}, "columns")).toBe(false);
   });
 
   it("never stores expression/default text in estate JSON", () => {
