@@ -236,8 +236,9 @@ See `@nockhq/mcp` — provides `check_before_apply`, `explain_lock`, `list_rules
 | R021 — CIC without explicit index name | Implemented | Yellow advisory |
 | R022 — VALIDATE CONSTRAINT on hot table | Implemented | Yellow ≥10k rows; red ≥100k rows; catalogue-aware suppression when the matching constraint is already validated. Fallback to SQL table when constraints section omitted. |
 | R023 — Invalid or not-ready index on touched table | Implemented | Default yellow when any `valid=false` or `ready=false` index exists on a table touched by the migration; fail‑closed when indexes section omitted. |
-| R025 — Write-heavy / index write-cost | Implemented | Yellow when write sum (inserts+updates+deletes since stats reset) ≥100k; red when ≥1M and table is large (≥100k rows or ≥64MiB when rows unknown). Neutralizes when write counters are absent. |
 | R024 — Index density on large tables | Implemented | Red when creating an index on a large table (≥100k rows or ≥64MiB when rows unknown) that already has ≥8 live, valid, ready indexes. Counts PK/unique; excludes the index being created by name. Omitted `indexes` section neutralizes; empty `[]` counts as 0. |
+| R025 — Write-heavy / index write-cost | Implemented | Yellow when write sum (inserts+updates+deletes since stats reset) ≥100k; red when ≥1M and table is large (≥100k rows or ≥64MiB when rows unknown). Neutralizes when write counters are absent. |
+| R026 — Redundant / overlapping index | Implemented | Detects redundant/left-prefix CREATE INDEX using estate `indexes[].columns[]`; red when overlap AND table large (≥100k rows or ≥64MiB when rows unknown), yellow otherwise. Neutralizes when proposed columns are unresolvable or no comparable index with `columns[]`. Uniqueness matrix: UNIQUE only exact-dup of UNIQUE; non-unique can be covered by UNIQUE/left-prefix. Note: mixed attribute+expression keys not compared (v1 caveat). |
 
 ## Docs index
 
