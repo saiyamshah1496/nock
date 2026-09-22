@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nock — Estate-aware approve/block for Postgres DDL</title>
+  <meta name="description" content="Estate-aware approve/block for Postgres DDL. Same verdict in CLI, CI, and Cursor MCP. Never applies migrations. Free: one estate DIY. Team: hosted estate packs." />
+  <meta name="theme-color" content="#07080a" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="logo" href="#">Nock</a>
+      <nav class="nav" aria-label="Page">
+        <a href="#verdict">Verdict</a>
+        <a href="#estate">Estate</a>
+        <a href="#plans">Free vs Team</a>
+        <a href="#waitlist">Team waitlist</a>
+      </nav>
+      <div class="top-actions">
+        <a class="btn btn-ghost" href="https://github.com/saiyamshah1496/nock" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn btn-solid" href="#try">Try free</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="kicker"><i aria-hidden="true"></i> Open source · CLI · CI · Cursor MCP</div>
+          <h1>Estate-aware approve/block for Postgres DDL.</h1>
+          <p class="hero-sub">Same verdict in CLI, CI, and Cursor MCP. Never applies migrations.</p>
+          <div class="hero-cta" id="try">
+            <a class="btn btn-solid" href="#cmd">Copy free check</a>
+            <a class="btn btn-ghost" href="#waitlist">Team waitlist</a>
+          </div>
+
+          <div class="cmd" id="cmd">
+            <div class="cmd-label">Try free · @latest</div>
+            <pre><code id="npx-command">npx @nockhq/cli@latest check --sql migrations/001.sql --estate .nock/estate.json --format json</code></pre>
+            <button class="btn btn-ghost btn-sm copy" type="button" data-copy="#npx-command" aria-label="Copy command">Copy</button>
+            <p class="cmd-links">
+              <a href="https://github.com/saiyamshah1496/nock" target="_blank" rel="noopener">GitHub</a>
+              · Getting started / live DATABASE_URL in the README
+              · MCP as a secondary surface
+            </p>
+          </div>
+        </div>
+
+        <div class="verdict" id="verdict" aria-label="Nock verdict vignette">
+          <div class="verdict-bar">
+            <div class="tabs" role="tablist" aria-label="Vignette step">
+              <button class="tab active" type="button" role="tab" aria-selected="true" data-step="propose">Propose</button>
+              <button class="tab" type="button" role="tab" aria-selected="false" data-step="fail">Nock check</button>
+              <button class="tab" type="button" role="tab" aria-selected="false" data-step="fix">Remediate</button>
+            </div>
+            <span class="chip idle" id="verdict-chip">Idle</span>
+          </div>
+          <div class="verdict-body">
+            <div class="pane">
+              <div class="pane-h"><span>Proposed DDL</span><span class="mono" style="text-transform:none;letter-spacing:0;font-weight:500">sessions · write-heavy</span></div>
+              <pre class="sql-block" id="sql-pane"></pre>
+            </div>
+            <div class="pane">
+              <div class="pane-h"><span>Verdict</span><span id="verdict-label" class="mono" style="text-transform:none;letter-spacing:0;font-weight:500">—</span></div>
+              <pre class="json-block" id="json-pane" aria-live="polite"></pre>
+              <p class="plain" id="plain-pane"></p>
+            </div>
+          </div>
+          <div class="verdict-actions">
+            <button class="btn btn-solid btn-sm" type="button" id="run-check">Run Nock check</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="show-fix" hidden>Show remediation</button>
+            <span class="hint">Thin overindex family · R024 density · R025 write-cost · R026 redundant</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="estate">
+      <div class="wrap">
+        <h2 class="sec-title">What an estate is</h2>
+        <p class="sec-lead">One sentence, then a peek at the shape.</p>
+        <div class="estate-card">
+          <p>
+            <strong>A small JSON snapshot of Postgres table sizes + catalogue facts (columns, constraints, indexes)—not row data—that Nock uses to approve/block DDL for <em>your</em> database.</strong>
+            Hot tables change the verdict. Pattern-only lint does not.
+          </p>
+          <pre class="mini-json">{
+  "schema_version": "1",
+  "captured_at": "2026-09-16T05:00:00Z",
+  "pg_version": "16.4",
+  "tables": [
+    { "schema": "public", "name": "sessions", "n_live_tup": 500000 }
+  ]
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="plans">
+      <div class="wrap">
+        <h2 class="sec-title">Free vs Team</h2>
+        <p class="sec-lead">Multi-estate clarity in one glance. Same check engine either way.</p>
+        <div class="bento">
+          <article class="lane">
+            <div class="lane-tag">Free</div>
+            <h3>One estate · DIY</h3>
+            <p class="pack-meta">We do <strong>not</strong> host multi-estate packs on Free.</p>
+            <ul>
+              <li>Bring your own estate</li>
+              <li>Sync estate yourself</li>
+              <li>Live DATABASE_URL check on your runner</li>
+              <li>Want staging + prod? Run check twice / own a CI matrix</li>
+            </ul>
+            <p class="foot">Try free today with the @latest command above.</p>
+          </article>
+          <article class="lane team">
+            <div class="lane-tag">Team</div>
+            <h3>Estate packs · hosted</h3>
+            <p class="pack-meta">Staging / prod / tenant DBs under one org. Same engine.</p>
+            <ul>
+              <li>Hosted estate packs</li>
+              <li>Org policy</li>
+              <li>Audit</li>
+              <li>Export anytime</li>
+            </ul>
+            <p class="foot">Design-partner waitlist · limited seats · honest scarcity.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="waitlist">
+      <div class="wrap">
+        <h2 class="sec-title">Team waitlist</h2>
+        <p class="sec-lead">Primarily for Team packs + product updates. Free path stays open above.</p>
+        <div class="form-card">
+          <form id="waitlist-form" novalidate>
+            <div class="form-row">
+              <label for="email">Work email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@company.com" />
+            </div>
+            <div class="form-row">
+              <label for="role">Role</label>
+              <select id="role" name="role">
+                <option value="">Optional</option>
+                <option>Platform / SRE</option>
+                <option>Staff / Founding eng</option>
+                <option>DBA</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="interest">Interest</label>
+              <select id="interest" name="interest">
+                <option value="team">Interested in Team packs</option>
+                <option value="updates">Product updates only</option>
+                <option value="free">Using Free · curious about Team</option>
+              </select>
+            </div>
+            <p class="form-note">No spam. Design partners are limited.</p>
+            <button class="btn btn-solid" type="submit">Join waitlist</button>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span>Nock · approve/block for Postgres DDL · never applies migrations</span>
+      <span>
+        <a href="https://github.com/saiyamshah1496/nock" target="_blank" rel="noopener">GitHub</a>
+      </span>
+    </div>
+  </footer>
+
+  <script src="./config.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>
