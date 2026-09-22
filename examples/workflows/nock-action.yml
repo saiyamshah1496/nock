@@ -1,8 +1,6 @@
 ## Example: Nock — GitHub Action with hosted estate (Nock Team)
 ## Preferred: use the subdirectory Action via a version tag:
-##   uses: saiyamshah1496/nock/packages/action@v0.1.8
-## After this PR merges, cut a new tag that includes committed dist (e.g., v0.1.9)
-## and pin to that instead.
+##   uses: saiyamshah1496/nock/packages/action@v0.1.9
 ##
 ## Alternative (not preferred): copy this action into your repo under `.github/actions/nock`
 ## and reference it with `uses: ./.github/actions/nock`.
@@ -22,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Nock check (Action)
         # Prefer pinning a version tag that includes committed dist:
-        uses: saiyamshah1496/nock/packages/action@v0.1.8
+        uses: saiyamshah1496/nock/packages/action@v0.1.9
         # Or, if testing this PR before merge, you can pin the branch SHA:
         # uses: saiyamshah1496/nock/packages/action@<commit-sha>
         with:
