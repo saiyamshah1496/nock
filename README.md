@@ -51,9 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Nock check (Action)
-        uses: saiyamshah1496/nock/packages/action@v0.1.8
-        # After this PR merges, cut a new tag that includes committed dist (e.g., v0.1.9)
-        # and pin to that instead.
+        uses: saiyamshah1496/nock/packages/action@v0.1.9
         with:
           migration-path: migrations/
           estate-path: .nock/estate.json

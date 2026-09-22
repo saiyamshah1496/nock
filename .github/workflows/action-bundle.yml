@@ -5,11 +5,13 @@ on:
     paths:
       - "packages/action/**"
       - "packages/core/**"
+      - ".github/workflows/action-bundle.yml"
   push:
     branches: [main]
     paths:
       - "packages/action/**"
       - "packages/core/**"
+      - ".github/workflows/action-bundle.yml"
 
 jobs:
   build-action-bundle:
@@ -39,4 +41,6 @@ jobs:
         run: pnpm --filter @nockhq/action build
 
       - name: List Action dist
-        run: ls -la packages/action/dist && node -e "require('fs').statSync('packages/action/dist/index.js') && console.log('OK: dist/index.js exists')"
+        run: |
+          ls -la packages/action/dist
+          node -e "require('fs').statSync('packages/action/dist/index.js') && console.log('OK: dist/index.js exists')"
