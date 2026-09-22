@@ -5,11 +5,13 @@ on:
     paths:
       - "packages/action/**"
       - "packages/core/**"
+      - ".github/workflows/action-bundle.yml"
   push:
     branches: [main]
     paths:
       - "packages/action/**"
       - "packages/core/**"
+      - ".github/workflows/action-bundle.yml"
 
 jobs:
   build-action-bundle:
