@@ -2280,6 +2280,7 @@ function evaluateR026IndexOverlap(
       ix &&
       ix.schema.toLowerCase() === schemaLc &&
       ix.table.toLowerCase() === nameLc &&
+      ix.live === true &&
       ix.valid === true &&
       ix.ready === true &&
       Array.isArray(ix.columns) &&

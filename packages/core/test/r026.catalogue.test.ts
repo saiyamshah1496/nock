@@ -88,6 +88,30 @@ describe("R026 — Redundant / overlapping index", () => {
     expect(r?.message).toContain("left-prefix");
   });
 
+  it("does NOT hit when a matching index exists but is not live", () => {
+    const estate: EstateSnapshot = {
+      ...tinyEstate,
+      indexes: [
+        {
+          schema: "public",
+          table: "sessions",
+          name: "idx_sessions_archived_at",
+          unique: false,
+          primary: false,
+          valid: true,
+          ready: true,
+          live: false,
+          immediate: true,
+          columns: ["archived_at"]
+        }
+      ]
+    };
+    const sql = `CREATE INDEX idx_dup ON public.sessions(archived_at);`;
+    const pol = { ...policyBase, rules: { R026: { large_rows: 100000, large_relation_bytes: 64 * 1024 * 1024 } } };
+    const v = check({ sql, estate, policy: pol });
+    expect(v.violations.find((x) => x.rule_id === "R026")).toBeUndefined();
+  });
+
   it("longer key when shorter exists is NOT redundant", () => {
     const estate: EstateSnapshot = {
       ...tinyEstate,
