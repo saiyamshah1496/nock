@@ -39,4 +39,6 @@ jobs:
         run: pnpm --filter @nockhq/action build
 
       - name: List Action dist
-        run: ls -la packages/action/dist && node -e "require('fs').statSync('packages/action/dist/index.js') && console.log('OK: dist/index.js exists')"
+        run: |
+          ls -la packages/action/dist
+          node -e "require('fs').statSync('packages/action/dist/index.js') && console.log('OK: dist/index.js exists')"
