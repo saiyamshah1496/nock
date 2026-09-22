@@ -1,6 +1,6 @@
 {
   "name": "@nockhq/cli",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Estate-aware approve/block for Postgres DDL. Never applies migrations. CLI ≡ Action ≡ MCP.",
   "license": "MIT",
   "bin": {
@@ -27,9 +27,9 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
-    "@nockhq/core": "workspace:^0.1.7",
+    "@nockhq/core": "workspace:^0.1.8",
     "postgres": "^3.4.4",
-    "@nockhq/secure-estate": "workspace:^0.1.7"
+    "@nockhq/secure-estate": "workspace:^0.1.8"
   },
   "devDependencies": {
     "typescript": "^5.5.4"
