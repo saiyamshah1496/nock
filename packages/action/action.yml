@@ -1,6 +1,9 @@
 name: "Nock — Postgres migration safety"
 description: "Fail PRs on unsafe Postgres DDL using your table sizes and policy"
 author: "Nock"
+branding:
+  icon: "shield"
+  color: "purple"
 runs:
   using: "node20"
   main: "dist/index.js"

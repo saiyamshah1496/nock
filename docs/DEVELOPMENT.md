@@ -178,6 +178,7 @@ Tip: Unknown DDL must remain YELLOW (never silent green).
 ## What not to commit
 
 - Never commit: `node_modules/`, `**/node_modules/`, `dist/`, `**/dist/`, `coverage/`, `.turbo/`, `*.tsbuildinfo`, `.DS_Store`
+- Exception: the bundled GitHub Action is committed at `packages/action/dist/` so strangers can `uses: owner/repo/packages/action@TAG` without building locally.
 - Keep: `pnpm-lock.yaml`
 
 ## Store selection (local vs R2)

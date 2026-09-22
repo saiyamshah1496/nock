@@ -1,0 +1,42 @@
+name: Action bundle check
+
+on:
+  pull_request:
+    paths:
+      - "packages/action/**"
+      - "packages/core/**"
+  push:
+    branches: [main]
+    paths:
+      - "packages/action/**"
+      - "packages/core/**"
+
+jobs:
+  build-action-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable corepack (prepare pnpm)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.2 --activate
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core (workspace)
+        run: pnpm --filter @nockhq/core build
+
+      - name: Build Action bundle
+        run: pnpm --filter @nockhq/action build
+
+      - name: List Action dist
+        run: ls -la packages/action/dist && node -e "require('fs').statSync('packages/action/dist/index.js') && console.log('OK: dist/index.js exists')"
