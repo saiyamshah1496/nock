@@ -2,6 +2,8 @@
 
 Nock is check-only. It never applies or rewrites your SQL. These notes help you stage safer migrations when using Prisma Migrate with PostgreSQL.
 
+For install / GitHub Action path, see: [`./prisma.md`](./prisma.md).
+
 <a id="concurrent-ddl-cannot-run-in-a-transaction"></a>
 ## Concurrent DDL cannot run in a transaction (R002)
 

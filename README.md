@@ -119,6 +119,9 @@ Hosted staging / production / tenant estates under one org, plus org policy, aud
 - [Live DATABASE_URL check](docs/guides/live-estate-database-url.md)
 - [CI](examples/workflows/nock.yml)
 - [MCP](docs/guides/mcp-check-before-apply.md)
+- [Prisma — install and migration path](docs/guides/prisma.md)
+- [Drizzle Kit — install and migration path](docs/guides/drizzle.md)
+- [Flyway — install and migration path](docs/guides/flyway.md)
 - [Grants](docs/guides/grants-sync-estate.md)
 - Reference: [CLI](docs/reference/cli.md) · [Rules](docs/reference/rules.md) · [Verdict JSON](docs/reference/verdict-json.md) · [Estate schema](docs/reference/estate-schema.md)
 
