@@ -56,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Nock check (Action)
-        uses: ./.github/actions/nock  # or your published action ref
+        uses: saiyamshah1496/nock-action@v0.1.9
         with:
           migration-path: migrations/
           estate-api-url: https://nock.saiyamshah1496.workers.dev/v1/estate/owner/repo
