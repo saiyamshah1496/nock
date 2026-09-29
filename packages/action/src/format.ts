@@ -129,21 +129,18 @@ export function renderComment(verdict: any): string {
   }>) {
     const tref = resolveViolationTable(v, statements);
     const rows = findRowsForTableLike(tref, statements);
-    const whyBits: string[] = [];
-    if (typeof rows === "number") {
-      whyBits.push("`n_live_tup` ≈ " + fmt(rows) + " (from statement/estate)");
-    } else {
-      whyBits.push("estate size: unknown");
-    }
-    if (CATALOGUE_RULES.has(v.rule_id)) {
-      whyBits.push("catalogue signalled");
-    } else if (SIZE_GATED.has(v.rule_id)) {
-      whyBits.push("size-gated severity");
-    }
+    const isCatalogue = CATALOGUE_RULES.has(v.rule_id);
+    const isSizeGated = SIZE_GATED.has(v.rule_id);
+    const label = isCatalogue ? "catalogue signalled" : isSizeGated ? "size-gated severity" : "";
 
     lines.push("");
     lines.push(`#### ${v.rule_id} · ${tref.display} · ${v.severity}`);
-    lines.push(`**Why this estate:** ${whyBits.join(" — ")}`);
+    if (typeof rows === "number") {
+      lines.push(`**Why this estate:** \`n_live_tup\` ≈ ${fmt(rows)}${label ? ` — ${label}` : ""}`);
+    } else {
+      // Unknown size — omit plumbing phrases and labels
+      lines.push(`**Why this estate:** estate size: unknown`);
+    }
     lines.push(`**Finding:** ${v.message}`);
     if (v.remediation_sql && v.remediation_sql.trim().length > 0) {
       lines.push("**Remediation** (pasteable):");
