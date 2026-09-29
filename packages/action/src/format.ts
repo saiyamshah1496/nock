@@ -41,6 +41,13 @@ function resolveViolationTable(
         name = parts[1];
       } else {
         name = raw;
+        // Try to fill schema from statements that reference the same table name
+        const hit = statements.find(
+          (st) => st.target && st.target.name.toLowerCase() === raw.toLowerCase()
+        );
+        if (hit?.target?.schema) {
+          schema = hit.target.schema;
+        }
       }
     }
   }
@@ -128,10 +135,10 @@ export function renderComment(verdict: any): string {
     } else {
       whyBits.push("estate size: unknown");
     }
-    if (SIZE_GATED.has(v.rule_id)) {
-      whyBits.push("size-gated severity");
-    } else if (CATALOGUE_RULES.has(v.rule_id)) {
+    if (CATALOGUE_RULES.has(v.rule_id)) {
       whyBits.push("catalogue signalled");
+    } else if (SIZE_GATED.has(v.rule_id)) {
+      whyBits.push("size-gated severity");
     }
 
     lines.push("");

@@ -25,6 +25,8 @@ describe("Action comment formatter — explain-a-block", () => {
     expect(md).toMatch(/n_live_tup.*≈\s*1\.04B/);
     expect(md).toContain("```sql");
     expect(md).toContain("```");
+    // No bare table header when schema is known via statements/estate
+    expect(md).not.toMatch(/####\s+R004\s+·\s+sessions\s+·/i);
   });
 });
 
