@@ -196,41 +196,84 @@ function fmt(num?: number): string {
   return String(num);
 }
 
-function renderComment(verdict: ReturnType<typeof check extends (a: any) => infer R ? () => R : never> extends () => infer T ? T : any): string {
-  const badge = verdict.verdict === "fail" ? "Nock RED/YELLOW" : "Nock PASS";
-  const lines: string[] = [];
-  lines.push("<!-- nock:verdict -->");
-  lines.push(`### ${badge}`);
-  for (const s of verdict.statements) {
-    const table = s.target ? `${s.target.schema}.${s.target.name}` : "unknown";
-    lines.push(
-      `\n\`${s.sql.trim().slice(0, 200)}\` → lock **${s.lock_mode}**, blocks_writes: ${s.blocks_writes}\n`
-    );
-    lines.push(`Table ${table}: **${fmt(s.n_live_tup)}** live rows`);
-    if (s.estimated_hold_ms) {
-      const min = Math.round((s.estimated_hold_ms.min || 0) / 60000);
-      const max = Math.round((s.estimated_hold_ms.max || 0) / 60000);
-      lines.push(`Estimated hold **${min}–${max} min** (approx.)`);
-    }
-    if (s.rules_hit.length) {
-      lines.push(`Rules: ${s.rules_hit.join(", ")}`);
+// Derive a likely table from a violation by correlating with statements or parsing the message.
+function resolveViolationTable(
+  violation: { rule_id: string; message: string },
+  statements: Array<{
+    target?: { schema: string; name: string };
+    rules_hit: string[];
+  }>
+): { schema?: string; name?: string; display: string } {
+  // 1) Prefer statements that explicitly hit the rule and have a target
+  const hit = statements.find((s) => s.target && s.rules_hit?.includes(violation.rule_id));
+  if (hit?.target) {
+    const { schema, name } = hit.target;
+    return { schema, name, display: `${schema}.${name}` };
+  }
+  // 2) Parse from message: handle "on hot table <t>", "on <t>", "touched table <t>", or "<schema>.<name>"
+  const msg = violation.message || "";
+  let schema: string | undefined;
+  let name: string | undefined;
+  // R024-style: "R024: schema.name ..."
+  {
+    const m = /\b([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\b/.exec(msg);
+    if (m) {
+      schema = m[1];
+      name = m[2];
     }
   }
-  if (verdict.violations.length) {
-    const v = verdict.violations[0];
-    if (v.remediation_sql) {
-      lines.push("\n**Fix**");
-      lines.push("```sql");
-      lines.push(`SET lock_timeout = '3s';`);
-      lines.push(v.remediation_sql);
-      lines.push("```");
+  if (!name) {
+    let m =
+      /\bon\s+hot\s+table\s+([A-Za-z0-9_".]+)/i.exec(msg) ||
+      /\bon\s+([A-Za-z0-9_".]+)/i.exec(msg) ||
+      /\btouched\s+table\s+([A-Za-z0-9_".]+)/i.exec(msg);
+    if (m) {
+      const raw = m[1].replace(/"/g, "");
+      if (raw.includes(".")) {
+        const parts = raw.split(".");
+        schema = parts[0];
+        name = parts[1];
+      } else {
+        name = raw;
+      }
     }
   }
-  lines.push("<!-- /nock:verdict -->");
-  return lines.join("\n");
+  const display = schema && name ? `${schema}.${name}` : name ? name : "unknown";
+  return { schema, name, display };
 }
 
-run();
+function findRowsForTableLike(
+  t: { schema?: string; name?: string },
+  statements: Array<{ target?: { schema: string; name: string }; n_live_tup?: number }>
+): number | undefined {
+  if (!t) return undefined;
+  // Exact schema+name match first
+  if (t.schema && t.name) {
+    const s = statements.find(
+      (st) =>
+        st.target &&
+        st.target.schema.toLowerCase() === t.schema!.toLowerCase() &&
+        st.target.name.toLowerCase() === t.name!.toLowerCase() &&
+        typeof st.n_live_tup === "number"
+    );
+    if (s) return s.n_live_tup;
+  }
+  // Fallback: any statement on same table name (ignore schema)
+  if (t.name) {
+    const s2 = statements.find(
+      (st) => st.target && st.target.name.toLowerCase() === t.name!.toLowerCase() && typeof st.n_live_tup === "number"
+    );
+    if (s2) return s2.n_live_tup;
+  }
+  return undefined;
+}
+
+export { renderComment } from "./format";
+
+// Only run the action entrypoint when executed directly (not when imported for testing)
+if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {
+  run();
+}
 
 function getJson(urlStr: string, token?: string): Promise<any> {
   return new Promise((resolve, reject) => {
