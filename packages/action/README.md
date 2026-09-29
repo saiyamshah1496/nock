@@ -24,7 +24,14 @@ What gets committed
 -------------------
 
 - The bundled artifacts under `packages/action/dist/` are intentionally committed
-  so that users can reference the Action via:
+  for maintainers and monorepo equivalence. For public installs, prefer the GitHub
+  Marketplace Action:
+
+```yaml
+uses: saiyamshah1496/nock-action@<tag>
+```
+
+Monorepo equivalent (maintainers only):
 
 ```yaml
 uses: saiyamshah1496/nock/packages/action@<tag>
@@ -34,5 +41,4 @@ Notes
 -----
 
 - The Action runs on `runs.using: node20` and points `main` to `dist/index.js`.
-- GitHub Marketplace listing requires a dedicated public repo with a root `action.yml`;
-  this package works via the subdirectory `uses:` reference in the interim.
+- GitHub Marketplace listing is live: [Nock — Estate‑aware Postgres DDL](https://github.com/marketplace/actions/nock-estate-aware-postgres-ddl).
