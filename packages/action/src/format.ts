@@ -22,7 +22,7 @@ function resolveViolationTable(
   let schema: string | undefined;
   let name: string | undefined;
   {
-    const m = /\b([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\b/.exec(msg);
+    const m = /\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b/.exec(msg);
     if (m) {
       schema = m[1];
       name = m[2];
