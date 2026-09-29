@@ -65,5 +65,15 @@ describe("R002 — concurrent DDL inside explicit transaction", () => {
     expect(v1.violations.some((v) => v.rule_id === "R002")).toBe(true);
     expect(v2.violations.some((v) => v.rule_id === "R002")).toBe(true);
   });
+
+  it("includes multi-step remediation and docs_url for R002", () => {
+    const sql = readFileSync(join(__dirname, "../../../fixtures/txn_create_index_concurrently.sql"), "utf8");
+    const estate = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/estate_tiny.json"), "utf8"));
+    const verdict = check({ sql, estate, policy });
+    const r002 = verdict.violations.find((v) => v.rule_id === "R002");
+    expect(r002?.docs_url).toContain("docs/guides/prisma-migrations.md");
+    expect(r002?.remediation_sql).toBeTruthy();
+    expect(r002?.remediation_sql).toContain("CREATE INDEX CONCURRENTLY");
+  });
 });
 
