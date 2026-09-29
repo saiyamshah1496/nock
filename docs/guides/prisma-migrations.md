@@ -2,6 +2,7 @@
 
 Nock is check-only. It never applies or rewrites your SQL. These notes help you stage safer migrations when using Prisma Migrate with PostgreSQL.
 
+<a id="concurrent-ddl-cannot-run-in-a-transaction"></a>
 ## Concurrent DDL cannot run in a transaction (R002)
 
 Postgres rejects concurrent operations inside an explicit transaction block:
@@ -26,6 +27,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <schema>.<table>(<col(s)
 
 Avoid placing any additional statements in the same Prisma migration that would cause a transaction wrapper.
 
+<a id="lock_timeout-before-cic"></a>
 ## Set a fail-fast lock_timeout before CIC (R015)
 
 Even with CONCURRENTLY, Postgres takes a very brief lock at the start. To avoid queuing behind long-running queries (which can make “non‑blocking” builds effectively block your app), set a short, fail‑fast lock timeout before running the CIC:
@@ -44,6 +46,7 @@ SET lock_timeout = '5s';
 CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <schema>.<table>(<col(s)>);
 ```
 
+<a id="invalid-or-not-ready-index-cleanup"></a>
 ## After deploy: clean up invalid/not‑ready indexes (R023)
 
 A failed concurrent build can leave an index that is INVALID (still maintained on every write) and/or not‑ready (planner won’t use it) — pure cost until dropped and rebuilt.
