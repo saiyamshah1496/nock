@@ -122,5 +122,32 @@ describe("R023 — Invalid or not-ready index on touched table", () => {
     const r = v.violations.find((x) => x.rule_id === "R023");
     expect(r).toBeUndefined();
   });
+
+  it("includes remediation steps and docs_url for cleanup when R023 fires", () => {
+    const estate: EstateSnapshot = {
+      ...bigEstate,
+      indexes: [
+        {
+          schema: "public",
+          table: "sessions",
+          name: "idx_sessions_archived_at",
+          unique: false,
+          primary: false,
+          valid: false,
+          ready: true,
+          live: true,
+          immediate: true,
+          columns: ["archived_at"]
+        }
+      ]
+    };
+    const policy = { id: "nock.postgres.ddl.default", version: "1.0.0", fail_on: "yellow", rules: {} };
+    const v = check({ sql, estate, policy });
+    const r = v.violations.find((x) => x.rule_id === "R023");
+    expect(r?.severity).toBe("yellow");
+    expect(r?.docs_url).toContain("docs/guides/prisma-migrations.md");
+    expect(String(r?.remediation_sql)).toContain("DROP INDEX CONCURRENTLY");
+    expect(String(r?.remediation_sql)).toMatch(/indisvalid|indisready/i);
+  });
 });
 

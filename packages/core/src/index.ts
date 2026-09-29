@@ -1333,7 +1333,9 @@ export function check(input: CheckInput): VerdictV1 {
               message: `CREATE INDEX CONCURRENTLY without lock_timeout on hot table ${cic.table ? cic.table.name : "unknown"} (${formatRows(
                 nLive
               )} rows)`,
-              remediation_sql: "SET lock_timeout = '3s'; -- before CIC"
+              remediation_sql:
+                "/* Plan:\n   1) Set a fail-fast lock timeout in session (e.g., 5s) BEFORE the CIC.\n      - Example (session): SET lock_timeout = '5s';\n      - Do not place this in the same Prisma migration file as CIC when Prisma wraps multi-statement migrations in a transaction.\n   2) Build the index concurrently outside any explicit transaction:\n      CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>);\n   3) If using Prisma, prefer a single-statement migration that contains ONLY the CIC (or use Prisma’s per-migration transaction disable for this file), never CIC+SET together in one Prisma migration.\n*/\nCREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>);",
+              docs_url: "docs/guides/prisma-migrations.md#lock_timeout-before-cic"
             });
           } else if (typeof nLive === "number" && nLive >= yellowRows) {
             violations.push({
@@ -1341,7 +1343,8 @@ export function check(input: CheckInput): VerdictV1 {
               severity: "yellow",
               message: `CREATE INDEX CONCURRENTLY without lock_timeout on ${cic.table ? cic.table.name : "unknown"} (${formatRows(
                 nLive
-              )} rows)`
+              )} rows)`,
+              docs_url: "docs/guides/prisma-migrations.md#lock_timeout-before-cic"
             });
           }
         }
@@ -1708,7 +1711,10 @@ export function check(input: CheckInput): VerdictV1 {
             rule_id: "R002",
             severity: "red",
             message:
-              `${conc.kind} cannot run inside a transaction block in Postgres; run outside a transaction or disable the migration transaction`
+              `${conc.kind} cannot run inside a transaction block in Postgres; run outside a transaction or disable the migration transaction`,
+            remediation_sql:
+              "/* Plan (concurrent operations cannot run inside BEGIN…COMMIT):\n   1) Ensure the migration that runs the concurrent operation contains ONLY that statement.\n      - Prisma: place the CIC/CONCURRENTLY op in a single-statement migration or disable the migration transaction for this file.\n   2) Execute outside an explicit transaction block:\n      CREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>);\n*/\nCREATE INDEX CONCURRENTLY IF NOT EXISTS <index_name> ON <table>(<col(s)>);",
+            docs_url: "docs/guides/prisma-migrations.md#concurrent-ddl-cannot-run-in-a-transaction"
           });
         }
       }
@@ -2083,7 +2089,10 @@ export function check(input: CheckInput): VerdictV1 {
         violations.push({
           rule_id: "R023",
           severity: "yellow",
-          message: `Invalid or not-ready index present on touched table ${nameLc} — clean up before/after this migration`
+          message: `Invalid or not-ready index present on touched table ${nameLc} — clean up before/after this migration`,
+          remediation_sql:
+            "/* After deploy, check index validity and rebuild if needed:\n   1) Inspect validity on the affected table (example):\n      SELECT i.relname AS index_name, idx.indisvalid, idx.indisready\n      FROM pg_index idx\n      JOIN pg_class i ON i.oid = idx.indexrelid\n      JOIN pg_class t ON t.oid = idx.indrelid\n      WHERE t.relname = '<table>';\n   2) If an index is INVALID, drop it without blocking writers:\n      DROP INDEX CONCURRENTLY IF EXISTS <invalid_index_name>;\n   3) Recreate it (prefer CONCURRENTLY):\n      CREATE INDEX CONCURRENTLY <index_name> ON <table>(<col(s)>);\n*/",
+          docs_url: "docs/guides/prisma-migrations.md#invalid-or-not-ready-index-cleanup"
         });
       }
     }

@@ -21,5 +21,21 @@ describe("R015 — CIC without prior lock_timeout on hot table", () => {
     const y = v2.violations.find((x) => x.rule_id === "R015");
     expect(y?.severity).toBe("yellow");
   });
+
+  it("adds multi-step remediation with '5s' timeout and docs_url for R015 red", () => {
+    const sql = readFileSync(join(__dirname, "../../../fixtures/cic_without_lock_timeout.sql"), "utf8");
+    const big = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/estate_billion.json"), "utf8"));
+    const policy = {
+      id: "nock.postgres.ddl.default",
+      version: "1.0.0",
+      fail_on: "red",
+      rules: { R010: { always_require_lock_timeout_above_rows: 1000000 }, R015: { yellow_rows: 50 } }
+    };
+    const v = check({ sql, estate: big, policy });
+    const r = v.violations.find((x) => x.rule_id === "R015");
+    expect(r?.docs_url).toContain("docs/guides/prisma-migrations.md");
+    expect(r?.remediation_sql).toContain("lock_timeout = '5s'");
+    expect(r?.remediation_sql).toContain("CREATE INDEX CONCURRENTLY");
+  });
 });
 
