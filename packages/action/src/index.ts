@@ -8,6 +8,7 @@ import http from "http";
 import { URL } from "url";
 import crypto from "crypto";
 import YAML from "yaml";
+import { renderComment } from "./format";
 
 async function run() {
   try {
@@ -186,86 +187,6 @@ async function run() {
   } catch (err: any) {
     core.setFailed(err?.stack || String(err));
   }
-}
-
-function fmt(num?: number): string {
-  if (num === undefined) return "?";
-  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
-  if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
-  if (num >= 1_000) return (num / 1_000).toFixed(2) + "k";
-  return String(num);
-}
-
-// Derive a likely table from a violation by correlating with statements or parsing the message.
-function resolveViolationTable(
-  violation: { rule_id: string; message: string },
-  statements: Array<{
-    target?: { schema: string; name: string };
-    rules_hit: string[];
-  }>
-): { schema?: string; name?: string; display: string } {
-  // 1) Prefer statements that explicitly hit the rule and have a target
-  const hit = statements.find((s) => s.target && s.rules_hit?.includes(violation.rule_id));
-  if (hit?.target) {
-    const { schema, name } = hit.target;
-    return { schema, name, display: `${schema}.${name}` };
-  }
-  // 2) Parse from message: handle "on hot table <t>", "on <t>", "touched table <t>", or "<schema>.<name>"
-  const msg = violation.message || "";
-  let schema: string | undefined;
-  let name: string | undefined;
-  // R024-style: "R024: schema.name ..."
-  {
-    const m = /\b([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\b/.exec(msg);
-    if (m) {
-      schema = m[1];
-      name = m[2];
-    }
-  }
-  if (!name) {
-    let m =
-      /\bon\s+hot\s+table\s+([A-Za-z0-9_".]+)/i.exec(msg) ||
-      /\bon\s+([A-Za-z0-9_".]+)/i.exec(msg) ||
-      /\btouched\s+table\s+([A-Za-z0-9_".]+)/i.exec(msg);
-    if (m) {
-      const raw = m[1].replace(/"/g, "");
-      if (raw.includes(".")) {
-        const parts = raw.split(".");
-        schema = parts[0];
-        name = parts[1];
-      } else {
-        name = raw;
-      }
-    }
-  }
-  const display = schema && name ? `${schema}.${name}` : name ? name : "unknown";
-  return { schema, name, display };
-}
-
-function findRowsForTableLike(
-  t: { schema?: string; name?: string },
-  statements: Array<{ target?: { schema: string; name: string }; n_live_tup?: number }>
-): number | undefined {
-  if (!t) return undefined;
-  // Exact schema+name match first
-  if (t.schema && t.name) {
-    const s = statements.find(
-      (st) =>
-        st.target &&
-        st.target.schema.toLowerCase() === t.schema!.toLowerCase() &&
-        st.target.name.toLowerCase() === t.name!.toLowerCase() &&
-        typeof st.n_live_tup === "number"
-    );
-    if (s) return s.n_live_tup;
-  }
-  // Fallback: any statement on same table name (ignore schema)
-  if (t.name) {
-    const s2 = statements.find(
-      (st) => st.target && st.target.name.toLowerCase() === t.name!.toLowerCase() && typeof st.n_live_tup === "number"
-    );
-    if (s2) return s2.n_live_tup;
-  }
-  return undefined;
 }
 
 export { renderComment } from "./format";
