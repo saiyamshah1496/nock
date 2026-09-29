@@ -37,7 +37,7 @@ Example verdict (truncated)
 ```
 
 ## Add to CI (GitHub Action)
-Preferred: use the published Action from this repo’s `packages/action` subdirectory, pinned to a tag:
+Preferred: use the published GitHub Marketplace Action, pinned to the current version:
 
 ```yaml
 name: Nock — Postgres migration safety (Action)
@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Nock check (Action)
-        uses: saiyamshah1496/nock/packages/action@v0.1.9
+        uses: saiyamshah1496/nock-action@v0.1.9
         with:
           migration-path: migrations/
           estate-path: .nock/estate.json
@@ -61,8 +61,8 @@ jobs:
 ```
 
 Notes:
-- This Action is intentionally published from a subdirectory; GitHub Marketplace listing requires a dedicated public repo with a root `action.yml` (follow‑up item).
-- You can also test a PR branch by pinning a commit SHA in `uses: owner/repo/path@<sha>`.
+- GitHub Marketplace listing: [Nock — Estate‑aware Postgres DDL](https://github.com/marketplace/actions/nock-estate-aware-postgres-ddl)
+- You can also test a PR branch by pinning a commit SHA in `uses: owner/repo@<sha>`.
 
 Alternative (CLI):
 Copy-paste into `.github/workflows/nock.yml`:
