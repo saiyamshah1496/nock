@@ -26,9 +26,9 @@ Notes
 - Add `estate-path` and `policy-path` if you keep those in non‑default locations.
 
 ## Footguns (Prisma) — brief
-- Create Index Concurrently (CIC) must be a single statement and not wrapped in a transaction — see details: [`./prisma-migrations.md#concurrent-ddl-cannot-run-in-a-transaction`](./prisma-migrations.md#concurrent-ddl-cannot-run-in-a-transaction)
-- If Prisma would wrap multiple statements, disable the transaction for that migration file — see: [`./prisma-migrations.md#concurrent-ddl-cannot-run-in-a-transaction`](./prisma-migrations.md#concurrent-ddl-cannot-run-in-a-transaction)
+- Create Index Concurrently (CIC) must be a single statement and not wrapped in a transaction; if Prisma would wrap multiple statements, disable the transaction for that migration file — details: [`./prisma-migrations.md#concurrent-ddl-cannot-run-in-a-transaction`](./prisma-migrations.md#concurrent-ddl-cannot-run-in-a-transaction)
 - Don’t combine `SET lock_timeout` and the CIC in the same Prisma migration — why: [`./prisma-migrations.md#lock_timeout-before-cic`](./prisma-migrations.md#lock_timeout-before-cic)
+- After deploy, if a concurrent build failed, clean up invalid/not‑ready indexes — how: [`./prisma-migrations.md#invalid-or-not-ready-index-cleanup`](./prisma-migrations.md#invalid-or-not-ready-index-cleanup)
 
 ## Optional — one‑liner CLI check
 ```bash
