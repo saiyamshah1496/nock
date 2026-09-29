@@ -1,1 +1,1 @@
-export {};
+export { renderComment } from "./format";

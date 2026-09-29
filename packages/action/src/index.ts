@@ -8,6 +8,7 @@ import http from "http";
 import { URL } from "url";
 import crypto from "crypto";
 import YAML from "yaml";
+import { renderComment } from "./format";
 
 async function run() {
   try {
@@ -188,49 +189,12 @@ async function run() {
   }
 }
 
-function fmt(num?: number): string {
-  if (num === undefined) return "?";
-  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
-  if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
-  if (num >= 1_000) return (num / 1_000).toFixed(2) + "k";
-  return String(num);
-}
+export { renderComment } from "./format";
 
-function renderComment(verdict: ReturnType<typeof check extends (a: any) => infer R ? () => R : never> extends () => infer T ? T : any): string {
-  const badge = verdict.verdict === "fail" ? "Nock RED/YELLOW" : "Nock PASS";
-  const lines: string[] = [];
-  lines.push("<!-- nock:verdict -->");
-  lines.push(`### ${badge}`);
-  for (const s of verdict.statements) {
-    const table = s.target ? `${s.target.schema}.${s.target.name}` : "unknown";
-    lines.push(
-      `\n\`${s.sql.trim().slice(0, 200)}\` → lock **${s.lock_mode}**, blocks_writes: ${s.blocks_writes}\n`
-    );
-    lines.push(`Table ${table}: **${fmt(s.n_live_tup)}** live rows`);
-    if (s.estimated_hold_ms) {
-      const min = Math.round((s.estimated_hold_ms.min || 0) / 60000);
-      const max = Math.round((s.estimated_hold_ms.max || 0) / 60000);
-      lines.push(`Estimated hold **${min}–${max} min** (approx.)`);
-    }
-    if (s.rules_hit.length) {
-      lines.push(`Rules: ${s.rules_hit.join(", ")}`);
-    }
-  }
-  if (verdict.violations.length) {
-    const v = verdict.violations[0];
-    if (v.remediation_sql) {
-      lines.push("\n**Fix**");
-      lines.push("```sql");
-      lines.push(`SET lock_timeout = '3s';`);
-      lines.push(v.remediation_sql);
-      lines.push("```");
-    }
-  }
-  lines.push("<!-- /nock:verdict -->");
-  return lines.join("\n");
+// Only run the action entrypoint when executed directly (not when imported for testing)
+if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {
+  run();
 }
-
-run();
 
 function getJson(urlStr: string, token?: string): Promise<any> {
   return new Promise((resolve, reject) => {
