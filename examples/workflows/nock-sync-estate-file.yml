@@ -2,9 +2,9 @@
 ## This job connects to Postgres via a read-only DSN secret, runs `nock sync-estate`,
 ## and writes `.nock/estate.json`. It never applies migrations.
 ##
-## Persist the estate:
-##  - Shown: upload as a short-lived artifact (works without pushing commits)
-##  - Alternative (commented below): commit `.nock/estate.json` back to a branch
+## Persist the estate (default = commit-back):
+##  - Default (enabled): commit `.nock/estate.json` back to a branch via PR, so PR runners get the file without any prod DSN.
+##  - Alternative (commented below): upload as a short-lived artifact if your pipeline pulls it another way.
 ##
 ## PR checks should READ the file (no prod DSN on PR runners):
 ##   uses: saiyamshah1496/nock-action@v0.1.10
@@ -26,6 +26,9 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,24 +45,22 @@ jobs:
             --database-url "$NOCK_DATABASE_URL" \
             --out .nock/estate.json
 
-      - name: Upload estate artifact
-        uses: actions/upload-artifact@v4
+      - name: Commit updated estate to branch (default)
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: peter-evans/create-pull-request@v6
         with:
-          name: nock-estate
-          path: .nock/estate.json
-          retention-days: 3
+          commit-message: 'chore(nock): update synced estate'
+          title: 'chore(nock): update synced estate'
+          body: 'Automated sync-estate run updating .nock/estate.json'
+          branch: 'nock/estate-sync'
+          add-paths: '.nock/estate.json'
 
-      # (Alternative) Commit `.nock/estate.json` to a branch instead of uploading an artifact.
-      # Keep this commented if you prefer artifacts. If you enable it, ensure the workflow
-      # has `contents: write` permission and choose a branch naming convention you like.
-      #
-      # - name: (Alternative) Commit updated estate to branch
-      #   if: ${{ github.ref == 'refs/heads/main' }}
-      #   uses: peter-evans/create-pull-request@v6
+      # (Alternative) Upload estate as a short-lived artifact instead of committing.
+      # Enable this if your PR jobs download the artifact explicitly.
+      # - name: (Alternative) Upload estate artifact
+      #   uses: actions/upload-artifact@v4
       #   with:
-      #     commit-message: 'chore(nock): update synced estate'
-      #     title: 'chore(nock): update synced estate'
-      #     body: 'Automated sync-estate run updating .nock/estate.json'
-      #     branch: 'nock/estate-sync'
-      #     add-paths: '.nock/estate.json'
+      #     name: nock-estate
+      #     path: .nock/estate.json
+      #     retention-days: 3
 
