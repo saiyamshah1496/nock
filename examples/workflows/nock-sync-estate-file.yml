@@ -1,0 +1,65 @@
+## Example: Scheduled sync-estate to file (OSS/free path; no hosted service)
+## This job connects to Postgres via a read-only DSN secret, runs `nock sync-estate`,
+## and writes `.nock/estate.json`. It never applies migrations.
+##
+## Persist the estate:
+##  - Shown: upload as a short-lived artifact (works without pushing commits)
+##  - Alternative (commented below): commit `.nock/estate.json` back to a branch
+##
+## PR checks should READ the file (no prod DSN on PR runners):
+##   uses: saiyamshah1496/nock-action@v0.1.10
+##   with:
+##     migration-path: migrations/
+##     estate-path: .nock/estate.json
+##     policy-path: policy.default.yml
+##     fail-on: red
+##     github-token: ${{ secrets.GITHUB_TOKEN }}
+##
+## See also:
+##  - docs/guides/sync-estate.md
+##  - docs/guides/grants-sync-estate.md
+name: Nock — Sync estate to file (OSS)
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours
+  workflow_dispatch: {}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Run sync-estate (file output only)
+        env:
+          NOCK_DATABASE_URL: ${{ secrets.NOCK_DATABASE_URL }} # read-only replica URL
+          # Alternatively: set DATABASE_URL in repo secrets and use that here.
+        run: |
+          set -euo pipefail
+          mkdir -p .nock
+          npx @nockhq/cli@0.1.8 sync-estate \
+            --database-url "$NOCK_DATABASE_URL" \
+            --out .nock/estate.json
+
+      - name: Upload estate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nock-estate
+          path: .nock/estate.json
+          retention-days: 3
+
+      # (Alternative) Commit `.nock/estate.json` to a branch instead of uploading an artifact.
+      # Keep this commented if you prefer artifacts. If you enable it, ensure the workflow
+      # has `contents: write` permission and choose a branch naming convention you like.
+      #
+      # - name: (Alternative) Commit updated estate to branch
+      #   if: ${{ github.ref == 'refs/heads/main' }}
+      #   uses: peter-evans/create-pull-request@v6
+      #   with:
+      #     commit-message: 'chore(nock): update synced estate'
+      #     title: 'chore(nock): update synced estate'
+      #     body: 'Automated sync-estate run updating .nock/estate.json'
+      #     branch: 'nock/estate-sync'
+      #     add-paths: '.nock/estate.json'
+
