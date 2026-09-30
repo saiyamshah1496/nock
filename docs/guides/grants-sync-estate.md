@@ -1,6 +1,6 @@
-# Grants for sync-estate
+# Grants for sync-estate (one-pager)
 
-Purpose: create a least-privilege role that can run the `sync-estate` catalogue query (no table row data). Prefer connecting to a read replica.
+Purpose: create a least‑privilege role that can run the `sync-estate` catalogue query (no table row data). Prefer connecting to a read replica.
 
 Status: initial guidance. Managed providers vary; mark caveats as UNVERIFIED where noted. Validate on PG 14–16 in follow-up.
 

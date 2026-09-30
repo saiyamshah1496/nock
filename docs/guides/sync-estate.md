@@ -1,23 +1,19 @@
-# Keep estate fresh with sync-estate
+# Sync estate yourself
 
-Goal: generate `.nock/estate.json` from your Postgres replica on your own GitHub runner (no hosted service). Then use that file in PR checks.
+Goal: generate `.nock/estate.json` on your own runner (no hosted service) and run PR checks that only read that file — no database secrets on PR jobs.
 
-You’ll do this once and schedule it:
-1. Create a least‑privilege read‑only role (prefer a read replica)
-2. Add a repo secret `PG_ESTATE_URL`
-3. Run `nock sync-estate` to write `.nock/estate.json`
-4. Add a scheduled workflow to refresh the file or upload it as an artifact
-5. Run the PR check that reads `.nock/estate.json`
+Free path, copy‑pasteable:
+- Schedule or manually run `sync-estate` to write `.nock/estate.json` on your runner (commit‑back or upload as an artifact).
+- PR check uses the Marketplace Action with `estate-path` to read the file — no `DATABASE_URL` / `PG_ESTATE_URL` in the PR job.
 
-CLI ≡ Action ≡ MCP — same verdict surface; this guide uses CLI in workflows for simplicity.
+CLI ≡ Action ≡ MCP — same verdict surface. This guide shows the Free file path with the Marketplace Action.
 
-On your side — checklist (to get catalogue into PR checks)
-- Create/verify a least‑privilege read‑only role with catalogue grants. See [`docs/guides/grants-sync-estate.md`](./grants-sync-estate.md). Phase‑1 catalogue reads `pg_attribute`, `pg_constraint`, `pg_index` in addition to sizes — not just stats.
-- Prefer a read‑replica; store its DSN in a repo secret `PG_ESTATE_URL`.
-- Use current `@latest` (or a recent CLI that emits the catalogue). Older CLIs won’t emit `columns[]`/`constraints[]`/`indexes[]`.
-- Re‑run `sync-estate` so `.nock/estate.json` contains the new catalogue sections (or present‑but‑empty `[]` when none).
-- Make the estate available to PR checks: commit `.nock/estate.json`, download a recent artifact at job start, or (Team) use `--push-url` after sync.
-- Keep it fresh: re‑run/schedule sync. When catalogue sections are omitted, catalogue‑aware rules fail‑closed (e.g. R005/R017 softens/suppresses only when catalogue is present).
+On your side — quick checklist
+- Create a least‑privilege read‑only role (see [`grants-sync-estate.md`](./grants-sync-estate.md)). Phase‑1 catalogue reads `pg_attribute`, `pg_constraint`, `pg_index` in addition to sizes — not just stats.
+- Prefer a read‑replica; store its DSN in a repo secret used by the sync job only (example: `NOCK_DATABASE_URL`).
+- Use a recent CLI that emits catalogue sections; re‑run `sync-estate` so `.nock/estate.json` contains `columns[]`/`constraints[]`/`indexes[]` (or present‑but‑empty `[]` when none).
+- Make the estate available to PR checks: commit `.nock/estate.json` or upload it as an artifact. PR jobs read the file only.
+- Keep it fresh: schedule syncs. When catalogue sections are omitted, catalogue‑aware rules fail‑closed.
 
 What sync-estate captures (catalogue overview):
 - Table sizes and version metadata
@@ -28,7 +24,7 @@ What sync-estate captures (catalogue overview):
   - indexes[]: unique, primary, valid, ready, immediate, columns[], replica_identity?
 Omit vs empty: an omitted section key means “catalogue absent” (fail‑closed for catalogue‑aware rules); a present‑but‑empty [] means “synced; none found”.
 
-### In this repo’s CI
+## Proof in this repo
 
 This repository runs a self‑contained integration that proves the “sync‑estate → check” loop against a real Postgres service container. See `/.github/workflows/ci.yml` job `estate-sync-integration` for a complete example:
 - Boots Postgres as a service and waits for health
@@ -36,49 +32,23 @@ This repository runs a self‑contained integration that proves the “sync‑es
 - Runs `nock sync-estate` to write `.nock/estate.json`
 - Checks one SQL that should RED on the hot table and one that should PASS on the tiny table
 
-## 1) Grants for a read‑only role
+## Grants for sync
 
-Use a dedicated role that can read catalog/statistics only — not table rows.
-- See [`docs/guides/grants-sync-estate.md`](./grants-sync-estate.md) for SQL you can adapt
-- Prefer connecting to a read replica
-- Managed PGs often require `?sslmode=require` on the connection URL
+Use a dedicated role that can read catalog/statistics only — not table rows. Provider nuances vary; see the one‑pager: [`grants-sync-estate.md`](./grants-sync-estate.md).
 
-## 2) Add the database URL secret
 
 In your repo: Settings → Secrets and variables → Actions → New secret
-- Name: `PG_ESTATE_URL`
-- Value: Postgres DSN for your read‑only role, e.g. `postgres://nock_estate:****@replica.example.com:5432/appdb?sslmode=require`
+- Use a read‑only DSN secret for the sync job only (example: `NOCK_DATABASE_URL` as in the example workflow).
 
-## 3) Write `.nock/estate.json` on your runner
+## 1) Sync job → `.nock/estate.json`
 
-Add a job that runs `sync-estate` and saves the estate file:
-```yaml
-name: Nock estate sync (free)
-on:
-  schedule: [{ cron: "0 */6 * * *" }]
-  workflow_dispatch: {}
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'npm' }
-      - name: Run sync-estate
-        env:
-          PG_ESTATE_URL: ${{ secrets.PG_ESTATE_URL }}
-        run: |
-          mkdir -p .nock
-          npx @nockhq/cli@latest sync-estate \
-            --database-url "$PG_ESTATE_URL" \
-            --out .nock/estate.json
-      - name: Upload estate artifact (optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: nock-estate
-          path: .nock/estate.json
-          retention-days: 3
-```
+Use the real example from this repo: `examples/workflows/nock-sync-estate-file.yml`.
+- Connects with a read‑only DSN secret (`NOCK_DATABASE_URL`).
+- Runs `npx @nockhq/cli sync-estate` and writes `.nock/estate.json`.
+- Default persistence: commits `.nock/estate.json` back via PR so PR runners have the file without any prod DSN.
+- Alternative (commented in the example): upload a short‑lived artifact if your pipeline prefers to download it.
+- Pinning: use the version pin from that example workflow; this guide leaves the CLI unpinned.
+
 
 Note for monorepo contributors: you can continue to use the workspace binary (e.g. `node packages/cli/dist/bin/nock.js`) when developing inside this repo.
 
@@ -86,18 +56,17 @@ Tips
 - Keep `.nock/estate.json` in the repo (commit) or publish it as an artifact.
 - Estate contains Postgres sizes/version and a governance catalogue (columns, constraints, indexes) — no row data and no SQL/expressions. We never store default expressions, CHECK/index predicates, or generated expressions.
 
-## 4) PR check that uses `.nock/estate.json`
+## 2) PR check — Action reads the file (no DB on PR)
 
-Use a workflow that runs the CLI against your migration files and the estate file:
-- See `examples/workflows/nock.yml` (CLI workflow)
-- Or `examples/workflows/nock-action.yml` if you prefer the Action; ensure it points to `estate-path: .nock/estate.json`
+Use the Marketplace Action pinned to the latest release touched here: `saiyamshah1496/nock-action@v0.1.10`. Point it at your estate file:
 
-CLI example (excerpt)
 ```yaml
-name: Nock — Postgres migration safety (CLI)
+name: Nock — Postgres migration safety (Action, file estate)
 on:
   pull_request:
-    paths: ['migrations/**', '.nock/**']
+    paths:
+      - "migrations/**"
+      - ".nock/**"
 jobs:
   nock:
     runs-on: ubuntu-latest
@@ -106,19 +75,33 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'npm' }
-      - name: Run Nock check (CLI)
-        run: |
-          npx @nockhq/cli@latest check \
-            --sql "migrations/001.sql" \
-            --estate ".nock/estate.json" \
-            --policy "policy.default.yml" \
-            --fail-on "red" \
-            --format "json"
+      - name: Nock check (Action)
+        uses: saiyamshah1496/nock-action@v0.1.10
+        with:
+          migration-path: migrations/
+          estate-path: .nock/estate.json
+          policy-path: policy.default.yml
+          fail-on: red
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-That’s it — no hosted service required.
+Tip: need a custom location? Configure `estate-path` — see [`estate-path.md`](./estate-path.md).
+
+ 
+
+ 
+
+## Freshness
+
+Nock neutralizes stale estates consistently across Action/App:
+- Warn when `captured_at` is older than 7 days.
+- Neutralize size‑gated rules when 30+ days old; non‑size rules still apply.
+- Committed files and artifacts age identically.
+Details: see [`docs/freshness.md`](../freshness.md).
+
+## Team path (optional)
+
+Want to push to the hosted estate API (Nock Team) and have the Action fetch it? See `examples/workflows/nock-sync-push.yml`. You can still keep `estate-path` as a fallback file.
 
 See also
 - `examples/workflows/nock-sync-push.yml` shows an optional “push to hosted estate API (Nock Team)” job.
