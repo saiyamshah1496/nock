@@ -1,4 +1,4 @@
-# Keep estate fresh with sync-estate (Free path)
+# Sync estate yourself
 
 Goal: generate `.nock/estate.json` on your own runner (no hosted service) and run PR checks that only read that file — no database secrets on PR jobs.
 
@@ -47,7 +47,8 @@ Use the real example from this repo: `examples/workflows/nock-sync-estate-file.y
 - Runs `npx @nockhq/cli sync-estate` and writes `.nock/estate.json`.
 - Default persistence: commits `.nock/estate.json` back via PR so PR runners have the file without any prod DSN.
 - Alternative (commented in the example): upload a short‑lived artifact if your pipeline prefers to download it.
-<!-- See the YAML in examples/workflows/nock-sync-estate-file.yml -->
+- Pinning: use the version pin from that example workflow; this guide leaves the CLI unpinned.
+
 
 Note for monorepo contributors: you can continue to use the workspace binary (e.g. `node packages/cli/dist/bin/nock.js`) when developing inside this repo.
 
@@ -90,10 +91,6 @@ Tip: need a custom location? Configure `estate-path` — see [`estate-path.md`](
 
  
 
-See also
-- `examples/workflows/nock-sync-push.yml` shows an optional “push to hosted estate API (Nock Team)” job.
-- [`docs/guides/quick-start-estate-file.md`](./quick-start-estate-file.md) for a zero‑DB, paste/file quickstart.
-
 ## Freshness
 
 Nock neutralizes stale estates consistently across Action/App:
@@ -105,4 +102,8 @@ Details: see [`docs/freshness.md`](../freshness.md).
 ## Team path (optional)
 
 Want to push to the hosted estate API (Nock Team) and have the Action fetch it? See `examples/workflows/nock-sync-push.yml`. You can still keep `estate-path` as a fallback file.
+
+See also
+- `examples/workflows/nock-sync-push.yml` shows an optional “push to hosted estate API (Nock Team)” job.
+- [`docs/guides/quick-start-estate-file.md`](./quick-start-estate-file.md) for a zero‑DB, paste/file quickstart.
 
