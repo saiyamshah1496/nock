@@ -41,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .nock
-          npx @nockhq/cli@0.1.8 sync-estate \
+          npx @nockhq/cli@0.1.9 sync-estate \
             --database-url "$NOCK_DATABASE_URL" \
             --out .nock/estate.json
 
